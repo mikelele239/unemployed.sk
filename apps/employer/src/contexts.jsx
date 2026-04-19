@@ -68,6 +68,17 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [theme]);
 
+  // Listen for theme sync messages from the parent landing page
+  useEffect(() => {
+    const handleThemeMessage = (event) => {
+      if (event.data && event.data.type === 'theme') {
+        setTheme(event.data.theme === 'light' ? 'light' : 'dark');
+      }
+    };
+    window.addEventListener('message', handleThemeMessage);
+    return () => window.removeEventListener('message', handleThemeMessage);
+  }, []);
+
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   return (

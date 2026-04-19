@@ -244,6 +244,14 @@ export const I18nProvider = ({ children }) => {
       if (event.data && event.data.type === 'lang' && (event.data.lang === 'sk' || event.data.lang === 'en')) {
         setLang(event.data.lang);
       }
+      if (event.data && event.data.type === 'theme') {
+        const root = document.documentElement;
+        if (event.data.theme === 'light') {
+          root.setAttribute('data-theme', 'light');
+        } else {
+          root.removeAttribute('data-theme');
+        }
+      }
     };
 
     window.addEventListener('message', handleMessage);

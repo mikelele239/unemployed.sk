@@ -23,9 +23,11 @@ html.light {
   --bg: #FFFFFF;
   --bg-card: #F7F7F7;
   --bg-card-hover: #F0F0F0;
+  --sidebar-bg: #FAFAFA;
   --text: #1A1A1A;
   --text-muted: #666;
   --border: #E0E0E0;
+  --pro-border: #D5D5D5;
   --accent-light: rgba(255,92,0,0.08);
   --accent-lighter: rgba(255,92,0,0.04);
   --green-light: rgba(34,197,94,0.1);
