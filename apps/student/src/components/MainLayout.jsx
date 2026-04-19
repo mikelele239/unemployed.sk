@@ -2,8 +2,10 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { Home, Search as SearchIcon, FileText, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '../I18nContext';
 
 export default function MainLayout() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
@@ -14,10 +16,10 @@ export default function MainLayout() {
   }, []);
 
   const navItems = [
-    { path: '/foryou', label: 'Pre teba', icon: Home },
-    { path: '/search', label: 'Hľadať', icon: SearchIcon },
-    { path: '/applications', label: 'Prihlášky', icon: FileText },
-    { path: '/profile', label: 'Profil', icon: User },
+    { path: '/foryou', label: t('nav.foryou'), icon: Home },
+    { path: '/search', label: t('nav.search'), icon: SearchIcon },
+    { path: '/applications', label: t('nav.applications'), icon: FileText },
+    { path: '/profile', label: t('nav.profile'), icon: User },
   ];
 
   return (

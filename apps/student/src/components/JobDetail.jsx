@@ -12,8 +12,10 @@ let DefaultIcon = L.icon({
     iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+import { useTranslation } from '../I18nContext';
 
 export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied }) {
+  const { t } = useTranslation();
   if (!isOpen || !job) return null;
 
   return (
@@ -49,7 +51,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
             <button onClick={onClose} style={{ width: 36, height: 36, background: 'var(--bg-card)', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↓</button>
-            <span style={{ fontWeight: 600, fontSize: 16, fontFamily: 'var(--font-display)' }}>Detail pozície</span>
+            <span style={{ fontWeight: 600, fontSize: 16, fontFamily: 'var(--font-display)' }}>{t('detail.title') || 'Detail pozície'}</span>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
@@ -112,7 +114,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Odmena</h4>
+              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.rate') || 'Odmena'}</h4>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
                 {job.rate} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{job.rateUnit}</span>
                 <span style={{ fontSize: 14, color: 'var(--text-muted)', marginLeft: 12 }}>{job.hours}</span>
@@ -121,24 +123,24 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
 
             {job.reason && (
               <div style={{ marginBottom: 24, padding: '16px', background: 'var(--accent-lighter)', borderLeft: '3px solid var(--accent)', borderRadius: '4px 12px 12px 4px' }}>
-                <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Prečo ti to sedí</h4>
+                <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.whyMatch') || 'Prečo ti to sedí'}</h4>
                 <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)' }}>{job.reason}</p>
               </div>
             )}
 
             <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Popis</h4>
+              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.description') || 'Popis'}</h4>
               <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)' }}>{job.description}</p>
             </div>
 
             <div style={{ marginBottom: 32 }}>
-              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Požiadavky</h4>
+              <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.requirements') || 'Požiadavky'}</h4>
               <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{job.requirements}</p>
             </div>
 
             {job.lat && job.lng && (
               <div style={{ marginBottom: 32 }}>
-                <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 12 }}>Lokalita na mape</h4>
+                <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 12 }}>{t('detail.location') || 'Lokalita na mape'}</h4>
                 <div style={{ height: '220px', minHeight: '220px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 1, background: 'var(--bg-card)' }}>
                   <MapContainer 
                     key={`${job.id}-${job.lat}-${job.lng}`}
@@ -167,7 +169,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
               className="btn-primary"
               style={{ width: '100%', padding: '16px', borderRadius: 12, opacity: hasApplied ? 0.7 : 1, background: hasApplied ? 'var(--bg-card)' : 'var(--accent)', color: hasApplied ? 'var(--text-muted)' : '#fff', border: hasApplied ? '1px solid var(--border)' : 'none' }}
             >
-              {hasApplied ? 'Už prihlásený ✓' : 'Mám záujem'}
+              {hasApplied ? t('detail.applied') : t('detail.apply')}
             </button>
           </div>
         </motion.div>

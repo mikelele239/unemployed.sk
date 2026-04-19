@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useApplications } from '../hooks/useApplications';
 import JobDetail from '../components/JobDetail';
+import { useTranslation } from '../I18nContext';
 
 export default function Applications() {
+  const { t } = useTranslation();
   const { applications } = useApplications();
   const [selectedJob, setSelectedJob] = useState(null);
 
@@ -19,16 +21,16 @@ export default function Applications() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '16px 20px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>Prihlášky</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sleduj stav svojich žiadostí.</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('apps.title') || 'Prihlášky'}</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('apps.subtitle') || 'Sleduj stav svojich žiadostí.'}</p>
       </div>
 
       <div style={{ padding: '20px', flex: 1 }}>
         {applications.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 60 }}>
             <span style={{ fontSize: 40, marginBottom: 12, display: 'block' }}>📄</span>
-            <p>Zatiaľ si sa nikam neprihlásil/a.</p>
-            <p style={{ fontSize: 12, marginTop: 4 }}>Potiahni doprava na karte práce, o ktorú máš záujem.</p>
+            <p>{t('apps.empty') || 'Zatiaľ si sa nikam neprihlásil/a.'}</p>
+            <p style={{ fontSize: 12, marginTop: 4 }}>{t('apps.emptyDesc') || 'Potiahni doprava na karte práce, o ktorú máš záujem.'}</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -57,10 +59,10 @@ export default function Applications() {
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: getStatusColor(app.status), display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: getStatusColor(app.status) }} />
-                    {app.status === 'Pending' ? 'Čaká sa' : app.status}
+                    {app.status === 'Pending' ? (t('apps.pending') || 'Čaká sa') : (t(`apps.${app.status.toLowerCase()}`) || app.status)}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    {new Date(app.timestamp).toLocaleDateString('sk-SK')}
+                    {new Date(app.timestamp).toLocaleDateString()}
                   </div>
                 </div>
               </div>

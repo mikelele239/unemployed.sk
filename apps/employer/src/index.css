@@ -106,11 +106,23 @@ html, body, #root {
   box-shadow: 0 0 0 3px rgba(255, 92, 0, 0.1);
 }
 
+.side-nav {
+  width: var(--sidebar-width);
+  height: 100vh;
+}
+
 @media (max-width: 900px) {
   .main-app {
     flex-direction: column;
   }
+  .side-nav {
+    width: 100vw;
+    height: auto;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+  }
   .app-content {
     padding: 24px;
+    height: calc(100vh - 100px); /* rough estimate to keep it on screen */
   }
 }

@@ -22,9 +22,7 @@ const SideNav = () => {
   ];
 
   return (
-    <aside style={{
-      width: 'var(--sidebar-width)',
-      height: '100vh',
+    <aside className="side-nav" style={{
       background: 'var(--sidebar-bg)',
       borderRight: '1px solid var(--border)',
       display: 'flex',

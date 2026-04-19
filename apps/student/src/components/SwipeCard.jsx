@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useRef } from 'react';
+import { useTranslation } from '../I18nContext';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -15,6 +16,7 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
+  const { t } = useTranslation();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 300], [-30, 30]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
@@ -103,7 +105,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
           </MapContainer>
         ) : (
           <div style={{ height: '100%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-            Lokalita neznáma
+            {t('card.unknownLocation')}
           </div>
         )}
         <div style={{
@@ -139,7 +141,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
           }}>{job.logo}</div>
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>{job.company}</div>
-            <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Overená firma</div>
+            <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{t('card.verified')}</div>
           </div>
         </div>
 

@@ -13,6 +13,23 @@ function App() {
     return localStorage.getItem('unemployed_profile_started') === 'true';
   });
 
+  // Listen for reset messages from the parent landing page iframe host
+  useEffect(() => {
+    const handleMessage = (e) => {
+      if (e.data && e.data.type === 'reset') {
+        localStorage.removeItem('unemployed_profile_started');
+        localStorage.removeItem('unemployed_profile');
+        setProfileStarted(false);
+        // If reset includes a lang, re-broadcast it so I18nContext picks it up
+        if (e.data.lang) {
+          window.dispatchEvent(new MessageEvent('message', { data: { type: 'lang', lang: e.data.lang } }));
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const completeOnboarding = () => {
     localStorage.setItem('unemployed_profile_started', 'true');
     setProfileStarted(true);

@@ -19,12 +19,13 @@ const AppLayout = () => {
       {!isSetup && <SideNav />}
       <main className="app-content">
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/listings" element={<Listings />} />
-          <Route path="/create-listing" element={<CreateListing />} />
-          <Route path="/candidates" element={<Candidates />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="listings" element={<Listings />} />
+          <Route path="create-listing" element={<CreateListing />} />
+          <Route path="candidates" element={<Candidates />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
     </div>

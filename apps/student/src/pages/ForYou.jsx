@@ -4,8 +4,10 @@ import { useJobs } from '../hooks/useJobs';
 import SwipeCard from '../components/SwipeCard';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
+import { useTranslation } from '../I18nContext';
 
 export default function ForYou() {
+  const { t } = useTranslation();
   const { jobs, loading } = useJobs();
   const [cards, setCards] = useState([]);
   const [profile, setProfile] = useState({});
@@ -43,21 +45,21 @@ export default function ForYou() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '16px 20px 10px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>Pre teba</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tvoje najlepšie zhody, {profile.name ? profile.name.split(' ')[0] : 'Kamoško'}</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('foryou.title')}</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}</p>
       </div>
 
       <div style={{ position: 'relative', flex: 1, margin: '16px', perspective: 800 }}>
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
             <div className="typing-cursor" style={{ width: 30, height: 30, marginBottom: 12 }}></div>
-            <p style={{ fontSize: 13 }}>Načítavam tvoje zhody...</p>
+            <p style={{ fontSize: 13 }}>{t('foryou.loading')}</p>
           </div>
         ) : cards.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
             <span style={{ fontSize: 40, marginBottom: 12 }}>👍</span>
-            <h3 style={{ fontSize: 18, color: 'var(--text)', fontWeight: 700, marginBottom: 4 }}>To je všetko!</h3>
-            <p style={{ fontSize: 13 }}>Prezri si záložku Prihlášky</p>
+            <h3 style={{ fontSize: 18, color: 'var(--text)', fontWeight: 700, marginBottom: 4 }}>{t('foryou.empty')}</h3>
+            <p style={{ fontSize: 13 }}>{t('foryou.emptyDesc')}</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -107,7 +109,7 @@ export default function ForYou() {
               boxShadow: '0 4px 20px rgba(34,197,94,0.3)'
             }}
           >
-            ✓ Máš záujem! Zamestnávateľ sa ti ozve.
+            {t('foryou.toast')}
           </motion.div>
         )}
       </AnimatePresence>

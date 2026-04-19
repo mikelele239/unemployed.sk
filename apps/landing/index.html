@@ -1964,9 +1964,9 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
               Vyskúšaj employer demo
             </button>
-            <a href="mailto:unemployed.sk@gmail.com" class="demo-trigger-btn emp-contact-btn" style="flex:1;max-width:320px;justify-content:center;" data-i18n="emp.contact">
+            <a href="mailto:unemployed.sk@gmail.com" class="demo-trigger-btn emp-contact-btn" style="flex:1;max-width:320px;justify-content:center;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              Kontaktujte sales pre cenník
+              <span data-i18n="emp.contact">Kontaktujte sales pre cenník</span>
             </a>
           </div>
         </div>
@@ -3094,10 +3094,14 @@
           // sync current theme + lang to iframe
           var iframe = document.getElementById('demoIframe');
           if (iframe && iframe.contentWindow) {
+            // Reset so onboarding always shows fresh, pass lang so it renders correctly from the start
+            iframe.contentWindow.postMessage({ type: 'reset', lang: currentLang }, '*');
             var isLight = document.body.classList.contains('light-mode');
             iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
             iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
           }
+          // Also set a flag so if the iframe fires 'ready' after this, we re-send
+          iframe && (iframe.dataset.pendingLang = currentLang);
         }
       });
 
@@ -3143,6 +3147,7 @@
             iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
             iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
           }
+          iframe && (iframe.dataset.pendingLang = currentLang);
         }
       });
 
@@ -3164,6 +3169,23 @@
         if (e.key === 'Escape' && overlay.classList.contains('open')) closeEmpDemo();
       });
     })();
+
+    // ── IFRAME READY LISTENER — re-sends lang when iframe signals it's ready ──
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'ready') {
+        var isLight = document.body.classList.contains('light-mode');
+        var studentIframe = document.getElementById('demoIframe');
+        if (studentIframe && studentIframe.contentWindow) {
+          studentIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+          studentIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+        }
+        var empIframe = document.getElementById('empDemoIframe');
+        if (empIframe && empIframe.contentWindow) {
+          empIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+          empIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+        }
+      }
+    });
 
     // ── EMPLOYERS COLLAPSIBLE TOGGLE ──
     (function() {
