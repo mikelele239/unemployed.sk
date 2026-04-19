@@ -138,12 +138,12 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
             fontWeight: 850, color: '#fff', fontSize: 18
           }}>{job.logo}</div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{job.company}</div>
+            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>{job.company}</div>
             <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Overená firma</div>
           </div>
         </div>
 
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, lineHeight: 1.1, margin: 0, letterSpacing: '-0.3px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.1, margin: 0, letterSpacing: '-0.3px', marginBottom: 6 }}>
           {job.title}
         </h3>
 
@@ -159,10 +159,10 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
-          <div style={{ fontSize: 28, fontWeight: 850, color: 'var(--accent)' }}>
-            {job.rate} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>{job.rateUnit}</span>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--accent)' }}>
+            {job.rate} <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{job.rateUnit}</span>
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 700 }}>{job.hours}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{job.hours}</div>
         </div>
       </div>
 
