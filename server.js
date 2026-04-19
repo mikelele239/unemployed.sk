@@ -49,13 +49,9 @@ app.use((req, res, next) => {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://jofrxyimqhbgxwwbqyvs.supabase.co;"
   );
   next();
-});
-
-app.use(express.static(path.join(__dirname, 'website')));
-app.use('/app', express.static(path.join(__dirname, 'employee', 'dist')));
-app.use('/employer', express.static(path.join(__dirname, 'employer', 'dist')));
-
-
+app.use(express.static(path.join(__dirname, 'apps', 'landing')));
+app.use('/app', express.static(path.join(__dirname, 'apps', 'student', 'dist')));
+app.use('/employer', express.static(path.join(__dirname, 'apps', 'employer', 'dist')));
 // Simple rate limiter
 const rateMap = new Map();
 const WINDOW_MS = 60_000;
@@ -294,12 +290,12 @@ app.get('/api/applications', async (req, res) => {
 
 // SPA Fallback for /app
 app.get('/app/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'employee', 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'apps', 'student', 'dist', 'index.html'));
 });
 
 // SPA Fallback for /employer
 app.get('/employer/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'employer', 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'apps', 'employer', 'dist', 'index.html'));
 });
 
 const server = app.listen(PORT, () => {

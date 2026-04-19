@@ -1,8 +1,8 @@
 [build]
-  publish = "website"
+  publish = "apps/landing"
 
 [[redirects]]
-  from = "/website/*"
+  from = "/apps/landing/*"
   to = "/:splat"
   status = 301
 
