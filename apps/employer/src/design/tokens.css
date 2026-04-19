@@ -14,8 +14,8 @@
   --radius: 12px;
   --radius-sm: 8px;
   --sidebar-width: 260px;
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
   --shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
