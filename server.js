@@ -49,6 +49,8 @@ app.use((req, res, next) => {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://jofrxyimqhbgxwwbqyvs.supabase.co;"
   );
   next();
+});
+
 app.use(express.static(path.join(__dirname, 'apps', 'landing')));
 app.use('/app', express.static(path.join(__dirname, 'apps', 'student', 'dist')));
 app.use('/employer', express.static(path.join(__dirname, 'apps', 'employer', 'dist')));
