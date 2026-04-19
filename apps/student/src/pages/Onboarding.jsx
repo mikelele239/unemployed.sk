@@ -308,18 +308,18 @@ export default function Onboarding({ onComplete }) {
         {phase === 'climax' && (
           <motion.div key="climax"
             initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center', background: '#0A0A0A' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center', background: 'var(--bg)' }}
           >
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: 'linear' }} style={{ marginBottom: 40 }}>
               <BrainCircuit size={64} color="var(--accent)" />
             </motion.div>
             <div style={{ height: 160, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              {climaxStep === 0 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff' }}>{t('ob.climax1')}</motion.h2>}
-              {climaxStep === 1 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>{t('ob.climax2')}</motion.h2>}
-              {climaxStep === 2 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>{t('ob.climax3')}</motion.h2>}
+              {climaxStep === 0 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text)' }}>{t('ob.climax1')}</motion.h2>}
+              {climaxStep === 1 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)' }}>{t('ob.climax2')}</motion.h2>}
+              {climaxStep === 2 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)' }}>{t('ob.climax3')}</motion.h2>}
               {climaxStep >= 3 && (
                 <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', marginBottom: 12 }}>{t('ob.climax4')}</h2>
+                  <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>{t('ob.climax4')}</h2>
                   <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399', padding: '8px 16px', borderRadius: 100, fontWeight: 800, fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Sparkles size={18} /> {t('ob.climaxMatch')}
                   </div>

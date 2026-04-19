@@ -60,7 +60,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         position: 'absolute',
         inset: 0,
         zIndex: total - index,
-        background: '#121212', // Strict opaque background
+        background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 24,
         overflow: 'hidden',
@@ -100,7 +100,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
             scrollWheelZoom={false}
             attributionControl={false}
           >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+            <TileLayer url={document.documentElement.getAttribute('data-theme') === 'light' ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'} />
             <Marker position={[Number(job.lat), Number(job.lng)]} />
           </MapContainer>
         ) : (
@@ -110,10 +110,10 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         )}
         <div style={{
           position: 'absolute', bottom: 12, left: 12, zIndex: 10,
-          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          background: 'var(--bg-card)', backdropFilter: 'blur(12px)', opacity: 0.95,
           padding: '6px 12px', borderRadius: 10,
           display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 12, fontWeight: 700, color: '#fff',
+          fontSize: 12, fontWeight: 700, color: 'var(--text)',
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -127,7 +127,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       {/* ── CONTENT (Only fully visible for top/active card to prevent overlap ghosting) ── */}
       <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          padding: '24px', background: '#121212', // Matches card bg to be opaque
+          padding: '24px', background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)', top: '46%',
           display: 'flex', flexDirection: 'column', gap: 12,
           visibility: index > 1 ? 'hidden' : 'visible' // Performance & anti-glitch
@@ -153,8 +153,8 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
           {job.tags.map((tag, i) => (
             <span key={tag} style={{
               padding: '5px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700,
-              background: i === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-              color: i === 0 ? '#fff' : 'rgba(255,255,255,0.7)',
+              background: i === 0 ? 'var(--accent)' : 'var(--bg-card-hover)',
+              color: i === 0 ? '#fff' : 'var(--text-muted)',
               border: i === 0 ? 'none' : '1px solid var(--border)'
             }}>{tag}</span>
           ))}
@@ -175,7 +175,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
             onClick={(e) => { e.stopPropagation(); onSwipe('left', job); }}
             style={{ 
               width: 64, height: 64, borderRadius: 32, 
-              border: '2px solid var(--border)', background: 'rgba(0,0,0,0.8)', 
+              border: '2px solid var(--border)', background: 'var(--bg-card)', 
               backdropFilter: 'blur(16px)', color: 'var(--text-muted)', 
               fontSize: 24, cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
