@@ -1446,6 +1446,39 @@
       border-radius: 36px;
     }
 
+    .demo-laptop-wrap {
+      position: relative;
+      transform: scale(0.9) translateY(40px);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .demo-overlay.open .demo-laptop-wrap {
+      transform: scale(1) translateY(0);
+    }
+
+    .demo-laptop-bezel {
+      width: 1024px;
+      height: 640px;
+      max-width: 95vw;
+      border-radius: 12px 12px 0 0;
+      border: 8px solid #222;
+      border-bottom-width: 24px;
+      background: #111;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative;
+    }
+    body.light-mode .demo-laptop-bezel {
+      border-color: #d0d0d0;
+      background: #fdfdfd;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .demo-laptop-bezel iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 4px;
+    }
+
     .demo-close-btn {
       position: absolute;
       top: -16px; right: -16px;
@@ -1946,17 +1979,17 @@
     <div class="demo-phone-wrap">
       <button class="demo-close-btn" id="demoCloseBtn" aria-label="Close demo">&times;</button>
       <div class="demo-phone-bezel">
-        <iframe src="prototype.html" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
+        <iframe src="/app" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
       </div>
     </div>
   </div>
 
-  <!-- EMPLOYER DEMO OVERLAY (phone frame popup) -->
+  <!-- EMPLOYER DEMO OVERLAY (laptop frame popup) -->
   <div class="demo-overlay" id="empDemoOverlay">
-    <div class="demo-phone-wrap">
+    <div class="demo-laptop-wrap">
       <button class="demo-close-btn" id="empDemoCloseBtn" aria-label="Close demo">&times;</button>
-      <div class="demo-phone-bezel">
-        <iframe src="employer-prototype.html" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
+      <div class="demo-laptop-bezel">
+        <iframe src="/employer" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
       </div>
     </div>
   </div>
@@ -3050,16 +3083,21 @@
 
       var cursorGlow = document.querySelector('.cursor-glow');
 
-      trigger.addEventListener('click', function() {
-        overlay.classList.add('open');
-        document.body.style.overflow = 'hidden';
-        if (cursorGlow) cursorGlow.style.display = 'none';
-        // sync current theme + lang to iframe
-        var iframe = document.getElementById('demoIframe');
-        if (iframe && iframe.contentWindow) {
-          var isLight = document.body.classList.contains('light-mode');
-          iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
-          iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+      trigger.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768) {
+          e.preventDefault();
+          window.open('/app', '_blank');
+        } else {
+          overlay.classList.add('open');
+          document.body.style.overflow = 'hidden';
+          if (cursorGlow) cursorGlow.style.display = 'none';
+          // sync current theme + lang to iframe
+          var iframe = document.getElementById('demoIframe');
+          if (iframe && iframe.contentWindow) {
+            var isLight = document.body.classList.contains('light-mode');
+            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+          }
         }
       });
 
@@ -3091,15 +3129,20 @@
 
       var cursorGlow = document.querySelector('.cursor-glow');
 
-      trigger.addEventListener('click', function() {
-        overlay.classList.add('open');
-        document.body.style.overflow = 'hidden';
-        if (cursorGlow) cursorGlow.style.display = 'none';
-        var iframe = document.getElementById('empDemoIframe');
-        if (iframe && iframe.contentWindow) {
-          var isLight = document.body.classList.contains('light-mode');
-          iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
-          iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+      trigger.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768) {
+          e.preventDefault();
+          window.open('/employer', '_blank');
+        } else {
+          overlay.classList.add('open');
+          document.body.style.overflow = 'hidden';
+          if (cursorGlow) cursorGlow.style.display = 'none';
+          var iframe = document.getElementById('empDemoIframe');
+          if (iframe && iframe.contentWindow) {
+            var isLight = document.body.classList.contains('light-mode');
+            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+          }
         }
       });
 
