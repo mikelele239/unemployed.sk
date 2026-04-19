@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unemployed.sk Employer Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0D0D0D;
+  --bg-card: #1A1A1A;
+  --bg-card-hover: #222;
+  --text: #F5F0E8;
+  --text-muted: #999;
+  --accent: #FF5C00;
+  --accent-hover: #FF7A2E;
+  --accent-light: rgba(255,92,0,0.1);
+  --accent-lighter: rgba(255,92,0,0.05);
+  --border: #2A2A2A;
+  --green: #22C55E;
+  --green-light: rgba(34,197,94,0.12);
+  --blue: #3B82F6;
+  --blue-light: rgba(59,130,246,0.12);
+  --purple: #8B5CF6;
+  --purple-light: rgba(139,92,246,0.12);
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+html.light {
+  --bg: #FFFFFF;
+  --bg-card: #F7F7F7;
+  --bg-card-hover: #F0F0F0;
+  --text: #1A1A1A;
+  --text-muted: #666;
+  --border: #E0E0E0;
+  --accent-light: rgba(255,92,0,0.08);
+  --accent-lighter: rgba(255,92,0,0.04);
+  --green-light: rgba(34,197,94,0.1);
+  --blue-light: rgba(59,130,246,0.08);
+  --purple-light: rgba(139,92,246,0.08);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  font-family: var(--font-body); background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased; transition: background 0.3s, color 0.3s;
+}
+
+.screen {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform: translateX(20px);
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active { opacity:1; pointer-events:auto; transform:translateX(0); }
+.screen.exit { opacity:0; transform:translateX(-20px); }
+
+/* Welcome */
+.welcome { justify-content:center; align-items:center; text-align:center; padding:40px 24px; gap:16px; }
+.welcome-logo { font-family:var(--font-display); font-size:24px; font-weight:700; letter-spacing:-0.3px; }
+.welcome-logo span { color:var(--accent); position:relative; }
+.welcome-logo span::after { content:''; position:absolute; left:-1px; right:-1px; top:50%; height:2px; background:var(--accent); border-radius:2px; }
+.welcome h1 { font-family:var(--font-display); font-size:26px; font-weight:900; line-height:1.15; letter-spacing:-0.5px; }
+.welcome h1 .hi { color:var(--accent); font-style:italic; }
+.welcome p { color:var(--text-muted); font-size:13px; line-height:1.6; max-width:260px; }
+.welcome .tag { display:inline-flex; align-items:center; gap:5px; background:var(--accent-light); color:var(--accent); padding:5px 12px; border-radius:100px; font-size:11px; font-weight:600; }
+
+.btn-main {
+  width:100%; padding:14px; border:none; border-radius:var(--radius-sm);
+  background:var(--accent); color:#fff; font-family:var(--font-body);
+  font-size:15px; font-weight:600; cursor:pointer;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+.btn-main:active { transform:scale(0.97); }
+.btn-main:hover { background:var(--accent-hover); box-shadow:0 4px 16px rgba(255,92,0,0.3); }
+
+/* Main App */
+.main-app { background:var(--bg); }
+.app-content { flex:1; overflow-y:auto; padding-bottom:64px; }
+.bottom-nav {
+  position:fixed; bottom:0; left:0; right:0; height:58px;
+  background:var(--bg); border-top:1px solid var(--border); display:flex; z-index:50;
+}
+.nav-tab {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; border:none; background:none; cursor:pointer; color:var(--text-muted);
+  font-size:9px; font-weight:500; font-family:var(--font-body); transition:color 0.2s;
+  padding:6px 0; min-height:58px; position:relative;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.nav-tab.active { color:var(--accent); }
+.nav-tab svg { width:20px; height:20px; }
+.nav-indicator {
+  position:absolute; bottom:0; left:0; height:3px; border-radius:3px 3px 0 0;
+  background:var(--accent); transition:transform 0.35s cubic-bezier(0.4, 0, 0.15, 1), width 0.35s cubic-bezier(0.4, 0, 0.15, 1);
+  will-change:transform; z-index:51;
+}
+
+.tab-content { display:none; }
+.tab-content.active { display:block; animation:tabSlideIn 0.3s cubic-bezier(0.4, 0, 0.15, 1); }
+@keyframes tabSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* Dashboard Header */
+.dash-header { padding:16px 18px 10px; }
+.dash-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.dash-header p { font-size:12px; color:var(--text-muted); }
+
+/* Stat Cards */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:12px 18px; }
+.stat-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:14px; transition:border-color 0.2s;
+}
+.stat-card:hover { border-color:var(--accent); }
+.stat-label { font-size:10px; color:var(--text-muted); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+.stat-val { font-family:var(--font-display); font-size:24px; font-weight:700; letter-spacing:-0.5px; }
+.stat-change { font-size:10px; font-weight:600; margin-top:3px; }
+.stat-change.up { color:var(--green); }
+.stat-change.down { color:#EF4444; }
+
+/* Mini Chart */
+.mini-chart { padding:0 18px 14px; }
+.chart-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; position:relative; overflow:hidden;
+}
+.chart-card h3 { font-size:12px; font-weight:600; margin-bottom:12px; }
+.chart-bars { display:flex; align-items:flex-end; gap:4px; height:80px; }
+.chart-bar {
+  flex:1; background:var(--accent); border-radius:3px 3px 0 0; min-height:4px;
+  transition:height 0.6s cubic-bezier(0.4,0,0.2,1);
+  opacity:0.7;
+}
+.chart-bar:hover { opacity:1; }
+.chart-labels { display:flex; gap:4px; margin-top:6px; }
+.chart-labels span { flex:1; text-align:center; font-size:8px; color:var(--text-muted); }
+
+/* Candidate Cards */
+.cand-header { padding:16px 18px 10px; }
+.cand-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.cand-header p { font-size:12px; color:var(--text-muted); }
+.cand-search { margin:0 18px 12px; display:flex; align-items:center; gap:6px; padding:9px 12px; background:var(--bg-card); border-radius:var(--radius-sm); border:1.5px solid var(--border); }
+.cand-search input { flex:1; border:none; background:none; font-size:13px; font-family:var(--font-body); outline:none; color:var(--text); }
+.cand-search input::placeholder { color:var(--text-muted); }
+.cand-search svg { width:16px; height:16px; color:var(--text-muted); flex-shrink:0; }
+
+.cand-list { padding:0 18px; }
+.cand-item {
+  display:flex; align-items:center; gap:12px; padding:14px 0;
+  border-bottom:1px solid var(--border); cursor:pointer; transition:opacity 0.2s;
+}
+.cand-item:active { opacity:0.7; }
+.cand-avatar {
+  width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px; color:#fff; flex-shrink:0;
+}
+.cand-info { flex:1; }
+.cand-info h4 { font-size:13px; font-weight:600; }
+.cand-info .cand-sub { font-size:11px; color:var(--text-muted); margin-top:1px; }
+.cand-match { background:var(--green-light); color:var(--green); padding:3px 8px; border-radius:100px; font-size:10px; font-weight:600; flex-shrink:0; }
+.cand-invite-btn {
+  padding:5px 10px; border:1px solid var(--accent); border-radius:6px; background:transparent;
+  color:var(--accent); font-size:10px; font-weight:600; cursor:pointer; font-family:var(--font-body);
+  transition:all 0.2s; flex-shrink:0;
+}
+.cand-invite-btn:hover { background:var(--accent); color:#fff; }
+.cand-invite-btn.invited { background:var(--green-light); color:var(--green); border-color:var(--green); pointer-events:none; }
+
+/* AI Listing */
+.ai-header { padding:16px 18px 10px; }
+.ai-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.ai-header p { font-size:12px; color:var(--text-muted); }
+
+.ai-form { padding:0 18px; }
+.ai-field { margin-bottom:14px; }
+.ai-field label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:6px; }
+.ai-input {
+  width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+  font-size:13px; font-family:var(--font-body); background:var(--bg-card); color:var(--text);
+  outline:none; transition:border-color 0.2s;
+}
+.ai-input:focus { border-color:var(--accent); }
+.ai-input::placeholder { color:var(--text-muted); }
+select.ai-input { appearance:none; cursor:pointer; }
+
+.ai-generate-btn {
+  width:100%; padding:12px; border:none; border-radius:var(--radius-sm);
+  background:linear-gradient(135deg, #FF8C32 0%, #FF5C00 100%);
+  color:#fff; font-family:var(--font-body); font-size:14px; font-weight:600;
+  cursor:pointer; transition:transform 0.1s, box-shadow 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  margin-top:18px;
+}
+.ai-generate-btn:active { transform:scale(0.97); }
+.ai-generate-btn:hover { box-shadow:0 4px 20px rgba(255,92,0,0.3); }
+
+.ai-result {
+  margin-top:16px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px; display:none;
+}
+.ai-result.visible { display:block; animation:fadeUp 0.4s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.ai-result h3 { font-family:var(--font-display); font-size:16px; font-weight:700; margin-bottom:4px; }
+.ai-result .ai-company { font-size:11px; color:var(--text-muted); margin-bottom:12px; }
+.ai-result-section { margin-bottom:12px; }
+.ai-result-section h4 { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--accent); margin-bottom:4px; }
+.ai-result-section p { font-size:12px; line-height:1.6; color:var(--text-muted); }
+.ai-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.ai-tag { padding:4px 12px; border-radius:20px; font-size:11px; font-weight:500; border:1px solid var(--border); color:var(--text-muted); }
+.ai-tag.accent { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* Matches */
+.match-header { padding:16px 18px 10px; }
+.match-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.match-header p { font-size:12px; color:var(--text-muted); }
+
+.match-list { padding:0 18px; }
+.match-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; margin-bottom:10px; transition:border-color 0.2s;
+}
+.match-card:hover { border-color:var(--accent); }
+.match-card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.match-card-avatar {
+  width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; color:#fff; font-size:13px; flex-shrink:0;
+}
+.match-card-info h4 { font-size:13px; font-weight:600; }
+.match-card-info .match-card-sub { font-size:11px; color:var(--text-muted); }
+.match-card-score { margin-left:auto; font-family:var(--font-display); font-size:20px; font-weight:700; color:var(--accent); }
+.match-card-score span { font-size:11px; color:var(--text-muted); font-family:var(--font-body); }
+.match-card-reason { font-size:11px; color:var(--text-muted); line-height:1.5; padding:8px 10px; background:var(--accent-lighter); border-radius:8px; border-left:3px solid var(--accent); }
+.match-card.accepted { border-color:var(--green); opacity:0.85; }
+.match-card.accepted .match-card-score { color:var(--green); }
+.match-card .accepted-label { display:none; margin-top:10px; font-size:11px; font-weight:600; color:var(--green); text-align:right; }
+.match-card.accepted .accepted-label { display:block; }
+.match-card-actions { display:flex; gap:8px; margin-top:10px; }
+.match-accept-btn {
+  flex:1; padding:8px; border:none; border-radius:8px; background:var(--accent);
+  color:#fff; font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;
+  transition:background 0.2s;
+}
+.match-accept-btn:hover { background:var(--accent-hover); }
+.match-skip-btn {
+  padding:8px 14px; border:1px solid var(--border); border-radius:8px; background:transparent;
+  color:var(--text-muted); font-family:var(--font-body); font-size:12px; font-weight:500; cursor:pointer;
+  transition:border-color 0.2s;
+}
+.match-skip-btn:hover { border-color:var(--text-muted); }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:72px; left:16px; right:16px;
+  background:var(--green); color:#fff; padding:12px 14px; border-radius:10px;
+  font-size:12px; font-weight:500; text-align:center;
+  transform:translateY(80px); opacity:0; transition:all 0.3s ease; z-index:60;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* Typing animation */
+.typing-cursor { display:inline-block; width:2px; height:14px; background:var(--accent); animation:blink 0.8s infinite; vertical-align:text-bottom; margin-left:1px; }
+@keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
+</style>
+</head>
+<body>
+
+<div class="screen welcome active" id="s-welcome">
+  <div class="tag">Pre zamestnávateľov</div>
+  <div class="welcome-logo"><span>un</span>employed.sk</div>
+  <h1 id="welcomeH1">Nájdite talenty, <span class="hi">bez námahy.</span></h1>
+  <p id="welcomeDesc">AI predvýber, overení kandidáti a analytika na jednom mieste.</p>
+  <div style="width:100%;max-width:260px;"><button class="btn-main" onclick="goTo('s-main')" id="welcomeCta">Preskúmať dashboard</button></div>
+</div>
+
+<div class="screen main-app" id="s-main">
+  <div class="app-content" id="appContent">
+
+    <!-- Dashboard Tab -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="dash-header">
+        <h1 id="dashTitle">Dashboard</h1>
+        <p id="dashSub">Vaša firma: Tatra banka</p>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label" id="statViewsLabel">Zobrazenia</div>
+          <div class="stat-val" id="statViews">0</div>
+          <div class="stat-change up" id="statViewsChange">+24% tento týždeň</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="statAppsLabel">Prihlášky</div>
+          <div class="stat-val" id="statApps">0</div>
+          <div class="stat-change up" id="statAppsChange">+18% tento týždeň</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="statMatchLabel">Úspešnosť</div>
+          <div class="stat-val" id="statMatch">0%</div>
+          <div class="stat-change up" id="statMatchChange">+5% oproti minulému mesiacu</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="statActiveLabel">Aktívne ponuky</div>
+          <div class="stat-val" id="statActive">0</div>
+          <div class="stat-change" style="color:var(--blue)" id="statActiveChange">3 nové tento mesiac</div>
+        </div>
+      </div>
+      <div style="padding:0 18px 10px;">
+        <button class="ai-generate-btn" id="dashCreateBtn" onclick="document.querySelector('.nav-tab[data-tab=ai]').click()" style="margin-top:0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span id="dashCreateLabel">Vytvoriť inzerát</span>
+        </button>
+      </div>
+      <div class="mini-chart">
+        <div class="chart-card">
+          <h3 id="chartTitle">Prihlášky za posledných 7 dní</h3>
+          <div class="chart-bars" id="chartBars"></div>
+          <div class="chart-labels" id="chartLabels"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidates Tab -->
+    <div class="tab-content" id="tab-candidates">
+      <div class="cand-header">
+        <h1 id="candTitle">Kandidáti</h1>
+        <p id="candSub">Prehliadajte overených kandidátov</p>
+      </div>
+      <div class="cand-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="candSearchInput" placeholder="Hľadať kandidátov...">
+      </div>
+      <div class="cand-list" id="candList"></div>
+      <div class="match-header" style="margin-top:8px;">
+        <h1 id="matchTitle">AI párovanie</h1>
+        <p id="matchSub">Automaticky spárovaní kandidáti</p>
+      </div>
+      <div class="match-list" id="matchList"></div>
+    </div>
+
+    <!-- AI Listing Tab -->
+    <div class="tab-content" id="tab-ai">
+      <div class="ai-header">
+        <h1 id="aiTitle">AI inzerát</h1>
+        <p id="aiSub">Vytvorte inzerát za sekundy</p>
+      </div>
+      <div class="ai-form">
+        <div class="ai-field">
+          <label id="aiPosLabel" for="aiPos">Názov pozície</label>
+          <input class="ai-input" id="aiPos" placeholder="napr. Marketingový stážista" value="Marketingový stážista">
+        </div>
+        <div class="ai-field">
+          <label id="aiTypeLabel" for="aiType">Typ práce</label>
+          <select class="ai-input" id="aiType">
+            <option value="internship">Stáž</option>
+            <option value="part-time">Brigáda</option>
+            <option value="full-time">Plný úväzok</option>
+          </select>
+        </div>
+        <div class="ai-field">
+          <label id="aiLocLabel" for="aiLoc">Lokalita</label>
+          <input class="ai-input" id="aiLoc" placeholder="napr. Bratislava" value="Bratislava">
+        </div>
+        <button class="ai-generate-btn" id="aiGenBtn" onclick="generateListing()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <span id="aiGenLabel">Vygenerovať s AI</span>
+        </button>
+        <div class="ai-result" id="aiResult"></div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <div class="bottom-nav" id="bottomNav">
+    <button class="nav-tab active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span id="navDash">Dashboard</span>
+    </button>
+    <button class="nav-tab" data-tab="candidates">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span id="navCand">Kandidáti</span>
+    </button>
+    <button class="nav-tab" data-tab="ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span id="navAi">AI inzerát</span>
+    </button>
+    <div class="nav-indicator" id="navIndicator"></div>
+  </div>
+
+  <div class="toast" id="toast" role="alert"></div>
+</div>
+
+<script>
+// ── I18N ──
+var T = {
+  sk: {
+    welcomeTag:'Pre zamestnávateľov', welcomeTitle:'Nájdite talenty,', welcomeTitleHi:'bez námahy.',
+    welcomeDesc:'AI predvýber, overení kandidáti a analytika na jednom mieste.',
+    welcomeCta:'Preskúmať dashboard',
+    dashTitle:'Dashboard', dashSub:'Vaša firma: Tatra banka',
+    statViews:'Zobrazenia', statApps:'Prihlášky', statMatch:'Úspešnosť', statActive:'Aktívne ponuky',
+    statViewsChange:'+24% tento týždeň', statAppsChange:'+18% tento týždeň',
+    statMatchChange:'+5% oproti minulému mesiacu', statActiveChange:'3 nové tento mesiac',
+    dashCreate:'Vytvoriť inzerát',
+    chartTitle:'Prihlášky za posledných 7 dní',
+    candTitle:'Kandidáti', candSub:'Prehliadajte overených kandidátov', candSearch:'Hľadať kandidátov...',
+    aiTitle:'AI inzerát', aiSub:'Vytvorte inzerát za sekundy',
+    aiPos:'Názov pozície', aiType:'Typ práce', aiLoc:'Lokalita', aiGen:'Vygenerovať s AI',
+    matchTitle:'AI párovanie', matchSub:'Automaticky spárovaní kandidáti',
+    navDash:'Dashboard', navCand:'Kandidáti', navAi:'AI inzerát', navMatch:'Párovanie',
+    invite:'Pozvať', invited:'Pozvaný', accept:'Kontaktovať', skip:'Preskočiť', accepted:'Prijaté', noResults:'Žiadne výsledky',
+    toastInvite:'Pozvánka odoslaná!', toastMatch:'Kandidát kontaktovaný!',
+    aiDescTitle:'Popis', aiReqTitle:'Požiadavky', aiTagsTitle:'Tagy',
+    days:['Po','Ut','St','Št','Pi','So','Ne']
+  },
+  en: {
+    welcomeTag:'For employers', welcomeTitle:'Find talent,', welcomeTitleHi:'effortlessly.',
+    welcomeDesc:'AI pre-screening, verified candidates and analytics in one place.',
+    welcomeCta:'Explore dashboard',
+    dashTitle:'Dashboard', dashSub:'Your company: Tatra banka',
+    statViews:'Views', statApps:'Applications', statMatch:'Match rate', statActive:'Active listings',
+    statViewsChange:'+24% this week', statAppsChange:'+18% this week',
+    statMatchChange:'+5% vs last month', statActiveChange:'3 new this month',
+    dashCreate:'Create listing',
+    chartTitle:'Applications over the last 7 days',
+    candTitle:'Candidates', candSub:'Browse verified candidates', candSearch:'Search candidates...',
+    aiTitle:'AI listing', aiSub:'Create a listing in seconds',
+    aiPos:'Position title', aiType:'Work type', aiLoc:'Location', aiGen:'Generate with AI',
+    matchTitle:'AI matching', matchSub:'Automatically matched candidates',
+    navDash:'Dashboard', navCand:'Candidates', navAi:'AI listing', navMatch:'Matching',
+    invite:'Invite', invited:'Invited', accept:'Contact', skip:'Skip', accepted:'Accepted', noResults:'No results found',
+    toastInvite:'Invitation sent!', toastMatch:'Candidate contacted!',
+    aiDescTitle:'Description', aiReqTitle:'Requirements', aiTagsTitle:'Tags',
+    days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+  }
+};
+var lang = 'sk';
+function t(k) { return T[lang][k] || T.sk[k] || k; }
+
+// ── DATA ──
+var CANDIDATES = [
+  { name:'Anna Kováčová', initials:'AK', color:'#8B5CF6', school:'STU Bratislava', field:'Marketing', match:96, skills:['Komunikatívna','Kreatívna','Tímová hráčka'] },
+  { name:'Tomáš Horváth', initials:'TH', color:'#3B82F6', school:'UK Bratislava', field:'Ekonómia', match:91, skills:['Analytický','Spoľahlivý','Detailista'] },
+  { name:'Lucia Szabóová', initials:'LS', color:'#10B981', school:'TUKE Košice', field:'IT', match:89, skills:['Rýchlo sa učí','Tímová hráčka','Riešiteľka'] },
+  { name:'Martin Novák', initials:'MN', color:'#F59E0B', school:'ŽU Žilina', field:'Manažment', match:87, skills:['Líder','Komunikatívny','Spoľahlivý'] },
+  { name:'Petra Miklošová', initials:'PM', color:'#EF4444', school:'UMB B. Bystrica', field:'Psychológia', match:84, skills:['Empatická','Komunikatívna','Kreatívna'] },
+  { name:'Jakub Kučera', initials:'JK', color:'#FF5C00', school:'FIIT STU', field:'Informatika', match:93, skills:['Analytický','Rýchlo sa učí','Detailista'] }
+];
+
+var MATCHES = [
+  { name:'Anna Kováčová', initials:'AK', color:'#8B5CF6', position:'Marketing Intern', score:96, reason_sk:'Študuje marketing na STU, má skúsenosti s obsahovým marketingom a sociálnymi sieťami.', reason_en:'Studies marketing at STU, experienced in content marketing and social media.' },
+  { name:'Jakub Kučera', initials:'JK', color:'#FF5C00', position:'Junior Developer', score:93, reason_sk:'Študent FIIT so skúsenosťami v React a Node.js. Silné analytické zručnosti.', reason_en:'FIIT student experienced in React and Node.js. Strong analytical skills.' },
+  { name:'Tomáš Horváth', initials:'TH', color:'#3B82F6', position:'Data Analyst Intern', score:91, reason_sk:'Ekonóm so zameraním na dáta. Ovláda Excel, SQL a základy Pythonu.', reason_en:'Economics student with data focus. Proficient in Excel, SQL and Python basics.' },
+  { name:'Lucia Szabóová', initials:'LS', color:'#10B981', position:'QA Tester', score:89, reason_sk:'IT študentka so zmyslom pre detail. Skúsenosti s automatizovaným testovaním.', reason_en:'IT student with attention to detail. Experience with automated testing.' }
+];
+
+// ── STATE ──
+var invitedIds = [], acceptedIds = [];
+
+// ── NAV ──
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(function(s){
+    if(s.classList.contains('active')){s.classList.add('exit');s.classList.remove('active');}
+  });
+  setTimeout(function(){
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('exit');});
+    document.getElementById(id).classList.add('active');
+    if(id==='s-main') initApp();
+  },280);
+}
+
+// ── INIT ──
+function initApp(){
+  animateStats();
+  renderChart();
+  renderCandidates();
+  renderMatches();
+  setupTabs();
+  setupCandSearch();
+}
+
+// ── DASHBOARD ──
+function animateStats(){
+  animateNum('statViews', 2847, 1200);
+  animateNum('statApps', 184, 1200);
+  animateNumPct('statMatch', 73, 1200);
+  animateNum('statActive', 6, 800);
+}
+
+function animateNum(id, target, dur){
+  var el=document.getElementById(id);
+  var startTime=null;
+  function step(ts){
+    if(!startTime)startTime=ts;
+    var p=Math.min((ts-startTime)/dur,1);
+    var ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target).toLocaleString('sk');
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function animateNumPct(id, target, dur){
+  var el=document.getElementById(id);
+  var startTime=null;
+  function step(ts){
+    if(!startTime)startTime=ts;
+    var p=Math.min((ts-startTime)/dur,1);
+    var ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target)+'%';
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderChart(){
+  var data=[12,18,9,24,31,22,16];
+  var max=Math.max.apply(null,data);
+  var bars=document.getElementById('chartBars');
+  var labels=document.getElementById('chartLabels');
+  var days=t('days');
+  bars.innerHTML='';
+  var labelsHtml='';
+  data.forEach(function(v,i){
+    var bar=document.createElement('div');
+    bar.className='chart-bar';
+    bar.style.height='0px';
+    bars.appendChild(bar);
+    setTimeout(function(){ bar.style.height=Math.round((v/max)*100)+'%'; }, 100+i*80);
+    labelsHtml+='<span>'+days[i]+'</span>';
+  });
+  labels.innerHTML=labelsHtml;
+}
+
+// ── CANDIDATES ──
+function renderCandidates(filter){
+  var list=document.getElementById('candList');
+  var data=filter?CANDIDATES.filter(function(c){
+    return c.name.toLowerCase().indexOf(filter)>=0||c.field.toLowerCase().indexOf(filter)>=0||c.school.toLowerCase().indexOf(filter)>=0;
+  }):CANDIDATES;
+  if(!data.length){
+    list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:32px;margin-bottom:8px">&#128269;</div><p style="font-size:13px">'+t('noResults')+'</p></div>';
+    return;
+  }
+  list.innerHTML=data.map(function(c){
+    var origIdx=CANDIDATES.indexOf(c);
+    var inv=invitedIds.indexOf(origIdx)>=0;
+    return '<div class="cand-item"><div class="cand-avatar" style="background:'+c.color+'">'+c.initials+'</div><div class="cand-info"><h4>'+c.name+'</h4><div class="cand-sub">'+c.school+' &middot; '+c.field+'</div></div><div class="cand-match">'+c.match+'%</div><button class="cand-invite-btn'+(inv?' invited':'')+'" onclick="inviteCandidate('+origIdx+',this)">'+(inv?t('invited'):t('invite'))+'</button></div>';
+  }).join('');
+}
+
+function inviteCandidate(idx,btn){
+  if(invitedIds.indexOf(idx)>=0)return;
+  invitedIds.push(idx);
+  btn.textContent=t('invited');
+  btn.classList.add('invited');
+  showToast(t('toastInvite'));
+}
+
+function setupCandSearch(){
+  document.getElementById('candSearchInput').addEventListener('input',function(){
+    var q=this.value.trim().toLowerCase(); renderCandidates(q||null);
+  });
+}
+
+// ── AI LISTING ──
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function generateListing(){
+  var pos=escapeHtml(document.getElementById('aiPos').value||'Marketingový stážista');
+  var type=document.getElementById('aiType').value;
+  var loc=escapeHtml(document.getElementById('aiLoc').value||'Bratislava');
+  var result=document.getElementById('aiResult');
+  var btn=document.getElementById('aiGenBtn');
+  btn.disabled=true; btn.style.opacity='0.6';
+
+  var typeMap={internship:lang==='sk'?'stáž':'internship','part-time':lang==='sk'?'brigáda':'part-time','full-time':lang==='sk'?'plný úväzok':'full-time'};
+  var typeName=typeMap[type]||type;
+
+  // Simulate AI typing
+  result.classList.add('visible');
+  var descText = lang==='sk'
+    ? 'Hľadáme motivovaného študenta alebo absolventa na pozíciu '+pos+' v '+loc+'. Ide o '+typeName+' pozíciu s možnosťou rastu a flexibilným pracovným časom. Pridajte sa k nášmu tímu a získajte cenné skúsenosti v dynamickom prostredí.'
+    : 'We are looking for a motivated student or graduate for the position of '+pos+' in '+loc+'. This is a '+typeName+' position with growth opportunities and flexible working hours. Join our team and gain valuable experience in a dynamic environment.';
+  var reqText = lang==='sk'
+    ? '• Momentálne študent alebo čerstvý absolvent\n• Dobré komunikačné zručnosti\n• Tímový hráč so záujmom o '+pos.toLowerCase()+'\n• Bydlisko v okolí '+loc
+    : '• Currently enrolled student or recent graduate\n• Good communication skills\n• Team player with interest in '+pos.toLowerCase()+'\n• Based in or near '+loc;
+  var tags = lang==='sk' ? [typeName, loc, 'Flexibilné hodiny', 'Bez praxe'] : [typeName, loc, 'Flexible hours', 'No exp. required'];
+
+  result.innerHTML='<h3>'+pos+'</h3><div class="ai-company">Tatra banka &middot; '+loc+'</div>'
+    +'<div class="ai-result-section"><h4>'+t('aiDescTitle')+'</h4><p id="aiTypingDesc"><span class="typing-cursor"></span></p></div>'
+    +'<div class="ai-result-section" id="aiReqSection" style="display:none"><h4>'+t('aiReqTitle')+'</h4><p style="white-space:pre-line" id="aiTypingReq"></p></div>'
+    +'<div class="ai-result-section" id="aiTagSection" style="display:none"><h4>'+t('aiTagsTitle')+'</h4><div class="ai-tags" id="aiTagsContainer"></div></div>';
+
+  typeText('aiTypingDesc', descText, 18, function(){
+    document.getElementById('aiReqSection').style.display='block';
+    typeText('aiTypingReq', reqText, 14, function(){
+      document.getElementById('aiTagSection').style.display='block';
+      var tc=document.getElementById('aiTagsContainer');
+      tags.forEach(function(tg,i){
+        setTimeout(function(){
+          tc.innerHTML+='<span class="ai-tag'+(i===0?' accent':'')+'">'+tg+'</span>';
+        }, i*200);
+      });
+      setTimeout(function(){ btn.disabled=false; btn.style.opacity='1'; }, tags.length*200);
+    });
+  });
+}
+
+function typeText(elId, text, speed, cb){
+  var el=document.getElementById(elId);
+  var i=0;
+  el.textContent='';
+  function tick(){
+    if(i<text.length){
+      el.textContent+=text[i];
+      i++;
+      setTimeout(tick, speed + Math.random()*10);
+    } else {
+      if(cb)cb();
+    }
+  }
+  tick();
+}
+
+// ── MATCHES ──
+function renderMatches(){
+  var list=document.getElementById('matchList');
+  list.innerHTML=MATCHES.map(function(m,i){
+    var acc=acceptedIds.indexOf(i)>=0;
+    return '<div class="match-card'+(acc?' accepted':'')+'">'
+      +'<div class="match-card-top"><div class="match-card-avatar" style="background:'+m.color+'">'+m.initials+'</div>'
+      +'<div class="match-card-info"><h4>'+m.name+'</h4><div class="match-card-sub">'+m.position+'</div></div>'
+      +'<div class="match-card-score">'+m.score+'<span>%</span></div></div>'
+      +'<div class="match-card-reason">'+(lang==='sk'?m.reason_sk:m.reason_en)+'</div>'
+      +(acc?'<div class="accepted-label">&#10003; '+t('accepted')+'</div>':'<div class="match-card-actions"><button class="match-accept-btn" onclick="acceptMatch('+i+')">'+t('accept')+'</button><button class="match-skip-btn" onclick="skipMatch('+i+',this.parentElement.parentElement)">'+t('skip')+'</button></div>')
+      +'</div>';
+  }).join('');
+}
+
+function acceptMatch(idx){
+  if(acceptedIds.indexOf(idx)>=0)return;
+  acceptedIds.push(idx);
+  showToast(t('toastMatch'));
+  renderMatches();
+}
+
+function skipMatch(idx,card){
+  card.style.transform='translateX(100%)';
+  card.style.opacity='0';
+  card.style.transition='transform 0.3s ease, opacity 0.3s ease';
+  setTimeout(function(){ card.style.display='none'; },300);
+}
+
+// ── TABS ──
+function moveIndicator(tab){
+  var indicator=document.getElementById('navIndicator');
+  var nav=document.getElementById('bottomNav');
+  if(!indicator||!nav)return;
+  var navRect=nav.getBoundingClientRect();
+  var tabRect=tab.getBoundingClientRect();
+  var pad=Math.round(tabRect.width*0.2);
+  indicator.style.width=(tabRect.width-pad*2)+'px';
+  indicator.style.transform='translateX('+(tabRect.left-navRect.left+pad)+'px)';
+}
+function setupTabs(){
+  var tabs=document.querySelectorAll('.nav-tab');
+  // initial indicator position
+  setTimeout(function(){
+    var active=document.querySelector('.nav-tab.active');
+    if(active){
+      var indicator=document.getElementById('navIndicator');
+      indicator.style.transition='none';
+      moveIndicator(active);
+      indicator.offsetHeight;
+      indicator.style.transition='';
+    }
+  },50);
+  tabs.forEach(function(tab){
+    tab.addEventListener('click',function(){
+      tabs.forEach(function(t){t.classList.remove('active');});
+      this.classList.add('active');
+      moveIndicator(this);
+      document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+      document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+      document.getElementById('appContent').scrollTop=0;
+    });
+  });
+}
+
+// ── TOAST ──
+function showToast(msg){
+  var tt=document.getElementById('toast');
+  tt.textContent=msg;
+  tt.classList.add('show');
+  setTimeout(function(){tt.classList.remove('show');},2200);
+}
+
+// ── PARENT MESSAGES ──
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'lang' && T[e.data.lang]) {
+    lang = e.data.lang;
+    applyLang();
+    renderCandidates(); renderMatches();
+  }
+  if (e.data && e.data.type === 'theme') {
+    document.documentElement.classList.toggle('light', e.data.theme === 'light');
+  }
+});
+
+function applyLang(){
+  document.getElementById('welcomeH1').innerHTML=t('welcomeTitle')+' <span class="hi">'+t('welcomeTitleHi')+'</span>';
+  document.querySelector('.welcome .tag').textContent=t('welcomeTag');
+  document.getElementById('welcomeDesc').textContent=t('welcomeDesc');
+  document.getElementById('welcomeCta').textContent=t('welcomeCta');
+  document.getElementById('dashTitle').textContent=t('dashTitle');
+  document.getElementById('dashSub').textContent=t('dashSub');
+  document.getElementById('dashCreateLabel').textContent=t('dashCreate');
+  document.getElementById('statViewsLabel').textContent=t('statViews');
+  document.getElementById('statAppsLabel').textContent=t('statApps');
+  document.getElementById('statMatchLabel').textContent=t('statMatch');
+  document.getElementById('statActiveLabel').textContent=t('statActive');
+  document.getElementById('statViewsChange').textContent=t('statViewsChange');
+  document.getElementById('statAppsChange').textContent=t('statAppsChange');
+  document.getElementById('statMatchChange').textContent=t('statMatchChange');
+  document.getElementById('statActiveChange').textContent=t('statActiveChange');
+  document.getElementById('chartTitle').textContent=t('chartTitle');
+  document.getElementById('candTitle').textContent=t('candTitle');
+  document.getElementById('candSub').textContent=t('candSub');
+  document.getElementById('candSearchInput').placeholder=t('candSearch');
+  document.getElementById('aiTitle').textContent=t('aiTitle');
+  document.getElementById('aiSub').textContent=t('aiSub');
+  document.getElementById('aiPosLabel').textContent=t('aiPos');
+  document.getElementById('aiTypeLabel').textContent=t('aiType');
+  document.getElementById('aiLocLabel').textContent=t('aiLoc');
+  document.getElementById('aiGenLabel').textContent=t('aiGen');
+  document.getElementById('matchTitle').textContent=t('matchTitle');
+  document.getElementById('matchSub').textContent=t('matchSub');
+  document.getElementById('navDash').textContent=t('navDash');
+  document.getElementById('navCand').textContent=t('navCand');
+  document.getElementById('navAi').textContent=t('navAi');
+  renderChart();
+}
+
+applyLang();
+</script>
+</body>
+</html>

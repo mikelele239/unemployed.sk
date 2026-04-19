@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Unemployed.sk Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0D0D0D;
+  --bg-card: #1A1A1A;
+  --bg-card-hover: #222;
+  --text: #F5F0E8;
+  --text-muted: #999;
+  --accent: #FF5C00;
+  --accent-hover: #FF7A2E;
+  --accent-light: rgba(255,92,0,0.1);
+  --accent-lighter: rgba(255,92,0,0.05);
+  --border: #2A2A2A;
+  --green: #22C55E;
+  --green-light: rgba(34,197,94,0.12);
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+html.light {
+  --bg: #FFFFFF;
+  --bg-card: #F7F7F7;
+  --bg-card-hover: #F0F0F0;
+  --text: #1A1A1A;
+  --text-muted: #666;
+  --border: #E0E0E0;
+  --accent-light: rgba(255,92,0,0.08);
+  --accent-lighter: rgba(255,92,0,0.04);
+  --green-light: rgba(34,197,94,0.1);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+button, a, [onclick], .chip, .fchip, .s-item, .a-item, .swipe-btn, .det-close, .ob-back, .nav-tab {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  font-family: var(--font-body); background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased; transition: background 0.3s, color 0.3s;
+}
+
+.screen {
+  position:absolute; inset:0;
+  display:none; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.3s ease;
+  overflow-y: auto; overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active, .screen.exit { display:flex; }
+.screen.active { opacity:1; pointer-events:auto; z-index:2; }
+.screen.exit { opacity:0; pointer-events:none; z-index:1; }
+
+/* Welcome */
+.welcome { justify-content:center; align-items:center; text-align:center; padding:40px 24px; gap:16px; }
+.welcome-logo { font-family:var(--font-display); font-size:24px; font-weight:700; letter-spacing:-0.3px; }
+.welcome-logo span { color:var(--text); position:relative; }
+.welcome-logo span::after { content:''; position:absolute; left:-1px; right:-1px; top:50%; height:2px; background:var(--accent); border-radius:2px; }
+.welcome h1 { font-family:var(--font-display); font-size:28px; font-weight:900; line-height:1.15; letter-spacing:-0.5px; }
+.welcome h1 .hi { color:var(--accent); font-style:italic; }
+.welcome p { color:var(--text-muted); font-size:13px; line-height:1.6; max-width:260px; }
+.welcome .tag { display:inline-flex; align-items:center; gap:5px; background:var(--accent-light); color:var(--accent); padding:5px 12px; border-radius:100px; font-size:11px; font-weight:600; }
+
+.btn-main {
+  width:100%; padding:14px; border:none; border-radius:var(--radius-sm);
+  background:var(--accent); color:#fff; font-family:var(--font-body);
+  font-size:15px; font-weight:600; cursor:pointer;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+.btn-main:active { transform:scale(0.97); }
+.btn-main:hover { background:var(--accent-hover); box-shadow:0 4px 16px rgba(255,92,0,0.3); }
+
+/* Onboarding */
+.onboarding { background:var(--bg); }
+.ob-header { padding:14px 18px 10px; display:flex; align-items:center; gap:10px; position:sticky; top:0; background:var(--bg); z-index:10; }
+.ob-back { width:32px; height:32px; border:none; background:var(--bg-card); border-radius:8px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; color:var(--text); flex-shrink:0; }
+.progress-bar { flex:1; height:3px; background:var(--border); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.4s ease; }
+.ob-step { font-size:11px; color:var(--text-muted); font-weight:500; flex-shrink:0; }
+.ob-body { padding:6px 20px 90px; flex:1; }
+.ob-body h2 { font-family:var(--font-display); font-size:22px; font-weight:700; margin-bottom:4px; letter-spacing:-0.3px; }
+.ob-body .sub { color:var(--text-muted); font-size:12px; margin-bottom:20px; line-height:1.5; }
+.ob-footer { position:fixed; bottom:0; left:0; right:0; padding:12px 20px calc(14px + env(safe-area-inset-bottom, 0px)); background:linear-gradient(transparent, var(--bg) 25%); z-index:10; }
+
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip {
+  padding:9px 16px; border:1.5px solid var(--border); border-radius:100px;
+  font-size:12px; font-weight:500; cursor:pointer; transition:all 0.2s;
+  background:var(--bg); color:var(--text); user-select:none;
+}
+.chip.selected { background:var(--accent); color:#fff; border-color:var(--accent); }
+.chip:active { transform:scale(0.95); }
+
+.text-input {
+  width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+  font-size:14px; font-family:var(--font-body); background:var(--bg-card); color:var(--text);
+  outline:none; transition:border-color 0.2s;
+}
+.text-input:focus { border-color:var(--accent); }
+.text-input::placeholder { color:var(--text-muted); }
+
+.upload-area {
+  margin-top:16px; padding:20px; border:2px dashed var(--border); border-radius:var(--radius);
+  text-align:center; cursor:pointer; transition:border-color 0.2s;
+}
+.upload-area:hover { border-color:var(--accent); }
+.upload-area p { font-size:12px; color:var(--text-muted); }
+.upload-area .opt { display:inline-block; margin-top:4px; font-size:10px; background:var(--bg-card); padding:2px 8px; border-radius:100px; color:var(--text-muted); }
+
+/* Processing */
+.processing { justify-content:center; align-items:center; text-align:center; padding:40px 24px; gap:14px; }
+.processing h2 { font-family:var(--font-display); font-size:20px; font-weight:700; }
+.processing p { color:var(--text-muted); font-size:12px; line-height:1.5; max-width:240px; }
+.loader { width:52px; height:52px; border-radius:50%; border:3px solid var(--border); border-top-color:var(--accent); animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.psteps { text-align:left; width:100%; max-width:240px; margin-top:6px; }
+.pstep { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:12px; color:var(--text-muted); transition:color 0.3s; }
+.pstep.done { color:var(--accent); }
+.pstep .ck { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; transition:all 0.3s; flex-shrink:0; }
+.pstep.done .ck { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* Wow */
+.wow { justify-content:center; align-items:center; text-align:center; padding:40px 24px; gap:12px; }
+.wow .num { font-family:var(--font-display); font-size:48px; font-weight:800; color:var(--accent); letter-spacing:-2px; animation:pop 0.5s ease; }
+@keyframes pop { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
+.wow h2 { font-family:var(--font-display); font-size:20px; font-weight:700; line-height:1.25; }
+.wow p { color:var(--text-muted); font-size:12px; }
+.peek-wrap { position:relative; width:100%; margin:6px 0; }
+.peek-wrap::before, .peek-wrap::after {
+  content:''; position:absolute; top:0; bottom:0; width:32px; z-index:2; pointer-events:none;
+}
+.peek-wrap::before { left:0; background:linear-gradient(to right, var(--bg), transparent); }
+.peek-wrap::after  { right:0; background:linear-gradient(to left,  var(--bg), transparent); }
+.peek { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; padding:2px 4px; justify-content:center; }
+.peek::-webkit-scrollbar { display:none; }
+.peek-c { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:10px; font-size:10px; min-width:100px; text-align:left; flex-shrink:0; }
+.peek-c .co { font-weight:600; font-size:11px; color:var(--text); }
+.peek-c .role { color:var(--text-muted); margin-top:1px; }
+.peek-c .mt { color:var(--accent); font-weight:600; margin-top:3px; }
+
+/* Main App */
+.main-app { background:var(--bg); }
+.app-content { flex:1; overflow-y:auto; padding-bottom:calc(52px + env(safe-area-inset-bottom, 0px)); }
+.bottom-nav {
+  position:fixed; bottom:0; left:0; right:0;
+  height:calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+  background:var(--bg); border-top:1px solid var(--border); display:flex; z-index:50;
+}
+.nav-tab {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; border:none; background:none; cursor:pointer; color:var(--text-muted);
+  font-size:9px; font-weight:500; font-family:var(--font-body); transition:color 0.2s;
+  padding:8px 0; min-height:60px; position:relative;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  z-index:52;
+}
+.nav-tab.active { color:var(--accent); }
+.nav-tab svg { width:20px; height:20px; pointer-events:none; }
+.nav-tab span { pointer-events:none; }
+.nav-indicator {
+  position:absolute; bottom:0; left:0; height:3px; border-radius:3px 3px 0 0;
+  background:var(--accent); transition:transform 0.35s cubic-bezier(0.4, 0, 0.15, 1), width 0.35s cubic-bezier(0.4, 0, 0.15, 1);
+  will-change:transform; z-index:51;
+}
+.tab-content { display:none; }
+.tab-content.active { display:block; animation:tabSlideIn 0.3s cubic-bezier(0.4, 0, 0.15, 1); }
+@keyframes tabSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* For You */
+.fy-header { padding:16px 18px 10px; }
+.fy-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.fy-header p { font-size:12px; color:var(--text-muted); }
+
+.swipe-area { position:relative; height:min(370px, calc(100vh - 160px)); margin:0 16px; perspective:800px; overflow:hidden; }
+.job-card {
+  position:absolute; inset:0; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:20px; padding:18px 16px; display:flex; flex-direction:column;
+  box-shadow:0 8px 30px rgba(0,0,0,0.25); transition:transform 0.4s ease, opacity 0.4s ease;
+  cursor:grab; user-select:none; touch-action:none; overflow:hidden;
+}
+.job-card.dragging { transition:none; cursor:grabbing; }
+.job-card.gone-right { transform:translateX(150%) rotate(12deg); opacity:0; }
+.job-card.gone-left { transform:translateX(-150%) rotate(-12deg); opacity:0; }
+
+.jc-top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.jc-avatar {
+  width:44px; height:44px; border-radius:12px; background:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:#fff; font-size:1.2rem; flex-shrink:0;
+}
+.jc-top .info .comp-name { font-weight:600; font-size:0.95rem; }
+.jc-top .info .comp-loc { font-size:0.8rem; color:var(--text-muted); }
+
+.jc-title { font-family:var(--font-display); font-size:1.35rem; font-weight:800; letter-spacing:-0.3px; margin-bottom:6px; }
+
+.jc-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.jc-tag { padding:4px 12px; border-radius:20px; font-size:0.75rem; font-weight:500; border:1px solid var(--border); color:var(--text-muted); }
+.jc-tag.accent-tag { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.jc-pay { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
+.jc-rate { font-family:var(--font-body); font-size:1.6rem; font-weight:700; color:var(--accent); }
+.jc-rate span { font-family:var(--font-body); font-size:0.85rem; color:var(--text-muted); }
+.jc-hours { font-size:0.85rem; color:var(--text-muted); }
+
+.jc-swipe { display:flex; justify-content:center; gap:16px; margin-top:auto; }
+.swipe-btn {
+  width:48px; height:48px; border-radius:50%; border:1px solid var(--border);
+  background:transparent; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:1.2rem; transition:border-color 0.2s, transform 0.2s;
+  color:var(--text-muted);
+}
+.swipe-btn:active { transform:scale(0.9); }
+.swipe-btn.like { border-color:var(--accent); color:var(--accent); }
+.swipe-btn:hover { transform:scale(1.1); }
+.swipe-btn.nope { border-color:var(--border); color:var(--text-muted); }
+.swipe-btn.nope:hover { border-color:#EF4444; color:#EF4444; }
+
+.interest-toast {
+  position:fixed; bottom:calc(68px + env(safe-area-inset-bottom, 0px)); left:16px; right:16px;
+  background:var(--green); color:#fff; padding:12px 14px; border-radius:10px;
+  font-size:12px; font-weight:500; text-align:center;
+  transform:translateY(80px); opacity:0; transition:all 0.3s ease; z-index:60;
+  pointer-events:none;
+}
+.interest-toast.show { transform:translateY(0); opacity:1; }
+
+/* Detail */
+.detail-overlay {
+  position:fixed; inset:0; background:var(--bg); z-index:100;
+  transform:translateY(100%); transition:transform 0.3s ease;
+  overflow-y:auto; display:flex; flex-direction:column;
+  pointer-events:none;
+}
+.detail-overlay.open { transform:translateY(0); pointer-events:all; }
+.det-header { padding:14px 18px; display:flex; align-items:center; gap:10px; position:sticky; top:0; background:var(--bg); z-index:10; border-bottom:1px solid var(--border); }
+.det-close { width:32px; height:32px; border:none; background:var(--bg-card); border-radius:8px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; color:var(--text); }
+.det-body { padding:18px; flex:1; }
+.det-body h2 { font-family:var(--font-display); font-size:18px; font-weight:700; margin-bottom:3px; }
+.det-body .co-line { color:var(--text-muted); font-size:13px; margin-bottom:14px; }
+.det-sec { margin-bottom:16px; }
+.det-sec h4 { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:6px; }
+.det-sec p { font-size:13px; line-height:1.6; }
+.det-footer { padding:14px 18px calc(14px + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--border); }
+
+/* Search */
+.search-header { padding:16px 18px 10px; }
+.search-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; margin-bottom:10px; }
+.search-bar { display:flex; align-items:center; gap:6px; padding:9px 12px; background:var(--bg-card); border-radius:var(--radius-sm); border:1.5px solid var(--border); }
+.search-bar input { flex:1; border:none; background:none; font-size:13px; font-family:var(--font-body); outline:none; color:var(--text); }
+.search-bar input::placeholder { color:var(--text-muted); }
+.search-bar svg { width:16px; height:16px; color:var(--text-muted); flex-shrink:0; }
+.search-bar:focus-within { border-color:var(--accent); }
+.filter-row { display:flex; gap:6px; padding:10px 18px; overflow-x:auto; }
+.fchip { padding:6px 12px; border:1.5px solid var(--border); border-radius:100px; font-size:11px; font-weight:500; white-space:nowrap; cursor:pointer; background:var(--bg); color:var(--text); transition:all 0.2s; }
+.fchip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.search-list { padding:0 18px; }
+.s-item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.s-av { width:36px; height:36px; border-radius:8px; background:var(--accent-light); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:var(--accent); flex-shrink:0; }
+.s-item h4 { font-size:13px; font-weight:600; }
+.s-item .s-co { font-size:11px; color:var(--text-muted); }
+.s-item .s-pay { font-size:11px; color:var(--accent); font-weight:600; margin-top:1px; }
+
+/* Applications */
+.apps-header { padding:16px 18px 10px; }
+.apps-header h1 { font-family:var(--font-display); font-size:22px; font-weight:700; }
+.apps-header p { font-size:12px; color:var(--text-muted); }
+.apps-list { padding:0 18px; }
+.a-item { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); }
+.a-av { width:36px; height:36px; border-radius:8px; background:var(--accent-light); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:var(--accent); flex-shrink:0; }
+.a-item .a-info { flex:1; }
+.a-item .a-info h4 { font-size:13px; font-weight:600; }
+.a-item .a-info .a-co { font-size:11px; color:var(--text-muted); }
+.st-badge { padding:3px 8px; border-radius:100px; font-size:10px; font-weight:600; flex-shrink:0; }
+.st-pending { background:var(--accent-light); color:var(--accent); }
+.st-viewed { background:var(--green-light); color:var(--green); }
+
+/* Profile */
+.prof-header { padding:20px 18px 14px; text-align:center; background:linear-gradient(180deg, var(--accent-lighter) 0%, var(--bg) 100%); }
+.prof-avatar { width:60px; height:60px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:24px; font-weight:700; color:#fff; }
+.prof-header h2 { font-family:var(--font-display); font-size:18px; font-weight:700; }
+.prof-header .prof-loc { font-size:12px; color:var(--text-muted); }
+.comp-bar { margin:12px 18px; padding:10px 14px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border); }
+.comp-bar .lbl { font-size:11px; font-weight:600; margin-bottom:4px; display:flex; justify-content:space-between; }
+.comp-track { height:5px; background:var(--border); border-radius:5px; overflow:hidden; }
+.comp-fill { height:100%; background:var(--accent); border-radius:5px; width:75%; }
+.prof-sec { padding:0 18px; margin-bottom:16px; }
+.prof-sec h4 { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px; }
+.prof-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.prof-row .lbl { color:var(--text-muted); }
+.prof-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.prof-chip { padding:5px 10px; background:var(--bg-card); border:1px solid var(--border); border-radius:100px; font-size:11px; font-weight:500; }
+.cv-ph { padding:14px; border:2px dashed var(--border); border-radius:10px; text-align:center; color:var(--text-muted); font-size:12px; }
+.cv-ph span { color:var(--accent); cursor:pointer; }
+
+.empty { text-align:center; padding:48px 18px; color:var(--text-muted); }
+.empty h3 { font-size:14px; font-weight:600; color:var(--text); margin:8px 0 3px; }
+.empty p { font-size:12px; }
+</style>
+</head>
+<body>
+
+<div class="screen welcome active" id="s-welcome">
+  <div class="tag">&#x1F1F8;&#x1F1F0; <span data-t="tag">Pre slovenských študentov</span></div>
+  <div class="welcome-logo"><span>un</span>employed.sk</div>
+  <h1><span data-t="hero">Nájdi prácu, ktorá</span> <span class="hi" data-t="hero2">ti sedí.</span></h1>
+  <p data-t="heroSub">Inteligentné párovanie pre študentov a absolventov. Brigády, stáže a prvé práce — na jednom mieste.</p>
+  <div style="width:100%;max-width:260px;"><button class="btn-main" onclick="goTo('s-onboarding')" data-t="cta">Začať</button></div>
+</div>
+
+<div class="screen onboarding" id="s-onboarding">
+  <div class="ob-header">
+    <button class="ob-back" onclick="prevStep()" aria-label="Späť">&#8592;</button>
+    <div class="progress-bar"><div class="progress-fill" id="pFill" style="width:16.6%"></div></div>
+    <span class="ob-step" id="sLabel">1/6</span>
+  </div>
+  <div class="ob-body" id="obBody"></div>
+  <div class="ob-footer"><button class="btn-main" onclick="nextStep()" data-t="continue">Pokračovať</button></div>
+</div>
+
+<div class="screen processing" id="s-processing">
+  <div class="loader"></div>
+  <h2 data-t="procTitle">Analyzujeme tvoj profil...</h2>
+  <p data-t="procSub">Párujeme tvoje preferencie so stovkami ponúk.</p>
+  <div class="psteps" id="pSteps">
+    <div class="pstep" data-delay="600"><div class="ck">&#10003;</div><span data-t="ps1">Kontrola preferencií</span></div>
+    <div class="pstep" data-delay="1400"><div class="ck">&#10003;</div><span data-t="ps2">Párovanie so zamestnávateľmi</span></div>
+    <div class="pstep" data-delay="2200"><div class="ck">&#10003;</div><span data-t="ps3">Hodnotenie najlepších zhôd</span></div>
+    <div class="pstep" data-delay="2800"><div class="ck">&#10003;</div><span data-t="ps4">Príprava tvojho feedu</span></div>
+  </div>
+</div>
+
+<div class="screen wow" id="s-wow">
+  <div class="num">12</div>
+  <h2 data-t="wowTitle">Našli sme 12 ponúk, ktoré ti sedia.</h2>
+  <p data-t="wowSub">Swipuj cez ne, ťukni pre detail a zamestnávatelia sa ti ozvú emailom.</p>
+  <div class="peek-wrap"><div class="peek" id="peekCards"></div></div>
+  <div style="width:100%;max-width:260px;"><button class="btn-main" onclick="goTo('s-main')" data-t="seeMatches">Zobraziť moje zhody</button></div>
+</div>
+
+<div class="screen main-app" id="s-main">
+  <div class="app-content" id="appContent">
+    <div class="tab-content active" id="tab-foryou">
+      <div class="fy-header"><h1 data-t="forYou">Pre teba</h1><p data-t="fySubHead">Tvoje najlepšie zhody, Jakub</p></div>
+      <div class="swipe-area" id="swipeArea"></div>
+    </div>
+    <div class="tab-content" id="tab-search">
+      <div class="search-header">
+        <h1 data-t="searchTitle">Hľadať</h1>
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="searchInput" data-t-ph="searchPh">
+        </div>
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+      <div class="search-list" id="searchList"></div>
+    </div>
+    <div class="tab-content" id="tab-apps">
+      <div class="apps-header"><h1 data-t="appsTitle">Prihlášky</h1><p data-t="appsSub">Práce, o ktoré máš záujem</p></div>
+      <div class="apps-list" id="appsList"></div>
+    </div>
+    <div class="tab-content" id="tab-profile">
+      <div class="prof-header">
+        <div class="prof-avatar">JN</div>
+        <h2>Jakub Novák</h2>
+        <div class="prof-loc">&#128205; Bratislava</div>
+      </div>
+      <div class="comp-bar"><div class="lbl"><span data-t="profCompletion">Kompletnosť profilu</span><span>75%</span></div><div class="comp-track"><div class="comp-fill"></div></div></div>
+      <div class="prof-sec">
+        <h4 data-t="profDetails">Detaily</h4>
+        <div class="prof-row"><span class="lbl" data-t="profEdu">Vzdelanie</span><span data-t="profEduVal">Vysoká škola — 3. ročník</span></div>
+        <div class="prof-row"><span class="lbl" data-t="profLoc">Lokalita</span><span>Bratislava</span></div>
+        <div class="prof-row"><span class="lbl" data-t="profAvail">Dostupnosť</span><span data-t="profAvailVal">Víkendy + Večery</span></div>
+        <div class="prof-row"><span class="lbl" data-t="profPref">Preferencia</span><span data-t="profPrefVal">Brigáda, Stáž</span></div>
+      </div>
+      <div class="prof-sec">
+        <h4 data-t="profSkills">Soft skills</h4>
+        <div class="prof-chips" id="profChips"></div>
+      </div>
+      <div class="prof-sec">
+        <h4>CV</h4>
+        <div class="cv-ph" data-t-html="cvPh">Žiadne CV nahrané — <span>Nahrať</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav" id="bottomNav">
+    <button class="nav-tab active" data-tab="foryou"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21C6.5 17.5 3 13.5 3 10a5 5 0 0110 0 5 5 0 0110 0c0 3.5-3.5 7.5-9 11z"/></svg><span data-t="navFy">Pre teba</span></button>
+    <button class="nav-tab" data-tab="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span data-t="navSearch">Hľadať</span></button>
+    <button class="nav-tab" data-tab="apps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg><span data-t="navApps">Prihlášky</span></button>
+    <button class="nav-tab" data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span data-t="navProfile">Profil</span></button>
+    <div class="nav-indicator" id="navIndicator"></div>
+  </div>
+  <div class="interest-toast" id="iToast" data-t="toast" role="alert">&#10003; Máš záujem! Zamestnávateľ ťa bude kontaktovať emailom.</div>
+</div>
+
+<div class="detail-overlay" id="detOverlay">
+  <div class="det-header"><button class="det-close" onclick="closeDet()" aria-label="Zavrieť">&#8592;</button><span style="font-weight:600;font-size:14px;" id="detTitle"></span></div>
+  <div class="det-body" id="detBody"></div>
+  <div class="det-footer"><button class="btn-main" id="detApply" onclick="applyDet()" data-t="interested">Mám záujem</button></div>
+</div>
+
+<script>
+// ── I18N ──
+var T = {
+  sk: {
+    tag:'Pre slovenských študentov', hero:'Nájdi prácu, ktorá', hero2:'ti sedí.',
+    heroSub:'Inteligentné párovanie pre študentov a absolventov. Brigády, stáže a prvé práce — na jednom mieste.',
+    cta:'Začať', continue:'Pokračovať',
+    procTitle:'Analyzujeme tvoj profil...', procSub:'Párujeme tvoje preferencie so stovkami ponúk.',
+    ps1:'Kontrola preferencií', ps2:'Párovanie so zamestnávateľmi', ps3:'Hodnotenie najlepších zhôd', ps4:'Príprava tvojho feedu',
+    wowTitle:'Našli sme 12 ponúk, ktoré ti sedia.', wowSub:'Swipuj cez ne, ťukni pre detail a zamestnávatelia sa ti ozvú emailom.',
+    seeMatches:'Zobraziť moje zhody',
+    forYou:'Pre teba', fySubHead:'Tvoje najlepšie zhody, Jakub',
+    searchTitle:'Hľadať', searchPh:'Hľadať práce, firmy...',
+    appsTitle:'Prihlášky', appsSub:'Práce, o ktoré máš záujem',
+    navFy:'Pre teba', navSearch:'Hľadať', navApps:'Prihlášky', navProfile:'Profil',
+    toast:'\u2713 Máš záujem! Zamestnávateľ ťa bude kontaktovať emailom.',
+    interested:'Mám záujem', alreadyApplied:'Už prihlásený \u2713',
+    profCompletion:'Kompletnosť profilu', profDetails:'Detaily',
+    profEdu:'Vzdelanie', profEduVal:'Vysoká škola — 3. ročník',
+    profLoc:'Lokalita', profAvail:'Dostupnosť', profAvailVal:'Víkendy + Večery',
+    profPref:'Preferencia', profPrefVal:'Brigáda, Stáž', profSkills:'Soft skills',
+    cvPh:'Žiadne CV nahrané — <span>Nahrať</span>',
+    emptyTitle:'Zatiaľ žiadne prihlášky', emptySub:'Swipni doprava na práce v záložke Pre teba',
+    skills:['Komunikatívny','Tímový hráč','Spoľahlivý','Rýchlo sa učí','Kreatívny'],
+    ob1:'Ako sa voláš?', ob1s:'Personalizujeme tvoj zážitok.',
+    ob2:'Stupeň vzdelania?', ob2s:'Pomôže nám nájsť správne pozície.', ob2o:['Stredná škola','Vysoká škola','Absolvent'],
+    ob3:'Kde bývaš?', ob3s:'Uprednostníme práce v tvojom okolí.', ob3o:['Bratislava','Košice','Žilina','B. Bystrica','Nitra','Iné'],
+    ob4:'Kedy si dostupný/á?', ob4s:'Označ všetko, čo platí.', ob4o:['Ráno','Popoludnie','Večer','Víkendy','Flexibilne'],
+    ob5:'Aký typ práce?', ob5s:'Vyber jednu alebo viac.', ob5o:['Brigáda','Stáž','Plný úväzok','Jednorázovky','Remote'],
+    ob6:'Tvoje silné stránky?', ob6s:'Vyber vlastnosti, ktoré ťa najlepšie vystihujú.', ob6o:['Komunikatívny','Tímový hráč','Spoľahlivý','Rýchlo sa učí','Kreatívny','Detailista','Líder','Riešiteľ'],
+    uploadCv:'Nahrať CV', optional:'Voliteľné', uploaded:'Nahrané', namePh:'Tvoje celé meno',
+    filterAll:'Všetko',
+    detDesc:'Pridajte sa k {company} ako {title}. Ide o {type} pozíciu v {location}. Hľadáme motivovaných študentov a absolventov.',
+    detReq:'• Momentálne študent alebo čerstvý absolvent\n• Dostupnosť: {schedule}\n• Dobré komunikačné zručnosti\n• Bydlisko v okolí {location}',
+    detComp:'Odmena', detWhy:'Prečo ti to sedí', detDescTitle:'Popis', detReqTitle:'Požiadavky',
+    Internship:'Stáž', 'Part-time':'Brigáda', 'Full-time':'Plný úväzok', 'One-time':'Jednorázovka',
+    Pending:'Čaká sa', Viewed:'Zobrazené', justNow:'Práve teraz'
+  },
+  en: {
+    tag:'Made for Slovak students', hero:'Find work that', hero2:'fits your life.',
+    heroSub:'Smart matching for students and graduates. Part-time gigs, internships, and first jobs — all in one place.',
+    cta:'Get Started', continue:'Continue',
+    procTitle:'Analyzing your profile...', procSub:'Matching your preferences with hundreds of listings.',
+    ps1:'Reviewing preferences', ps2:'Matching with employers', ps3:'Ranking best fits', ps4:'Preparing your feed',
+    wowTitle:'We found 12 listings that match your profile.', wowSub:'Swipe through them, tap for details, and let employers reach out by email.',
+    seeMatches:'See my matches',
+    forYou:'For You', fySubHead:'Your top matches, Jakub',
+    searchTitle:'Search', searchPh:'Search jobs, companies...',
+    appsTitle:'Applications', appsSub:'Jobs you\'ve shown interest in',
+    navFy:'For You', navSearch:'Search', navApps:'Applications', navProfile:'Profile',
+    toast:'\u2713 You\'re interested! The employer will contact you by email.',
+    interested:"I'm interested", alreadyApplied:'Already applied \u2713',
+    profCompletion:'Profile completion', profDetails:'Details',
+    profEdu:'Education', profEduVal:'University — 3rd year',
+    profLoc:'Location', profAvail:'Availability', profAvailVal:'Weekends + Evenings',
+    profPref:'Preferred', profPrefVal:'Part-time, Internship', profSkills:'Soft Skills',
+    cvPh:'No CV uploaded — <span>Upload</span>',
+    emptyTitle:'No applications yet', emptySub:'Swipe right on jobs in the For You tab',
+    skills:['Communicative','Team player','Reliable','Quick learner','Creative'],
+    ob1:"What's your name?", ob1s:'We\'ll personalize your experience.',
+    ob2:'Education level?', ob2s:'Helps us find the right roles.', ob2o:['High school','University','Graduate'],
+    ob3:'Where are you based?', ob3s:'We\'ll prioritize jobs near you.', ob3o:['Bratislava','Košice','Žilina','B. Bystrica','Nitra','Other'],
+    ob4:'When are you available?', ob4s:'Pick all that apply.', ob4o:['Mornings','Afternoons','Evenings','Weekends','Flexible'],
+    ob5:'What type of work?', ob5s:'Select one or more.', ob5o:['Part-time','Internship','Full-time','One-time gigs','Remote'],
+    ob6:'Your strengths?', ob6s:'Pick traits that describe you best.', ob6o:['Communicative','Team player','Reliable','Quick learner','Creative','Detail-oriented','Leader','Problem solver'],
+    uploadCv:'Upload your CV', optional:'Optional', uploaded:'Uploaded', namePh:'Your full name',
+    filterAll:'All',
+    detDesc:'Join {company} as a {title}. This is a {type} position based in {location}. We\'re looking for motivated students and graduates.',
+    detReq:'• Currently enrolled student or recent graduate\n• Available for a {schedule} schedule\n• Good communication skills\n• Based in or near {location}',
+    detComp:'Compensation', detWhy:'Why this matches you', detDescTitle:'Description', detReqTitle:'Requirements',
+    Internship:'Internship', 'Part-time':'Part-time', 'Full-time':'Full-time', 'One-time':'One-time',
+    Pending:'Pending', Viewed:'Viewed', justNow:'Just now'
+  }
+};
+var lang = 'sk';
+function t(k) { return T[lang][k] || T.sk[k] || k; }
+
+function applyLang() {
+  document.querySelectorAll('[data-t]').forEach(function(el) { el.textContent = t(el.getAttribute('data-t')); });
+  document.querySelectorAll('[data-t-html]').forEach(function(el) { el.innerHTML = t(el.getAttribute('data-t-html')); });
+  document.querySelectorAll('[data-t-ph]').forEach(function(el) { el.placeholder = t(el.getAttribute('data-t-ph')); });
+  // profile chips
+  var pc = document.getElementById('profChips');
+  if (pc) pc.innerHTML = t('skills').map(function(s){return '<div class="prof-chip">'+s+'</div>';}).join('');
+  // peek cards
+  var pk = document.getElementById('peekCards');
+  if (pk) {
+    pk.innerHTML = JOBS.slice(0,3).map(function(j){var jt=lang==='sk'?j.title_sk:j.title;return '<div class="peek-c"><div class="co">'+j.company+'</div><div class="role">'+jt+'</div><div class="mt">'+j.match+'% match</div></div>';}).join('');
+    // scroll so middle card is centred
+    setTimeout(function(){
+      var cards = pk.querySelectorAll('.peek-c');
+      if(cards.length >= 2){
+        var mid = cards[1];
+        pk.scrollLeft = mid.offsetLeft - (pk.offsetWidth - mid.offsetWidth) / 2;
+      }
+    }, 60);
+  }
+}
+
+// ── DATA ──
+var JOBS = [
+  { id:1, title:'Marketing Intern', title_sk:'Marketingový stážista', company:'Tatra banka', i:'TB', color:'#FF5C00', location:'Bratislava', locFull_sk:'Bratislava, Slovensko', locFull_en:'Bratislava, Slovakia', rate:'8,50\u20AC', rateUnit:'/hod', rateUnit_en:'/hr', hours_sk:'20 hod/týždeň', hours_en:'20 hrs/week', type:'Internship', tags_sk:['Stáž','Hybridne','Čiastočný'], tags_en:['Internship','Hybrid','Part-time'], schedule:'Po-Pi', match:94, reason_sk:'Sedí k tvojmu záujmu o marketing a lokácii v Bratislave.', reason_en:'Matches your marketing interest and Bratislava location.' },
+  { id:2, title:'Weekend Cashier', title_sk:'Víkendový pokladník', company:'Yeme', i:'YE', color:'#10B981', location:'Bratislava', locFull_sk:'Bratislava, Slovensko', locFull_en:'Bratislava, Slovakia', rate:'6,50\u20AC', rateUnit:'/hod', rateUnit_en:'/hr', hours_sk:'12 hod/týždeň', hours_en:'12 hrs/week', type:'Part-time', tags_sk:['Brigáda','Víkendy','Flexibilné'], tags_en:['Part-time','Weekends','Flexible'], schedule:'Víkendy', match:88, reason_sk:'Perfektne sedí k tvojej víkendovej dostupnosti.', reason_en:'Fits your weekend availability perfectly.' },
+  { id:3, title:'Barista', title_sk:'Barista', company:'Urban House', i:'UH', color:'#8B5CF6', location:'Bratislava', locFull_sk:'Bratislava, Slovensko', locFull_en:'Bratislava, Slovakia', rate:'7,00\u20AC', rateUnit:'/hod', rateUnit_en:'/hr', hours_sk:'16 hod/týždeň', hours_en:'16 hrs/week', type:'Part-time', tags_sk:['Brigáda','Flexibilné','Bez praxe'], tags_en:['Part-time','Flexible','No exp.'], schedule:'Flexibilne', match:87, reason_sk:'Flexibilné hodiny a tvoja komunikatívna osobnosť — skvelá zhoda.', reason_en:'Flexible hours and your communicative personality — great match.' },
+  { id:4, title:'Junior Analyst', title_sk:'Junior analytik', company:'ESET', i:'ES', color:'#3B82F6', location:'Bratislava', locFull_sk:'Bratislava, Slovensko', locFull_en:'Bratislava, Slovakia', rate:'1 800\u20AC', rateUnit:'/mes', rateUnit_en:'/mo', hours_sk:'40 hod/týždeň', hours_en:'40 hrs/week', type:'Full-time', tags_sk:['Plný úväzok','V kancelárii','Bez praxe'], tags_en:['Full-time','On-site','No exp.'], schedule:'Po-Pi', match:91, reason_sk:'Silná zhoda pre tvoje analytické zručnosti a záujem o tech.', reason_en:'Strong match for your analytical skills and tech interest.' },
+  { id:5, title:'Store Assistant', title_sk:'Predavač', company:'Martinus', i:'MA', color:'#F59E0B', location:'Bratislava', locFull_sk:'Bratislava, Slovensko', locFull_en:'Bratislava, Slovakia', rate:'6,00\u20AC', rateUnit:'/hod', rateUnit_en:'/hr', hours_sk:'16 hod/týždeň', hours_en:'16 hrs/week', type:'Part-time', tags_sk:['Brigáda','Večery','Bez praxe'], tags_en:['Part-time','Evenings','No exp.'], schedule:'Večery', match:83, reason_sk:'Večerné zmeny sedia k tvojmu rozvrhu.', reason_en:'Evening shifts align with your class schedule.' },
+  { id:6, title:'Warehouse Helper', title_sk:'Skladník', company:'Fresh Market', i:'FM', color:'#EF4444', location:'Senec', locFull_sk:'Senec, Slovensko', locFull_en:'Senec, Slovakia', rate:'6,20\u20AC', rateUnit:'/hod', rateUnit_en:'/hr', hours_sk:'12 hod/týždeň', hours_en:'12 hrs/week', type:'One-time', tags_sk:['Jednorázovka','Víkendy','Fyzická'], tags_en:['One-time','Weekends','Physical'], schedule:'Víkend', match:76, reason_sk:'Rýchla jednorázovka blízko Bratislavy.', reason_en:'Quick one-time gig near Bratislava.' }
+];
+
+// ── STATE ──
+var step=0, obData={}, cardIdx=0, applied=[], curDet=null, dragListeners=[];
+
+// ── NAV ──
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(function(s){
+    if(s.classList.contains('active')){s.classList.add('exit');s.classList.remove('active');}
+  });
+  setTimeout(function(){
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('exit');});
+    document.getElementById(id).classList.add('active');
+    if(id==='s-onboarding') renderStep();
+    if(id==='s-processing') runProc();
+    if(id==='s-main') initApp();
+  },280);
+}
+
+// ── ONBOARDING ──
+var OB_STEPS = [
+  {type:'name'}, {type:'chips',key:'edu',k:'ob2'}, {type:'chips',key:'loc',k:'ob3'},
+  {type:'multi',key:'avail',k:'ob4'}, {type:'multi',key:'jobtype',k:'ob5'}, {type:'multi',key:'skills',k:'ob6'}
+];
+
+function renderStep() {
+  var s=OB_STEPS[step], b=document.getElementById('obBody');
+  document.getElementById('pFill').style.width=((step+1)/6*100)+'%';
+  document.getElementById('sLabel').textContent=(step+1)+'/6';
+  var h='';
+  if(step===0){
+    h='<h2>'+t('ob1')+'</h2><p class="sub">'+t('ob1s')+'</p><input class="text-input" id="nInput" placeholder="'+t('namePh')+'" value="'+(obData.name||'')+'">';
+  } else {
+    var opts = t(s.k+'o');
+    h='<h2>'+t(s.k)+'</h2><p class="sub">'+t(s.k+'s')+'</p><div class="chips">';
+    opts.forEach(function(o){
+      var sel = s.type==='chips' ? (obData[s.key]===o?' selected':'') : ((obData[s.key]||[]).indexOf(o)>=0?' selected':'');
+      h+='<div class="chip'+sel+'" onclick="pickChip(this,\''+s.key+'\',\''+o.replace(/'/g,"\\'")+'\','+(s.type==='multi')+')">'+o+'</div>';
+    });
+    h+='</div>';
+  }
+  if(step===5) h+='<div class="upload-area" style="margin-top:18px"><p>&#128196; '+t('uploadCv')+'</p><span class="opt">'+t('optional')+'</span></div>';
+  b.innerHTML=h; b.scrollTop=0;
+}
+
+function pickChip(el,key,val,multi) {
+  if(multi){
+    if(!obData[key])obData[key]=[];
+    var idx=obData[key].indexOf(val);
+    if(idx>=0){obData[key].splice(idx,1);el.classList.remove('selected');}
+    else{obData[key].push(val);el.classList.add('selected');}
+  } else {
+    el.parentElement.querySelectorAll('.chip').forEach(function(c){c.classList.remove('selected');});
+    el.classList.add('selected'); obData[key]=val;
+  }
+}
+function nextStep(){
+  if(step===0){var inp=document.getElementById('nInput'); obData.name=inp?inp.value||'Jakub Novák':'Jakub Novák';}
+  if(step<5){step++;renderStep();}else goTo('s-processing');
+}
+function prevStep(){if(step>0){step--;renderStep();}else goTo('s-welcome');}
+
+// ── PROCESSING ──
+function runProc(){
+  document.querySelectorAll('#pSteps .pstep').forEach(function(s){
+    setTimeout(function(){s.classList.add('done');},parseInt(s.dataset.delay));
+  });
+  setTimeout(function(){goTo('s-wow');},3600);
+}
+
+// ── MAIN APP ──
+function initApp(){
+  var name=obData.name||'Jakub Novák';
+  var first=name.split(' ')[0];
+  var initials=name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+  document.querySelector('.prof-avatar').textContent=initials;
+  document.querySelector('.prof-header h2').textContent=name;
+  var fyKey=lang==='sk'?'Tvoje najlepšie zhody, ':'Your top matches, ';
+  document.querySelector('[data-t="fySubHead"]').textContent=fyKey+first;
+  renderCards();renderSearch();renderApps();setupTabs();setupSearchInput();setupCvUpload();
+}
+
+function cleanupDragListeners(){
+  dragListeners.forEach(function(dl){
+    window.removeEventListener('mousemove',dl.onM);
+    window.removeEventListener('touchmove',dl.onM);
+    window.removeEventListener('mouseup',dl.onE);
+    window.removeEventListener('touchend',dl.onE);
+  });
+  dragListeners=[];
+}
+
+function showEmptyState(){
+  var area=document.getElementById('swipeArea');
+  area.innerHTML='<div class="empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:36px">&#128079;</div><h3>'+(lang==='sk'?'To je všetko!':'That\'s all!')+'</h3><p>'+(lang==='sk'?'Prezri si záložku Prihlášky':'Check the Applications tab')+'</p></div>';
+}
+
+function renderCards(){
+  cleanupDragListeners();
+  var area=document.getElementById('swipeArea'); area.innerHTML='';
+  var rem=JOBS.slice(cardIdx);
+  if(!rem.length){showEmptyState();return;}
+  rem.reverse().forEach(function(job,i){
+    var idx=rem.length-1-i, c=document.createElement('div');
+    c.className='job-card'; c.dataset.jid=job.id;
+    c.style.zIndex=rem.length-idx;
+    if(idx>0){c.style.transform='scale('+(1-idx*0.03)+') translateY('+(idx*6)+'px)';c.style.opacity=idx>2?'0':'1';}
+    var jobTitle = lang==='sk' ? job.title_sk : job.title;
+    var locFull = lang==='sk' ? job.locFull_sk : job.locFull_en;
+    var tags = lang==='sk' ? job.tags_sk : job.tags_en;
+    var hrs = lang==='sk' ? job.hours_sk : job.hours_en;
+    var unit = lang==='sk' ? job.rateUnit : job.rateUnit_en;
+    var tagsHtml = tags.map(function(tg,ti){ return '<span class="jc-tag'+(ti===0?' accent-tag':'')+'">'+tg+'</span>'; }).join('');
+    c.innerHTML='<div class="jc-top" onclick="openDet('+job.id+')">'
+      +'<div class="jc-avatar" style="background:'+job.color+'">'+job.i+'</div>'
+      +'<div class="info"><div class="comp-name">'+job.company+'</div><div class="comp-loc">'+locFull+'</div></div>'
+      +'</div>'
+      +'<div class="jc-title">'+jobTitle+'</div>'
+      +'<div class="jc-tags">'+tagsHtml+'</div>'
+      +'<div class="jc-pay"><div class="jc-rate">'+job.rate+' <span>'+unit+'</span></div><div class="jc-hours">'+hrs+'</div></div>'
+      +'<div class="jc-swipe"><button class="swipe-btn nope" onclick="swipeCard(\'left\')">×</button><button class="swipe-btn like" onclick="swipeCard(\'right\')">♥</button></div>';
+    setupDrag(c,job); area.appendChild(c);
+  });
+}
+
+function setupDrag(c,job){
+  var sx=0,cx=0,dr=false;
+  function onS(e){
+    if(e.target.closest('.swipe-btn'))return;
+    dr=true;c.classList.add('dragging');sx=e.type.indexOf('mouse')>=0?e.clientX:e.touches[0].clientX;
+  }
+  function onM(e){if(!dr)return;if(e.cancelable)e.preventDefault();var x=e.type.indexOf('mouse')>=0?e.clientX:e.touches[0].clientX;cx=x-sx;c.style.transform='translateX('+cx+'px) rotate('+(cx*0.06)+'deg)';c.style.opacity=Math.max(0.5, 1 - Math.abs(cx)/200);}
+  function removeDragListeners(){
+    window.removeEventListener('mousemove',onM);
+    window.removeEventListener('touchmove',onM);
+    window.removeEventListener('mouseup',onE);
+    window.removeEventListener('touchend',onE);
+    dragListeners=dragListeners.filter(function(dl){return dl.onM!==onM;});
+  }
+  function onE(){if(!dr)return;dr=false;c.classList.remove('dragging');if(Math.abs(cx)>50){var d=cx>0?'right':'left';c.classList.add('gone-'+d);if(d==='right')addApp(job);cardIdx++;setTimeout(function(){c.remove();renderCards();},350);}else{c.style.transform='';c.style.opacity='1';}cx=0;}
+  c.addEventListener('mousedown',onS);c.addEventListener('touchstart',onS,{passive:true});
+  window.addEventListener('mousemove',onM);window.addEventListener('touchmove',onM,{passive:false});
+  window.addEventListener('mouseup',onE);window.addEventListener('touchend',onE);
+  dragListeners.push({onM:onM,onE:onE});
+}
+
+function swipeCard(dir){
+  var cards=document.querySelectorAll('.job-card:not(.gone-left):not(.gone-right)');
+  if(!cards.length)return; var top=cards[cards.length-1], jid=parseInt(top.dataset.jid);
+  top.classList.add('gone-'+dir);
+  if(dir==='right'){var j=JOBS.filter(function(x){return x.id===jid;})[0]; if(j)addApp(j);}
+  cardIdx++;
+  setTimeout(function(){top.remove();renderCards();},350);
+}
+
+function addApp(job){
+  if(!applied.filter(function(a){return a.id===job.id;}).length){
+    applied.push({id:job.id,title:job.title,title_sk:job.title_sk,company:job.company,i:job.i,color:job.color,status:'Pending'});
+    renderApps();
+  }
+  var tt=document.getElementById('iToast'); tt.classList.add('show'); setTimeout(function(){tt.classList.remove('show');},2200);
+}
+
+// ── DETAIL ──
+function openDet(jid){
+  curDet=JOBS.filter(function(j){return j.id===jid;})[0]; if(!curDet)return;
+  var jobTitle = lang==='sk' ? curDet.title_sk : curDet.title;
+  var unit = lang==='sk' ? curDet.rateUnit : curDet.rateUnit_en;
+  var hrs = lang==='sk' ? curDet.hours_sk : curDet.hours_en;
+  var tags = lang==='sk' ? curDet.tags_sk : curDet.tags_en;
+  document.getElementById('detTitle').textContent=jobTitle;
+  var desc=t('detDesc').replace('{company}',curDet.company).replace('{title}',jobTitle).replace('{type}',tags[0].toLowerCase()).replace('{location}',curDet.location);
+  var req=t('detReq').replace('{schedule}',curDet.schedule.toLowerCase()).replace('{location}',curDet.location);
+  var tagsHtml=tags.map(function(tg,ti){return '<span class="jc-tag'+(ti===0?' accent-tag':'')+'">'+tg+'</span>';}).join('');
+  document.getElementById('detBody').innerHTML='<h2>'+jobTitle+'</h2><div class="co-line">'+curDet.company+' \u00B7 '+(lang==='sk'?curDet.locFull_sk:curDet.locFull_en)+'</div><div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+tagsHtml+'</div><div class="det-sec"><h4>'+t('detComp')+'</h4><p style="font-family:var(--font-body);font-size:1.6rem;font-weight:700;color:var(--accent)">'+curDet.rate+' <span style="font-size:0.85rem;color:var(--text-muted)">'+unit+'</span> <span style="font-size:0.85rem;color:var(--text-muted);margin-left:8px">'+hrs+'</span></p></div><div class="det-sec"><h4>'+t('detWhy')+'</h4><p>'+(lang==='sk'?curDet.reason_sk:curDet.reason_en)+'</p></div><div class="det-sec"><h4>'+t('detDescTitle')+'</h4><p>'+desc+'</p></div><div class="det-sec"><h4>'+t('detReqTitle')+'</h4><p style="white-space:pre-line">'+req+'</p></div>';
+  var btn=document.getElementById('detApply'), ap=applied.filter(function(a){return a.id===jid;}).length;
+  btn.textContent=ap?t('alreadyApplied'):t('interested'); btn.disabled=!!ap;
+  var overlay=document.getElementById('detOverlay');
+  overlay.classList.add('open');
+  overlay.scrollTop=0;
+}
+function closeDet(){document.getElementById('detOverlay').classList.remove('open');}
+function applyDet(){
+  if(curDet&&!applied.filter(function(a){return a.id===curDet.id;}).length){
+    addApp(curDet);document.getElementById('detApply').textContent=t('alreadyApplied');document.getElementById('detApply').disabled=true;
+  }
+}
+
+// ── SEARCH ──
+function sItemHtml(j){
+  var jt=lang==='sk'?j.title_sk:j.title;
+  var unit=lang==='sk'?j.rateUnit:j.rateUnit_en;
+  var tags=lang==='sk'?j.tags_sk:j.tags_en;
+  return '<div class="s-item" onclick="openDet('+j.id+')"><div class="s-av" style="background:'+j.color+'1a;color:'+j.color+'">'+j.i+'</div><div><h4>'+jt+'</h4><div class="s-co">'+j.company+' \u00B7 '+j.location+'</div><div class="s-pay">'+j.rate+unit+' \u00B7 '+tags[0]+'</div></div></div>';
+}
+function renderSearch(filter){
+  var list=document.getElementById('searchList');
+  var filt=filter?JOBS.filter(function(j){return j.type===filter;}):JOBS;
+  list.innerHTML=filt.map(sItemHtml).join('');
+  var row=document.getElementById('filterRow');
+  var types=[t('filterAll')].concat(JOBS.map(function(j){return j.type;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+  row.innerHTML=types.map(function(tp){var isAll=tp===t('filterAll'); var active=(!filter&&isAll)||(filter===tp);return '<div class="fchip'+(active?' active':'')+'" onclick="filterS(\''+(isAll?'':tp)+'\')">'+( isAll?tp:t(tp))+'</div>';}).join('');
+}
+function filterS(tp){renderSearch(tp||null);}
+function setupSearchInput(){
+  document.getElementById('searchInput').addEventListener('input',function(){
+    var q=this.value.toLowerCase(), list=document.getElementById('searchList');
+    var f=JOBS.filter(function(j){return j.title.toLowerCase().indexOf(q)>=0||j.company.toLowerCase().indexOf(q)>=0||(j.title_sk&&j.title_sk.toLowerCase().indexOf(q)>=0);});
+    list.innerHTML=f.map(sItemHtml).join('');
+  });
+}
+
+// ── APPS ──
+function renderApps(){
+  var list=document.getElementById('appsList');
+  if(!applied.length){list.innerHTML='<div class="empty"><div style="font-size:36px">&#128203;</div><h3>'+t('emptyTitle')+'</h3><p>'+t('emptySub')+'</p></div>';return;}
+  list.innerHTML=applied.map(function(j){var jt=lang==='sk'?(j.title_sk||j.title):j.title;return '<div class="a-item" onclick="openDet('+j.id+')"><div class="a-av" style="background:'+(j.color||'var(--accent)')+'1a;color:'+(j.color||'var(--accent)')+'">'+j.i+'</div><div class="a-info"><h4>'+jt+'</h4><div class="a-co">'+j.company+' \u00B7 '+t('justNow')+'</div></div><div class="st-badge st-'+j.status.toLowerCase()+'">'+t(j.status)+'</div></div>';}).join('');
+}
+
+// ── TABS ──
+function moveIndicator(tab){
+  var indicator=document.getElementById('navIndicator');
+  var nav=document.getElementById('bottomNav');
+  if(!indicator||!nav)return;
+  var navRect=nav.getBoundingClientRect();
+  var tabRect=tab.getBoundingClientRect();
+  var pad=Math.round(tabRect.width*0.2);
+  indicator.style.width=(tabRect.width-pad*2)+'px';
+  indicator.style.transform='translateX('+(tabRect.left-navRect.left+pad)+'px)';
+}
+function setupTabs(){
+  var tabs=document.querySelectorAll('.nav-tab');
+  // initial indicator position
+  setTimeout(function(){
+    var active=document.querySelector('.nav-tab.active');
+    if(active){
+      var indicator=document.getElementById('navIndicator');
+      indicator.style.transition='none';
+      moveIndicator(active);
+      // force reflow then re-enable transition
+      indicator.offsetHeight;
+      indicator.style.transition='';
+    }
+  },50);
+  tabs.forEach(function(tab){
+    tab.addEventListener('click',function(){
+      closeDet();
+      tabs.forEach(function(t){t.classList.remove('active');});
+      this.classList.add('active');
+      moveIndicator(this);
+      document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+      document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+      document.getElementById('appContent').scrollTop=0;
+    });
+  });
+}
+
+// ── CV UPLOAD SIMULATION ──
+function setupCvUpload(){
+  document.querySelectorAll('.upload-area, .cv-ph').forEach(function(el){
+    el.style.cursor='pointer';
+    el.addEventListener('click',function(){
+      el.innerHTML='<p style="color:var(--green)">&#9989; CV_'+((obData.name||'Jakub_Novák').replace(/\s+/g,'_'))+'.pdf</p><span class="opt">'+(t('uploaded')||'Nahrané')+'</span>';
+      el.style.borderColor='var(--green)';
+      el.style.background='var(--green-light)';
+    });
+  });
+}
+
+// ── PARENT MESSAGES ──
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'lang' && T[e.data.lang]) {
+    lang = e.data.lang;
+    applyLang();
+    // re-render dynamic content
+    renderCards(); renderSearch(); renderApps();
+  }
+  if (e.data && e.data.type === 'theme') {
+    document.documentElement.classList.toggle('light', e.data.theme === 'light');
+  }
+  if (e.data && e.data.type === 'reset') {
+    step=0; obData={}; cardIdx=0; applied=[]; curDet=null;
+    cleanupDragListeners();
+    closeDet();
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active','exit');});
+    document.getElementById('s-welcome').classList.add('active');
+    applyLang();
+  }
+});
+
+// Init
+applyLang();
+</script>
+</body>
+</html>

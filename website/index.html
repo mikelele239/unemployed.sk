@@ -1,0 +1,3145 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>unemployed.sk — Od prvej pr&#225;ce a&#382; po tvoj dream job</title>
+  <meta name="description" content="Brig&#225;dy, st&#225;&#382;e a pln&#233; &#250;v&#228;zky pre &#353;tudentov a absolventov na Slovensku. AI p&#225;rovanie, transparentn&#253; plat a overen&#237; zamestn&#225;vatelia.">
+  <meta name="keywords" content="brig&#225;dy, st&#225;&#382;e, pr&#225;ca pre &#353;tudentov, absolventov, Slovensko, AI p&#225;rovanie, part-time, junior poz&#237;cie">
+  <meta name="author" content="unemployed.sk">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://unemployed.sk/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://unemployed.sk/">
+  <meta property="og:title" content="unemployed.sk — Od prvej pr&#225;ce a&#382; po tvoj dream job">
+  <meta property="og:description" content="Brig&#225;dy, st&#225;&#382;e a pln&#233; &#250;v&#228;zky pre &#353;tudentov a absolventov na Slovensku. AI p&#225;rovanie, transparentn&#253; plat a overen&#237; zamestn&#225;vatelia.">
+  <meta property="og:image" content="https://unemployed.sk/logo.svg">
+  <meta property="og:locale" content="sk_SK">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:site_name" content="unemployed.sk">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="unemployed.sk — Od prvej pr&#225;ce a&#382; po tvoj dream job">
+  <meta name="twitter:description" content="Brig&#225;dy, st&#225;&#382;e a pln&#233; &#250;v&#228;zky pre &#353;tudentov a absolventov na Slovensku. AI p&#225;rovanie, transparentn&#253; plat a overen&#237; zamestn&#225;vatelia.">
+  <meta name="twitter:image" content="https://unemployed.sk/logo.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "unemployed.sk",
+    "url": "https://unemployed.sk/",
+    "description": "Brigády, stáže a plné úväzky pre študentov a absolventov na Slovensku s AI párovaním.",
+    "inLanguage": ["sk", "en"]
+  }
+  </script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0D0D0D;
+      --bg-card: #1A1A1A;
+      --bg-card-hover: #222;
+      --text: #F5F0E8;
+      --text-muted: #999;
+      --accent: #FF5C00;
+      --accent-hover: #FF7A2E;
+      --border: #2A2A2A;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body.light-mode {
+      --bg: #FFFFFF;
+      --bg-card: #F7F7F7;
+      --bg-card-hover: #F0F0F0;
+      --text: #1A1A1A;
+      --text-muted: #666;
+      --border: #E0E0E0;
+    }
+
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+
+    /* ── CUSTOM CURSOR GLOW ── */
+    .cursor-glow {
+      position: fixed;
+      top: 0; left: 0;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle, rgba(255, 92, 0, 0.08) 0%, rgba(255, 120, 40, 0.04) 30%, rgba(255, 140, 60, 0.015) 55%, transparent 75%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
+    }
+
+    .cursor-glow.hovering {
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(255, 92, 0, 0.12) 0%, rgba(255, 120, 40, 0.06) 30%, rgba(255, 140, 60, 0.02) 55%, transparent 75%);
+    }
+
+    /* Hide cursor glow on touch devices */
+    @media (hover: none) and (pointer: coarse) {
+      .cursor-glow { display: none; }
+    }
+
+    #bgGrid {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 11px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90%, 1080px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      height: 60px;
+      background: rgba(13,13,13,0.82);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      transition: background 0.3s, border-color 0.3s;
+      overflow: visible;
+    }
+
+    nav > * { position: relative; z-index: 1; }
+
+    body.light-mode nav {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .nav-center-brand {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--text);
+      text-decoration: none;
+      white-space: nowrap;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .nav-brand-un {
+      position: relative;
+    }
+
+    .nav-brand-strike {
+      position: absolute;
+      left: -1px; right: -1px;
+      top: 50%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    .theme-toggle svg { width: 20px; height: 20px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.875rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      padding: 10px 24px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(255,92,0,0.3); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      padding: 4px;
+    }
+
+    .hamburger svg { width: 28px; height: 28px; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 130px 40px 60px;
+      max-width: 1400px;
+      margin: 0 auto;
+      gap: 45px;
+    }
+
+    .hero-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero-content { flex: 1; }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(3.5rem, 8vw, 6.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -1px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 .accent { color: var(--accent); font-style: italic; }
+
+    .rotating-word {
+      display: inline;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .rotating-word.out {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .rotating-word.in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .strikethrough-wrap {
+      position: relative;
+      display: inline;
+    }
+
+    .strike-un {
+      position: relative;
+    }
+
+    .strike-line {
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: 50%;
+      height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      animation: strikeIn 0.6s ease forwards 1.5s;
+      border-radius: 2px;
+    }
+
+    @keyframes strikeIn {
+      to { transform: scaleX(1); }
+    }
+
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .hero-buttons .btn { padding: 14px 32px; font-size: 1rem; }
+
+    /* ── CARD STACK ── */
+    .card-carousel {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: visible;
+    }
+
+    .phone-card {
+      width: 230px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 18px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      position: absolute;
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease, border-color 0.3s, background 0.3s, box-shadow 0.7s ease, z-index 0s;
+    }
+
+    .phone-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .phone-card-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .phone-card-company {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .phone-card-location {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .phone-card-title {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
+    }
+
+    .phone-card-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .phone-card-tag {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .phone-card-tag.accent-tag {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .phone-card-pay {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 20px;
+    }
+
+    .phone-card-rate {
+      font-family: var(--font-body);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .phone-card-rate span {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .phone-card-hours {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .phone-card-swipe {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .swipe-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .swipe-btn.like { border-color: var(--accent); color: var(--accent); }
+    .swipe-btn:hover { transform: scale(1.1); }
+
+    /* ── SECTIONS COMMON ── */
+    section { padding: 100px 40px; }
+
+    .section-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      margin-bottom: 48px;
+    }
+
+    /* ── FEATURE SECTIONS ── */
+    .feature-section {
+      padding: 100px 40px;
+      transition: background 0.3s;
+    }
+
+    .feature-section.alt-bg {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feature-section .section-desc {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      line-height: 1.7;
+      max-width: 600px;
+      margin-bottom: 48px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 28px;
+    }
+
+    /* ── STUDENTS SECTION CENTERING ── */
+    #students .section-inner { text-align: center; }
+    #students .section-desc { margin-left: auto; margin-right: auto; }
+    #students .student-tabs { justify-content: center; }
+    #students .student-panel.active { justify-items: center; }
+    #students .feature-card { text-align: left; }
+    #students .demo-trigger-wrap { text-align: center; }
+
+    /* ── STUDENT TAB TOGGLE ── */
+    .student-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 36px;
+    }
+    .student-tab {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .student-tab:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .student-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .student-panel {
+      display: none;
+    }
+    .student-panel.active {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 28px;
+    }
+
+    .feature-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      transition: background 0.2s, border-color 0.3s, transform 0.2s;
+    }
+
+    .feature-section.alt-bg .feature-card {
+      background: var(--bg-card-hover);
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .feature-card-icon {
+      font-size: 1.6rem;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h4 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ── EMPLOYERS SECTION ── */
+    .emp-features {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 900px;
+    }
+
+    .emp-feature-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 32px;
+      padding: 36px 0;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .emp-feature-row:last-child {
+      border-bottom: none;
+    }
+
+    .emp-feature-num {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+      min-width: 64px;
+      letter-spacing: -1px;
+    }
+
+    .emp-feature-text h4 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 8px;
+    }
+
+    .emp-feature-text p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      max-width: 540px;
+    }
+
+    .emp-cta-row {
+      margin-top: 48px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .emp-cta-row .emp-cta-note {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 600px) {
+      .emp-feature-row {
+        flex-direction: column;
+        gap: 12px;
+        padding: 28px 0;
+      }
+      .emp-feature-num {
+        font-size: 2.2rem;
+      }
+    }
+
+    /* ── SIGNUP ── */
+    .signup {
+      text-align: center;
+    }
+
+    .signup .section-title {
+      margin-bottom: 16px;
+    }
+
+    .signup-sub {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin-bottom: 40px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .signup-form {
+      display: flex;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+    }
+
+    .signup-form input,
+    .signup-form select {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, background 0.3s, color 0.3s;
+    }
+
+    .signup-form input {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .signup-form select {
+      min-width: 180px;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .signup-form input:focus,
+    .signup-form select:focus {
+      border-color: var(--accent);
+    }
+
+    .phone-group {
+      display: flex;
+      flex: 1;
+      min-width: 200px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-card);
+      transition: border-color 0.2s, background 0.3s;
+    }
+
+    .phone-group:focus-within { border-color: var(--accent); }
+
+    .phone-group .phone-prefix {
+      border: none;
+      border-right: 1px solid var(--border);
+      border-radius: 0;
+      padding: 14px 6px 14px 12px;
+      min-width: auto;
+      width: 100px;
+      font-size: 0.85rem;
+      background-image: none;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--font-body);
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .phone-group input[type="tel"] {
+      border: none !important;
+      border-radius: 0 !important;
+      flex: 1;
+      min-width: 0 !important;
+      background: transparent;
+    }
+
+    .signup-form .btn-primary {
+      padding: 14px 32px;
+      font-size: 1rem;
+    }
+
+    .consent-checkbox-row {
+      flex: 0 0 100%;
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .consent-checkbox-row input[type="checkbox"] {
+      flex: 0 0 16px !important;
+      width: 16px;
+      height: 16px;
+      min-width: 16px !important;
+      max-width: 16px !important;
+      margin-top: 2px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    .consent-checkbox-row label {
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .consent-checkbox-row a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .consent-checkbox-row a:hover { opacity: 0.8; }
+
+    .privacy-modal-overlay {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px) saturate(150%);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .privacy-modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .privacy-modal {
+      background: rgba(26,26,26,0.7);
+      backdrop-filter: blur(20px) saturate(200%);
+      -webkit-backdrop-filter: blur(20px) saturate(200%);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 36px 40px;
+      position: relative;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.12);
+      transform: translateY(20px) scale(0.97);
+      opacity: 0;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    .privacy-modal-overlay.open .privacy-modal {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    body.light-mode .privacy-modal {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .privacy-modal h3 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .privacy-modal h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 20px 0 6px;
+      color: var(--text);
+    }
+
+    .privacy-modal p, .privacy-modal li {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .privacy-modal ul {
+      padding-left: 20px;
+      margin: 6px 0;
+    }
+
+    .privacy-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
+    .privacy-modal-close:hover { color: var(--text); }
+
+    .app-badges {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .app-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .app-badge svg { width: 24px; height: 24px; color: var(--text); }
+
+    .app-badge-text {
+      text-align: left;
+      line-height: 1.2;
+    }
+
+    .app-badge-small {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .app-badge-big {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .coming-soon-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+      font-style: italic;
+    }
+
+    /* ── PREFIX PICKER ── */
+
+    /* ── FORM SUBMITTED OVERLAY ── */
+    .form-submitted-overlay {
+      display: flex;
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      border-radius: 16px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .form-submitted-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .form-submitted-overlay.animate {
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .form-submitted-icon {
+      width: 56px;
+      height: 56px;
+      min-width: 56px;
+      min-height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF8C32 0%, #FF5C00 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      box-shadow: 0 4px 20px rgba(255, 92, 0, 0.25);
+      margin-top: 12px;
+      flex-shrink: 0;
+    }
+
+    .form-submitted-icon svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .form-submitted-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      text-align: center;
+      max-width: 300px;
+      margin-top: 4px;
+    }
+
+    /* ── CONSENT BANNER ── */
+    .consent-banner {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      z-index: 400;
+      background: rgba(26,26,26,0.7);
+      backdrop-filter: blur(20px) saturate(200%);
+      -webkit-backdrop-filter: blur(20px) saturate(200%);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 20px 28px;
+      max-width: 520px;
+      width: calc(100% - 32px);
+      opacity: 0;
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      pointer-events: none;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+    }
+
+    body.light-mode .consent-banner {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .consent-banner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .consent-banner-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .consent-banner-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .consent-banner-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .consent-banner-text {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .consent-banner-text a {
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .consent-banner-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .consent-banner-actions button {
+      flex: 1;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .consent-btn-accept {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .consent-btn-accept:hover {
+      background: var(--accent-hover);
+    }
+
+    .consent-btn-decline {
+      background: transparent;
+      border: 1.5px solid var(--border) !important;
+      color: var(--text-muted);
+    }
+
+    .consent-btn-decline:hover {
+      border-color: var(--text) !important;
+      color: var(--text);
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      z-index: 300;
+      background: rgba(26,26,26,0.7);
+      backdrop-filter: blur(20px) saturate(200%);
+      -webkit-backdrop-filter: blur(20px) saturate(200%);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    body.light-mode .toast {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toast-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .toast-text {
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 40px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      letter-spacing: 0;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    footer p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ── SCROLL ANIMATIONS ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.35s; }
+
+    /* ── MOBILE NAV DROPDOWN ── */
+    .mobile-dropdown {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90%, 1080px);
+      z-index: 99;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.1);
+      padding: 0 24px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s ease, opacity 0.3s ease;
+    }
+
+    body.light-mode .mobile-dropdown {
+      background: rgba(255,255,255,0.92);
+      border-color: rgba(0,0,0,0.08);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .mobile-dropdown.open {
+      max-height: 500px;
+      padding: 76px 24px 28px;
+      border-radius: 28px;
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    .mobile-dropdown .mobile-link {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+      color: var(--text);
+      text-decoration: none;
+      padding: 10px 0;
+      text-align: center;
+      transition: color 0.2s;
+    }
+
+    .mobile-dropdown .mobile-link:hover { color: var(--accent); }
+
+    .mobile-dropdown .mobile-cta {
+      display: block;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .mobile-dropdown .mobile-extras {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .mobile-dropdown .mobile-extras .theme-toggle {
+      display: flex;
+    }
+
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 40px;
+    }
+
+    .lang-switch button {
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0 14px;
+      height: 100%;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .lang-switch button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .lang-switch button:not(.active):hover {
+      color: var(--text);
+    }
+
+    .nav-lang-switch {
+      display: flex;
+    }
+
+    @media (max-width: 900px) {
+      .nav-lang-switch { display: none; }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 0 16px; }
+
+      .nav-left { display: none; }
+
+      .nav-center-brand {
+        position: static;
+        transform: none;
+        flex: 1;
+      }
+
+      .nav-right .nav-cta { display: none; }
+
+      .nav-right { flex: 0; }
+
+      .hamburger { display: block; }
+
+      .hero {
+        padding: 120px 20px 60px;
+        gap: 32px;
+      }
+
+      .hero-top {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .hero p { margin-left: auto; margin-right: auto; }
+      .hero-buttons { justify-content: center; }
+
+      section { padding: 60px 20px; }
+
+      .feature-grid { grid-template-columns: 1fr; }
+
+      .signup-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .signup-form input { min-width: auto; }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: clamp(2.8rem, 10vw, 4.5rem); }
+
+      .card-carousel { height: 380px; }
+      .phone-card { width: min(220px, 70vw); padding: 20px 18px; }
+
+      .phone-card-title { font-size: 1.3rem; }
+
+      .phone-card-rate { font-size: 1.6rem; }
+
+      .privacy-modal { padding: 24px 20px; }
+
+      .toast { max-width: calc(100vw - 32px); }
+      .toast-text { white-space: normal; }
+
+      .consent-banner { bottom: 16px; padding: 16px 20px; }
+    }
+
+    /* ── PROTOTYPE DEMO ── */
+    .demo-trigger-wrap {
+      text-align: center;
+      margin-top: 40px;
+    }
+    .demo-trigger-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 32px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(255,92,0,0.25);
+    }
+    .demo-trigger-btn:hover { background: var(--accent-hover); box-shadow: 0 6px 30px rgba(255,92,0,0.35); }
+    .demo-trigger-btn:active { transform: scale(0.97); }
+    .demo-trigger-btn svg { width: 22px; height: 22px; }
+    .demo-trigger-btn { border: 2px solid transparent; white-space: nowrap; box-shadow: 0 4px 20px rgba(255,92,0,0.25); }
+    .emp-contact-btn { background: transparent; border-color: var(--accent); color: var(--accent); box-shadow: none; text-decoration: none; }
+    .emp-contact-btn:hover { background: var(--accent); color: #fff; box-shadow: 0 6px 30px rgba(255,92,0,0.35); }
+
+    .demo-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .demo-overlay.open { opacity: 1; pointer-events: all; }
+
+    .demo-phone-wrap {
+      position: relative;
+      transform: scale(0.8) translateY(40px);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .demo-overlay.open .demo-phone-wrap {
+      transform: scale(1) translateY(0);
+    }
+
+    .demo-phone-bezel {
+      width: 320px;
+      height: 640px;
+      border-radius: 40px;
+      border: 4px solid #333;
+      background: #111;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative;
+    }
+    body.light-mode .demo-phone-bezel {
+      border-color: #ccc;
+      background: #f5f5f5;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.08);
+    }
+
+
+    .demo-phone-bezel iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 36px;
+    }
+
+    .demo-close-btn {
+      position: absolute;
+      top: -16px; right: -16px;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(255,92,0,0.4);
+      transition: background 0.2s, transform 0.15s;
+    }
+    .demo-close-btn:hover { background: var(--accent-hover); transform: scale(1.1); }
+
+    @media (max-width: 900px) {
+      .demo-trigger-wrap { margin-top: 32px; }
+      .demo-trigger-btn { padding: 14px 24px; font-size: 0.9rem; }
+      .demo-trigger-btn svg { width: 20px; height: 20px; }
+    }
+
+    @media (max-width: 600px) {
+      /* Demo popup: nearly full-screen on mobile */
+      .demo-phone-wrap {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 12px;
+      }
+      .demo-phone-bezel {
+        width: 100%;
+        max-width: 340px;
+        height: calc(100vh - 80px);
+        max-height: 700px;
+        border-radius: 28px;
+        border-width: 3px;
+      }
+      .demo-phone-bezel iframe { border-radius: 25px; }
+      .demo-close-btn {
+        position: fixed;
+        top: 16px; right: 16px;
+        width: 36px; height: 36px;
+        font-size: 18px;
+      }
+      .demo-trigger-btn { padding: 12px 20px; font-size: 0.85rem; gap: 8px; border-radius: 12px; }
+      .demo-trigger-btn svg { width: 18px; height: 18px; }
+
+      /* Employer section mobile */
+      #employers.feature-section { padding: 32px 20px 56px; }
+      .emp-collapse-toggle { padding: 12px 20px; font-size: 0.85rem; }
+    }
+
+    @media (max-width: 380px) {
+      .demo-phone-bezel {
+        max-width: 100%;
+        height: calc(100vh - 60px);
+        border-radius: 20px;
+        border-width: 2px;
+      }
+      .demo-phone-bezel iframe { border-radius: 18px; }
+      .demo-close-btn { position: fixed; top: 12px; right: 12px; width: 32px; height: 32px; font-size: 16px; }
+    }
+
+    /* ── EMPLOYERS COLLAPSIBLE ── */
+    #employers.feature-section { padding: 48px 40px; }
+    #employers .section-inner { text-align: center; }
+    #employers .emp-collapsible-body .section-title,
+    #employers .emp-collapsible-body .section-desc { text-align: center; }
+    #employers .emp-collapsible-body .section-desc { margin-left: auto; margin-right: auto; }
+    #employers .emp-features { margin: 0 auto; }
+    #employers .emp-feature-row { justify-content: center; }
+    #employers .emp-cta-row { justify-content: center; }
+
+    .emp-collapse-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 100px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s, background 0.2s;
+    }
+    .emp-collapse-toggle:hover {
+      color: var(--accent);
+      background: rgba(255,92,0,0.05);
+    }
+    .emp-collapse-toggle:active { transform: scale(0.97); }
+    .emp-collapse-toggle .emp-toggle-chevron {
+      width: 18px; height: 18px;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+    .emp-collapse-toggle.expanded .emp-toggle-chevron { transform: rotate(180deg); }
+    .emp-collapse-toggle.expanded { color: var(--text); }
+
+    .emp-collapsible-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+      opacity: 0;
+    }
+    .emp-collapsible-body.expanded {
+      max-height: 2200px;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bgGrid"></canvas>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-left">
+      <div class="lang-switch nav-lang-switch" id="langSwitchDesktop">
+        <button class="active" data-lang="sk">SK</button>
+        <button data-lang="en">EN</button>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+        </svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+    <a href="#" class="nav-center-brand" aria-label="unemployed.sk - domov"><span class="nav-brand-un">un<span class="nav-brand-strike"></span></span>employed.sk</a>
+    <div class="nav-right">
+      <button class="hamburger" id="menuBtn" aria-label="Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <a href="#signup" class="btn btn-primary nav-cta" style="border-radius:12px;padding:14px 24px;height:44px;" data-i18n="nav.signup">Registruj sa</a>
+    </div>
+  </nav>
+
+  <!-- MOBILE DROPDOWN -->
+  <div class="mobile-dropdown" id="mobileNav">
+    <a href="#signup" class="btn btn-primary mobile-cta" style="border-radius:12px;" data-i18n="nav.signup">Registruj sa</a>
+    <div class="mobile-extras">
+      <div class="lang-switch" id="langSwitchMobile">
+        <button class="active" data-lang="sk">SK</button>
+        <button data-lang="en">EN</button>
+      </div>
+      <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+        </svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/><path stroke-linecap="round" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-content">
+        <h1 class="reveal" data-i18n-html="hero.title">N&#225;jdi svoju<br><span class="accent"><span class="rotating-word" id="rotatingWord">prv&#250;</span> pr&#225;cu.</span></h1>
+        <p class="reveal reveal-delay-1" data-i18n-html="hero.desc">Brigády, stáže a plné úväzky pre študentov a absolventov na Slovensku. Inteligentné párovanie, transparentný plat a overení zamestnávatelia — pomôžeme ti byť <span class="strikethrough-wrap"><span class="strike-un">un</span><span class="strike-line"></span></span>employed.</p>
+        <div class="hero-buttons reveal reveal-delay-2">
+          <a href="#signup" class="btn btn-primary" data-i18n="nav.signup">Registruj sa</a>
+          <a href="#students" class="btn btn-outline" data-i18n="hero.learnMore">Zisti viac</a>
+        </div>
+      </div>
+    </div>
+    <div class="card-carousel" id="cardCarousel">
+        <div class="phone-card" data-index="0">
+          <div class="phone-card-header">
+            <div class="phone-card-avatar">T</div>
+            <div>
+              <div class="phone-card-company">Tatra banka</div>
+              <div class="phone-card-location" data-i18n="card.loc.bratislava">Bratislava, Slovensko</div>
+            </div>
+          </div>
+          <div class="phone-card-title" data-i18n="card.marketingIntern">Marketingov&#253; st&#225;&#382;ista</div>
+          <div class="phone-card-tags">
+            <span class="phone-card-tag accent-tag" data-i18n="card.internship">St&#225;&#382;</span>
+            <span class="phone-card-tag" data-i18n="card.hybrid">Hybridné</span>
+            <span class="phone-card-tag" data-i18n="card.partTime">&#268;iasto&#269;n&#253; &#250;v&#228;zok</span>
+          </div>
+          <div class="phone-card-pay">
+            <div class="phone-card-rate" data-i18n-html="card.rate.850">8,50&#8364; <span>/hod</span></div>
+            <div class="phone-card-hours" data-i18n="card.hrs20">20 hod/t&#253;&#382;de&#328;</div>
+          </div>
+          <div class="phone-card-swipe">
+            <button class="swipe-btn" aria-label="Dismiss">&times;</button>
+            <button class="swipe-btn like" aria-label="Like">&hearts;</button>
+          </div>
+        </div>
+        <div class="phone-card" data-index="1">
+          <div class="phone-card-header">
+            <div class="phone-card-avatar" style="background:#3B82F6">E</div>
+            <div>
+              <div class="phone-card-company">ESET</div>
+              <div class="phone-card-location" data-i18n="card.loc.kosice">Ko&#353;ice, Slovensko</div>
+            </div>
+          </div>
+          <div class="phone-card-title" data-i18n="card.juniorDev">Junior v&#253;voj&#225;r</div>
+          <div class="phone-card-tags">
+            <span class="phone-card-tag accent-tag" data-i18n="card.fullTime">Pln&#253; &#250;v&#228;zok</span>
+            <span class="phone-card-tag" data-i18n="card.onSite">V kancel&#225;rii</span>
+            <span class="phone-card-tag" data-i18n="card.noExp">Bez praxe</span>
+          </div>
+          <div class="phone-card-pay">
+            <div class="phone-card-rate" data-i18n-html="card.rate.1800">1 800&#8364; <span>/mes</span></div>
+            <div class="phone-card-hours" data-i18n="card.hrs40">40 hod/t&#253;&#382;de&#328;</div>
+          </div>
+          <div class="phone-card-swipe">
+            <button class="swipe-btn" aria-label="Dismiss">&times;</button>
+            <button class="swipe-btn like" aria-label="Like">&hearts;</button>
+          </div>
+        </div>
+        <div class="phone-card" data-index="2">
+          <div class="phone-card-header">
+            <div class="phone-card-avatar" style="background:#10B981">S</div>
+            <div>
+              <div class="phone-card-company">Slovnaft</div>
+              <div class="phone-card-location" data-i18n="card.loc.bratislava">Bratislava, Slovensko</div>
+            </div>
+          </div>
+          <div class="phone-card-title" data-i18n="card.cashier">V&#237;kendov&#253; pokladn&#237;k</div>
+          <div class="phone-card-tags">
+            <span class="phone-card-tag accent-tag" data-i18n="card.partTime">&#268;iasto&#269;n&#253; &#250;v&#228;zok</span>
+            <span class="phone-card-tag" data-i18n="card.weekends">V&#237;kendy</span>
+            <span class="phone-card-tag" data-i18n="card.flexible">Flexibiln&#233;</span>
+          </div>
+          <div class="phone-card-pay">
+            <div class="phone-card-rate" data-i18n-html="card.rate.720">7,20&#8364; <span>/hod</span></div>
+            <div class="phone-card-hours" data-i18n="card.hrs12">12 hod/t&#253;&#382;de&#328;</div>
+          </div>
+          <div class="phone-card-swipe">
+            <button class="swipe-btn" aria-label="Dismiss">&times;</button>
+            <button class="swipe-btn like" aria-label="Like">&hearts;</button>
+          </div>
+        </div>
+        <div class="phone-card" data-index="3">
+          <div class="phone-card-header">
+            <div class="phone-card-avatar" style="background:#8B5CF6">K</div>
+            <div>
+              <div class="phone-card-company">Kia Slovakia</div>
+              <div class="phone-card-location" data-i18n="card.loc.zilina">&#381;ilina, Slovensko</div>
+            </div>
+          </div>
+          <div class="phone-card-title" data-i18n="card.dataAnalyst">D&#225;tov&#253; analytik</div>
+          <div class="phone-card-tags">
+            <span class="phone-card-tag accent-tag" data-i18n="card.internship">St&#225;&#382;</span>
+            <span class="phone-card-tag" data-i18n="card.remote">Na dia&#318;ku</span>
+            <span class="phone-card-tag" data-i18n="card.6months">6 mesiacov</span>
+          </div>
+          <div class="phone-card-pay">
+            <div class="phone-card-rate" data-i18n-html="card.rate.1000">10,00&#8364; <span>/hod</span></div>
+            <div class="phone-card-hours" data-i18n="card.hrs25">25 hod/t&#253;&#382;de&#328;</div>
+          </div>
+          <div class="phone-card-swipe">
+            <button class="swipe-btn" aria-label="Dismiss">&times;</button>
+            <button class="swipe-btn like" aria-label="Like">&hearts;</button>
+          </div>
+        </div>
+        <div class="phone-card" data-index="4">
+          <div class="phone-card-header">
+            <div class="phone-card-avatar" style="background:#F59E0B">L</div>
+            <div>
+              <div class="phone-card-company">Lidl</div>
+              <div class="phone-card-location" data-i18n="card.loc.nitra">Nitra, Slovensko</div>
+            </div>
+          </div>
+          <div class="phone-card-title" data-i18n="card.warehouse">Skladn&#237;k</div>
+          <div class="phone-card-tags">
+            <span class="phone-card-tag accent-tag" data-i18n="card.partTime">&#268;iasto&#269;n&#253; &#250;v&#228;zok</span>
+            <span class="phone-card-tag" data-i18n="card.evenings">Ve&#269;ery</span>
+            <span class="phone-card-tag" data-i18n="card.noExp">Bez praxe</span>
+          </div>
+          <div class="phone-card-pay">
+            <div class="phone-card-rate" data-i18n-html="card.rate.780">7,80&#8364; <span>/hod</span></div>
+            <div class="phone-card-hours" data-i18n="card.hrs16">16 hod/t&#253;&#382;de&#328;</div>
+          </div>
+          <div class="phone-card-swipe">
+            <button class="swipe-btn" aria-label="Dismiss">&times;</button>
+            <button class="swipe-btn like" aria-label="Like">&hearts;</button>
+          </div>
+        </div>
+    </div>
+  </section>
+
+  <!-- STUDENTS -->
+  <section id="students" class="feature-section">
+    <div class="section-inner">
+      <div class="section-label reveal" data-i18n="students.label">Pre &#353;tudentov a absolventov</div>
+      <h2 class="section-title reveal" data-i18n="students.title">Od tvojej prvej pr&#225;ce a&#382; po tvoj dream job</h2>
+      <p class="section-desc reveal" data-i18n="students.desc">&#268;i u&#382; h&#318;ad&#225;&#353; brig&#225;du, st&#225;&#382; alebo prv&#250; kari&#233;rnu poz&#237;ciu — m&#225;me pre teba to prav&#233;.</p>
+      <div class="student-tabs reveal">
+        <button class="student-tab active" data-tab="highschool" data-i18n="students.highschool">Stredn&#225; &#353;kola</button>
+        <button class="student-tab" data-tab="university" data-i18n="students.university">Vysok&#225; &#353;kola</button>
+        <button class="student-tab" data-tab="graduates" data-i18n="students.graduates">Absolventi</button>
+      </div>
+
+      <!-- HIGH SCHOOL PANEL -->
+      <div class="student-panel active reveal" id="panel-highschool">
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#128270;</div>
+          <h4 data-i18n="hs.find.title">N&#225;jdi svoju prv&#250; pr&#225;cu</h4>
+          <p data-i18n="hs.find.desc">&#381;iadne sk&#250;senosti? &#381;iadny probl&#233;m. Poz&#237;cie, kde &#382;iadna kvalifik&#225;cia nie je potrebn&#225;.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#128396;</div>
+          <h4 data-i18n="hs.easy.title">Jednoducho a r&#253;chlo</h4>
+          <p data-i18n="hs.easy.desc">Prihl&#225;s sa jedn&#253;m klikom — a&#382; 3&#215; r&#253;chlej&#353;ie ako na be&#382;n&#253;ch port&#225;loch.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#9889;</div>
+          <h4 data-i18n="hs.gigs.title">Jednor&#225;zov&#233; brig&#225;dy</h4>
+          <p data-i18n="hs.gigs.desc">Kr&#225;tkodob&#233; brig&#225;dy na mieru — odpracuj, zarob a &#382;iadne z&#225;v&#228;zky.</p>
+        </div>
+      </div>
+
+      <!-- UNIVERSITY PANEL -->
+      <div class="student-panel reveal" id="panel-university">
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#128178;</div>
+          <h4 data-i18n="uni.salary.title">Transparentn&#253; plat</h4>
+          <p data-i18n="uni.salary.desc">Ka&#382;d&#225; poz&#237;cia ukazuje presne, ko&#318;ko zarobí&#353; — &#382;iadne h&#225;danky, &#382;iadne prekvapenia.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#127919;</div>
+          <h4 data-i18n="uni.internships.title">St&#225;&#382;e pre tvoj odbor</h4>
+          <p data-i18n="uni.internships.desc">N&#225;&#353; p&#225;rovac&#237; algoritmus ti n&#225;jde st&#225;&#382;e na mieru — a swipovan&#237;m &#353;t&#253;lom Tinder si r&#253;chlo vyberieš tie, ktor&#233; ťa zaujm&#250;.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#128172;</div>
+          <h4 data-i18n="uni.comms.title">Komunik&#225;cia na jednom mieste</h4>
+          <p data-i18n="uni.comms.desc">Spr&#225;vy, pohovory a aktualiz&#225;cie — v&#353;etko preh&#318;adne v jednej aplik&#225;cii.</p>
+        </div>
+      </div>
+
+      <!-- GRADUATES PANEL -->
+      <div class="student-panel reveal" id="panel-graduates">
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#127942;</div>
+          <h4 data-i18n="grads.refs.title">Referencie a odznaky</h4>
+          <p data-i18n="grads.refs.desc">Z&#237;skaj odpor&#250;&#269;enia z predch&#225;dzaj&#250;cich brig&#225;d a odznaky, ktor&#233; dokazuj&#250; tvoje v&#253;sledky.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#128640;</div>
+          <h4 data-i18n="grads.jobs.title">Top pozície s najlepším platom</h4>
+          <p data-i18n="grads.jobs.desc">Najlep&#353;ie platen&#233; juniorské poz&#237;cie na jednom mieste — &#382;iadne pasce typu „5 rokov praxe".</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" aria-hidden="true">&#9989;</div>
+          <h4 data-i18n="grads.screening.title">Overen&#233; firmy a st&#225;&#382;e na mieru</h4>
+          <p data-i18n="grads.screening.desc">Ka&#382;d&#225; firma je overen&#225; a st&#225;&#382;e s&#250; vybran&#233; pod&#318;a toho, &#269;o ti naozaj sed&#237;.</p>
+        </div>
+      </div>
+
+      <!-- APP DEMO TRIGGER -->
+      <div class="demo-trigger-wrap reveal">
+        <button class="demo-trigger-btn" id="demoTriggerBtn" data-i18n="students.demo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          Vyskúšaj demo
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGNUP -->
+  <section class="signup" id="signup">
+    <div class="section-inner">
+      <div class="section-label reveal" data-i18n="signup.label">Skorý prístup</div>
+      <h2 class="section-title reveal" data-i18n-html="signup.title">Buď jeden z prvých.<br><span style="font-style:italic">Aplikácia príde už čoskoro.</span></h2>
+      <p class="signup-sub reveal reveal-delay-1" data-i18n="signup.desc">Zaregistruj sa a získaj prednostný prístup pred oficiálnym launchom.</p>
+      <div class="signup-counter reveal reveal-delay-1" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent-light, rgba(99,102,241,0.1));color:var(--accent);padding:10px 20px;border-radius:100px;font-weight:600;font-size:0.95rem;margin-bottom:24px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span id="registrationCount" data-i18n="signup.counter">5 000+ registrovaných</span>
+      </div>
+      <form class="signup-form reveal reveal-delay-2" id="signupForm" name="waitlist" data-netlify="true" data-netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="waitlist">
+        <p style="display:none"><label>Don't fill this out: <input name="bot-field"></label></p>
+        <input type="email" id="emailInput" name="email" placeholder="Tvoj email" data-i18n-placeholder="signup.emailPh" required>
+        <div class="phone-group">
+          <select class="phone-prefix" id="phonePrefix" name="phonePrefix" aria-label="Predvoľba krajiny" data-i18n-aria-label="signup.prefixLabel"></select>
+          <input type="tel" id="phoneInput" name="phone" placeholder="Telefónne číslo" data-i18n-placeholder="signup.phonePh" pattern="[0-9\s\-()]+" inputmode="tel">
+        </div>
+        <select id="userTypeSelect" name="userType" required>
+          <option value="" disabled selected data-i18n="signup.iAm">Som...</option>
+          <option value="Stredoškolák" data-i18n="signup.hsStudent">Stredoškolák</option>
+          <option value="Vysokoškolák" data-i18n="signup.uniStudent">Vysokoškolák</option>
+          <option value="Absolvent" data-i18n="signup.graduate">Absolvent</option>
+          <option value="Zamestnávateľ" data-i18n="signup.employer">Zamestnávateľ</option>
+        </select>
+        <div class="consent-checkbox-row">
+          <input type="checkbox" id="consentTerms" name="consentTerms" required>
+          <label for="consentTerms" data-i18n-html="signup.agreeToTerms">Súhlasím so <a id="openPrivacy2">Zásadami ochrany osobných údajov</a> a <a id="openTos">Všeobecnými obchodnými podmienkami</a>.</label>
+        </div>
+        <div class="consent-checkbox-row">
+          <input type="checkbox" id="consentMarketing" name="consentMarketing">
+          <label for="consentMarketing" data-i18n="signup.marketingConsent">Chcem dostávať novinky a aktualizácie produktu (nepovinné).</label>
+        </div>
+        <button type="submit" class="btn btn-primary" data-i18n="signup.submit">Registrácia</button>
+        <div class="form-submitted-overlay" id="formSubmittedOverlay">
+          <div class="form-submitted-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <p class="form-submitted-text" data-i18n="signup.alreadySubmitted">U&#382; si sa zaregistroval/a. Ozveme sa ti &#269;oskoro!</p>
+        </div>
+      </form>
+      <div class="app-badges reveal reveal-delay-3">
+        <div class="app-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div class="app-badge-text">
+            <div class="app-badge-small" data-i18n="signup.downloadOn">Stiahni na</div>
+            <div class="app-badge-big">App Store</div>
+          </div>
+        </div>
+        <div class="app-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3.61 1.814L13.793 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.61-.92zm.96-.736l11.265 6.518-2.508 2.508L4.57 1.078zM15.835 8.596L18.364 10H21c.354 0 .5.15.5.5s-.146.5-.5.5h-2.636l-2.529 1.404L13.793 12l2.042 2.096 2.529 1.404H21c.354 0 .5.15.5.5s-.146.5-.5.5h-2.636l-2.529-1.404L4.57 22.922l8.757-8.826 2.508 2.508z"/></svg>
+          <div class="app-badge-text">
+            <div class="app-badge-small" data-i18n="signup.downloadOn">Stiahni na</div>
+            <div class="app-badge-big">Google Play</div>
+          </div>
+        </div>
+      </div>
+      <p class="coming-soon-label reveal reveal-delay-4" data-i18n="signup.comingSoon">Už čoskoro</p>
+    </div>
+  </section>
+
+  <!-- EMPLOYERS (collapsible, after signup) -->
+  <section id="employers" class="feature-section alt-bg">
+    <div class="section-inner">
+      <button class="emp-collapse-toggle reveal" id="empToggle" aria-expanded="false" aria-controls="empBody">
+        <span data-i18n="emp.toggleLabel">Pre zamestnávateľov — zobraziť viac</span>
+        <svg class="emp-toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="emp-collapsible-body" id="empBody">
+        <div style="padding-top:32px;">
+          <h2 class="section-title reveal" data-i18n="emp.title">Nábor mladých talentov, bez zbytočnej práce</h2>
+          <p class="section-desc reveal" data-i18n="emp.desc">AI predvýber, overení kandidáti a analytika na jednom mieste — nájdite správnych ľudí rýchlejšie.</p>
+          <div class="emp-features">
+            <div class="emp-feature-row reveal">
+              <div class="emp-feature-num">01</div>
+              <div class="emp-feature-text">
+                <h4 data-i18n="emp.ai.title">AI predvýber a párovanie</h4>
+                <p data-i18n="emp.ai.desc">Naše AI predvyberá a páruje uchádzačov k vašim pozíciám — vidíte len kandidátov, ktorí naozaj sedia.</p>
+              </div>
+            </div>
+            <div class="emp-feature-row reveal">
+              <div class="emp-feature-num">02</div>
+              <div class="emp-feature-text">
+                <h4 data-i18n="emp.invite.title">Pozvánky z našej databázy</h4>
+                <p data-i18n="emp.invite.desc">Prehľadávajte našu databázu overených kandidátov a pozvite ich priamo na vaše otvorené pozície.</p>
+              </div>
+            </div>
+            <div class="emp-feature-row reveal">
+              <div class="emp-feature-num">03</div>
+              <div class="emp-feature-text">
+                <h4 data-i18n="emp.analytics.title">Analytika a export dát</h4>
+                <p data-i18n="emp.analytics.desc">Sledujte zobrazenia, prihlášky a výkon náboru — všetko z dashboardu s možnosťou exportu.</p>
+              </div>
+            </div>
+            <div class="emp-feature-row reveal">
+              <div class="emp-feature-num">04</div>
+              <div class="emp-feature-text">
+                <h4 data-i18n="emp.autofill.title">AI tvorba inzerátov</h4>
+                <p data-i18n="emp.autofill.desc">Vytvorte pracovný inzerát za sekundy — naše AI napíše popis, požiadavky a tagy za vás.</p>
+              </div>
+            </div>
+          </div>
+          <div class="emp-cta-group reveal" style="display:flex;align-items:stretch;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:36px;">
+            <button class="demo-trigger-btn" id="empDemoTriggerBtn" style="flex:1;max-width:320px;justify-content:center;" data-i18n="emp.demo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              Vyskúšaj employer demo
+            </button>
+            <a href="mailto:unemployed.sk@gmail.com" class="demo-trigger-btn emp-contact-btn" style="flex:1;max-width:320px;justify-content:center;" data-i18n="emp.contact">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Kontaktujte sales pre cenník
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO OVERLAY (phone frame popup) -->
+  <div class="demo-overlay" id="demoOverlay">
+    <div class="demo-phone-wrap">
+      <button class="demo-close-btn" id="demoCloseBtn" aria-label="Close demo">&times;</button>
+      <div class="demo-phone-bezel">
+        <iframe src="prototype.html" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPLOYER DEMO OVERLAY (phone frame popup) -->
+  <div class="demo-overlay" id="empDemoOverlay">
+    <div class="demo-phone-wrap">
+      <button class="demo-close-btn" id="empDemoCloseBtn" aria-label="Close demo">&times;</button>
+      <div class="demo-phone-bezel">
+        <iframe src="employer-prototype.html" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY MODAL -->
+  <div class="privacy-modal-overlay" id="privacyOverlay">
+    <div class="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+      <button class="privacy-modal-close" id="closePrivacy" data-i18n-aria-label="privacy.close" aria-label="Zavrieť">&times;</button>
+      <h3 id="privacyTitle" data-i18n="privacy.title">Zásady ochrany osobných údajov</h3>
+      <p data-i18n-html="privacy.operator">Prevádzkovateľ: unemployed.sk &middot; Platné od: 1. apríla 2026</p>
+
+      <h4 data-i18n="privacy.s1.title">1. Aké údaje zbierame</h4>
+      <ul>
+        <li data-i18n="privacy.s1.email">E-mailová adresa (povinná)</li>
+        <li data-i18n="privacy.s1.phone">Telefónne číslo vrátane predvoľby krajiny (nepovinné)</li>
+        <li data-i18n="privacy.s1.usertype">Typ používateľa (stredoškolák / vysokoškolák / absolvent / zamestnávateľ)</li>
+        <li data-i18n="privacy.s1.ip">IP adresa — zbieraná výlučne na bezpečnostné účely, prevenciu spamu a obmedzenie počtu požiadaviek. Pred uložením je jednosmerným hašovaním (SHA-256) nezvratne anonymizovaná a nie je spájaná s konkrétnou osobou.</li>
+      </ul>
+
+      <h4 data-i18n="privacy.s2.title">2. Účel spracovania</h4>
+      <p data-i18n="privacy.s2.desc">Údaje spracúvame výlučne za účelom poskytnutia skorého prístupu k aplikácii unemployed.sk a zasielania informácií o jej spustení. Právnym základom je Váš dobrovoľný súhlas (čl. 6 ods. 1 písm. a) GDPR).</p>
+
+      <h4 data-i18n="privacy.s3.title">3. Príjemcovia údajov</h4>
+      <p data-i18n="privacy.s3.desc">Vaše osobné údaje neposkytujeme tretím stranám na marketingové účely. Údaje môžeme zdieľať iba s dodávateľmi technickej infraštruktúry (hostingové služby) nevyhnutnej na prevádzku webu, a to výlučne na základe spracovateľských zmlúv.</p>
+
+      <h4 data-i18n="privacy.s4.title">4. Doba uchovávania</h4>
+      <p data-i18n="privacy.s4.desc">Údaje uchovávame po dobu nevyhnutnú na splnenie účelu (max. 24 mesiacov od registrácie), alebo kým neodvoláte súhlas.</p>
+
+      <h4 data-i18n="privacy.s5.title">5. Vaše práva</h4>
+      <ul>
+        <li data-i18n="privacy.s5.access">Právo na prístup k údajom</li>
+        <li data-i18n="privacy.s5.rectify">Právo na opravu alebo vymazanie</li>
+        <li data-i18n="privacy.s5.portability">Právo na prenosnosť údajov</li>
+        <li data-i18n="privacy.s5.withdraw">Právo kedykoľvek odvolať súhlas bez vplyvu na zákonnosť predchádzajúceho spracovania</li>
+        <li data-i18n-html="privacy.s5.complain">Právo podať sťažnosť na Úrade na ochranu osobných údajov SR (dataprotection.gov.sk)</li>
+      </ul>
+
+      <h4 data-i18n="privacy.s6.title">6. Kontakt</h4>
+      <p data-i18n-html="privacy.s6.desc">Pre uplatnenie práv alebo otázky k ochrane súkromia nás kontaktujte na: <strong>unemployed.sk@gmail.com</strong></p>
+    </div>
+  </div>
+
+  <!-- TERMS & CONDITIONS MODAL -->
+  <div class="privacy-modal-overlay" id="tosOverlay">
+    <div class="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="tosTitle">
+      <button class="privacy-modal-close" id="closeTos" data-i18n-aria-label="tos.close" aria-label="Zavrieť">&times;</button>
+      <h3 id="tosTitle" data-i18n="tos.title">Všeobecné obchodné podmienky</h3>
+      <p data-i18n-html="tos.operator">Prevádzkovateľ: unemployed.sk &middot; Platné od: 1. apríla 2026</p>
+
+      <h4 data-i18n="tos.s1.title">1. Predmet a rozsah služby</h4>
+      <p data-i18n="tos.s1.desc">Tieto podmienky upravujú používanie čakacej listiny (waitlist) webovej stránky unemployed.sk. Registráciou na čakacej listine nevzniká žiadny zmluvný nárok na prístup k platforme, na konkrétnu funkčnosť ani na termín spustenia. Ide výlučne o predbežný záujem o skorý prístup po spustení služby.</p>
+
+      <h4 data-i18n="tos.s2.title">2. Povinnosti používateľa</h4>
+      <p data-i18n="tos.s2.desc">Používateľ sa zaväzuje uviesť pravdivé a aktuálne kontaktné údaje. Registrácia prostredníctvom automatizovaných nástrojov, botov alebo falošných identít je zakázaná.</p>
+
+      <h4 data-i18n="tos.s3.title">3. Vylúčenie zodpovednosti</h4>
+      <p data-i18n="tos.s3.desc">Webová stránka a čakacia listina sú poskytované „tak, ako sú" bez akýchkoľvek záruk. Prevádzkovateľ nezodpovedá za žiadne priame ani nepriame škody vyplývajúce z registrácie na čakacej listine, nedostupnosti služby ani z prípadného oneskorenia alebo zrušenia spustenia platformy.</p>
+
+      <h4 data-i18n="tos.s4.title">4. Duševné vlastníctvo</h4>
+      <p data-i18n="tos.s4.desc">Všetok obsah webovej stránky unemployed.sk (texty, grafika, logá, zdrojový kód) je chránený autorskými právami prevádzkovateľa. Akékoľvek kopírovanie alebo šírenie bez písomného súhlasu je zakázané.</p>
+
+      <h4 data-i18n="tos.s5.title">5. Zmeny podmienok</h4>
+      <p data-i18n="tos.s5.desc">Prevádzkovateľ si vyhradzuje právo tieto podmienky kedykoľvek zmeniť. Aktuálna verzia je vždy dostupná na tejto stránke. Ďalšie používanie služby po zverejnení zmien sa považuje za súhlas s novými podmienkami.</p>
+
+      <h4 data-i18n="tos.s6.title">6. Rozhodné právo</h4>
+      <p data-i18n="tos.s6.desc">Tieto podmienky sa riadia právnym poriadkom Slovenskej republiky. Prípadné spory budú riešené pred príslušnými súdmi Slovenskej republiky.</p>
+
+      <h4 data-i18n="tos.s7.title">7. Kontakt</h4>
+      <p data-i18n-html="tos.s7.desc">Otázky k podmienkam zasielajte na: <strong>unemployed.sk@gmail.com</strong></p>
+    </div>
+  </div>
+
+  <!-- CONSENT BANNER -->
+  <div class="consent-banner" id="consentBanner">
+    <div class="consent-banner-top">
+      <div class="consent-banner-icon" aria-hidden="true">&#128274;</div>
+      <span class="consent-banner-title" data-i18n="consent.title">S&#250;kromie &amp; cookies</span>
+    </div>
+    <p class="consent-banner-text" data-i18n-html="consent.text">Pou&#382;&#237;vame <strong>funk&#269;n&#233; cookies</strong> (jazyk, t&#233;ma) nevyhnutn&#233; pre spr&#225;vne fungovanie webu a <strong>analytick&#233; cookies</strong> na zlep&#353;enie slu&#382;ieb. Kliknut&#237;m na &bdquo;Odmietnu&#357;&ldquo; odmietate len analytick&#233; cookies &mdash; funk&#269;n&#233; cookies zost&#225;nu akt&#237;vne. Va&#353;e &#250;daje sprac&#250;vame pod&#318;a <a id="consentPrivacyLink">z&#225;sad ochrany s&#250;kromia</a>.</p>
+    <div class="consent-banner-actions">
+      <button class="consent-btn-decline" id="consentDecline" data-i18n="consent.decline">Odmietnu&#357;</button>
+      <button class="consent-btn-accept" id="consentAccept" data-i18n="consent.accept">S&#250;hlas&#237;m</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" role="alert">
+    <div class="toast-icon" aria-hidden="true">&#10003;</div>
+    <span class="toast-text" data-i18n="toast.success">Údaje odoslané — ozveme sa ti!</span>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">
+      <svg class="logo-icon" style="width:46px;height:46px;" viewBox="0 0 1536 1024" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 0 C0.71-0.003 1.42-0.007 2.15-0.01 C4.47-0.02 6.79-0.022 9.11-0.023 C10.74-0.026 12.37-0.029 14-0.033 C17.4-0.039 20.8-0.041 24.21-0.04 C28.55-0.04 32.89-0.054 37.24-0.071 C40.6-0.082 43.96-0.084 47.32-0.083 C48.92-0.085 50.52-0.089 52.12-0.097 C54.36-0.107 56.61-0.104 58.85-0.098 C60.76-0.1 60.76-0.1 62.71-0.102 C70.18 0.395 76.57 2.393 82.43 7.145 C91 18.138 87.34 34.108 85.89 47.126 C85.72 48.645 85.56 50.164 85.4 51.683 C84.96 55.73 84.52 59.776 84.08 63.822 C83.33 70.637 82.6 77.454 81.87 84.271 C81.59 86.864 81.31 89.457 81.03 92.049 C79.86 102.911 78.75 113.776 77.7 124.649 C77.57 126.015 77.43 127.382 77.3 128.748 C76.81 133.841 76.31 138.934 75.84 144.029 C74.35 159.875 72.26 175.484 69.43 191.145 C69.29 191.913 69.15 192.68 69.01 193.471 C63.95 221.894 52.18 249.339 34.43 272.145 C33.79 273.001 33.16 273.857 32.5 274.739 C16.31 295.729 -4.02 311.632 -26.57 325.145 C-27.21 325.524 -27.84 325.903 -28.49 326.294 C-40.49 333.382 -53.54 338.299 -66.57 343.145 C-67.49 343.485 -68.4 343.824 -69.34 344.174 C-84.78 349.798 -100.68 352.857 -116.85 355.527 C-119.11 355.902 -121.37 356.288 -123.62 356.693 C-153.42 362.012 -186.79 361.159 -216.57 356.145 C-217.6 355.974 -218.63 355.802 -219.69 355.625 C-245.1 351.208 -272.21 343.011 -291.57 325.145 C-292.41 324.427 -293.24 323.709 -294.1 322.969 C-316.8 303.21 -328.74 276.228 -330.84 246.352 C-331.74 225.931 -329.88 205.758 -327.61 185.486 C-326.65 176.912 -325.76 168.33 -324.89 159.747 C-324.74 158.282 -324.59 156.817 -324.44 155.352 C-324.22 153.12 -323.99 150.888 -323.76 148.657 C-321.66 128.021 -319.54 107.387 -317.26 86.77 C-317.19 86.086 -317.11 85.402 -317.03 84.696 C-316.31 78.16 -315.52 71.65 -314.55 65.145 C-313.85 60.387 -313.31 55.647 -312.9 50.856 C-312.79 49.647 -312.69 48.438 -312.58 47.192 C-312.37 44.737 -312.17 42.282 -311.98 39.825 C-311.02 29.319 -308.54 18.576 -300.57 11.145 C-288.62 2.501 -276.96 1.669 -262.67 1.677 C-260.94 1.669 -259.2 1.662 -257.47 1.653 C-253.85 1.64 -250.23 1.638 -246.62 1.644 C-242 1.65 -237.39 1.62 -232.78 1.579 C-229.2 1.553 -225.63 1.55 -222.06 1.554 C-220.36 1.552 -218.66 1.543 -216.96 1.525 C-206.78 1.429 -198.17 1.734 -189.94 8.482 C-183.97 14.641 -184.37 23.313 -184.42 31.324 C-184.68 37.774 -185.56 44.131 -186.42 50.524 C-187.02 54.957 -187.59 59.395 -188.16 63.833 C-188.28 64.764 -188.39 65.695 -188.52 66.655 C-189.8 76.762 -190.89 86.888 -191.95 97.02 C-192.05 97.957 -192.15 98.894 -192.25 99.859 C-192.67 103.862 -193.08 107.864 -193.5 111.867 C-194.38 120.28 -195.27 128.691 -196.17 137.101 C-196.65 141.594 -197.13 146.088 -197.61 150.581 C-198 154.269 -198.4 157.957 -198.79 161.644 C-199.17 165.136 -199.54 168.628 -199.91 172.12 C-200.11 174.017 -200.32 175.913 -200.52 177.81 C-204.55 207.835 -204.55 207.835 -194.2 235.325 C-184.54 246.163 -170.84 251.233 -156.55 252.296 C-137.39 253.309 -119.67 249.789 -102.57 241.145 C-101.58 240.684 -100.59 240.222 -99.57 239.747 C-79.86 230.032 -66.47 210.427 -59.57 190.145 C-52.27 168.037 -49.99 145.15 -47.88 122.084 C-47.8 121.21 -47.72 120.336 -47.64 119.436 C-47.49 117.787 -47.34 116.138 -47.2 114.489 C-46.82 110.332 -46.29 106.261 -45.57 102.145 C-45.41 100.591 -45.27 99.035 -45.14 97.477 C-45.04 96.159 -45.04 96.159 -44.93 94.813 C-44.85 93.871 -44.78 92.929 -44.7 91.958 C-43.88 82.049 -42.83 72.179 -41.68 62.303 C-41.04 56.701 -40.47 51.11 -40.08 45.485 C-39.96 43.884 -39.96 43.884 -39.85 42.25 C-39.71 40.259 -39.59 38.266 -39.48 36.272 C-38.72 25.067 -35.1 15.183 -26.76 7.458 C-18.7 0.705 -10.14 0.03 0 0Z" fill="var(--text)" transform="translate(780.574,281.855)"/>
+        <path d="M0 0 C7.18-0.051 14.36-0.086 21.55-0.11 C23.98-0.12 26.41-0.133 28.85-0.151 C49.39-0.295 69.06 0.64 89.13 5.188 C89.81 5.34 90.49 5.492 91.2 5.648 C102.26 8.123 112.69 11.275 123 16 C124.48 16.647 125.96 17.292 127.43 17.938 C156.2 30.737 178.09 51.932 189.88 81.173 C201.95 112.68 197.92 144.439 193.94 177.114 C193.41 181.506 192.89 185.899 192.38 190.293 C192.27 191.15 192.17 192.006 192.07 192.889 C191.87 194.597 191.67 196.305 191.46 198.014 C191.17 200.535 190.87 203.057 190.57 205.578 C189.52 214.4 188.54 223.219 187.75 232.069 C187 240.341 186.06 248.591 185.13 256.844 C185.04 257.597 184.95 258.351 184.87 259.127 C184.16 265.375 183.44 271.622 182.73 277.869 C182.2 282.54 181.66 287.211 181.13 291.882 C180.96 293.392 180.79 294.903 180.62 296.413 C179.51 306.166 178.46 315.92 177.66 325.704 C176.7 336.832 173.71 348.241 164.93 355.777 C154.27 363.372 143.67 363.45 131.12 363.398 C129.38 363.4 127.64 363.403 125.9 363.407 C122.27 363.412 118.64 363.405 115.01 363.391 C110.37 363.374 105.73 363.384 101.09 363.402 C97.5 363.413 93.92 363.409 90.33 363.401 C88.62 363.399 86.91 363.402 85.2 363.409 C82.81 363.417 80.41 363.405 78.02 363.388 C76.97 363.397 76.97 363.397 75.91 363.407 C68.46 363.311 61.97 360.895 56.54 355.758 C49.99 348.289 50.24 339.457 50.77 330.025 C51.4 321.736 52.48 313.488 53.51 305.24 C54.87 294.314 56.04 283.374 57.18 272.422 C58.83 256.605 60.59 240.815 62.62 225.042 C63.88 215.201 64.94 205.349 65.92 195.477 C66.83 186.425 67.89 177.397 69.09 168.379 C70.32 158.681 70.75 149.46 68 140 C67.74 139 67.74 139 67.48 137.98 C65.25 130.686 59.95 124.292 53.25 120.625 C38.02 114.177 22.47 114.39 7 120 C-1.34 123.601 -14.7 130.394 -19 139 C-19.66 139 -20.32 139 -21 139 C-20.81 138.393 -20.62 137.787 -20.43 137.162 C-18.6 131.167 -16.96 125.156 -15.5 119.063 C-15.3 118.265 -15.1 117.468 -14.89 116.646 C-11.15 101.08 -9.42 85.072 -7.63 69.188 C-7.41 67.354 -7.2 65.52 -6.99 63.686 C-4.57 42.468 -2.28 21.235 0 0Z" fill="#F27C2B" transform="translate(886,369)"/>
+        <path d="M0 0 C1.19 3.785 0.53 6.402 -0.41 10.233 C-1.64 15.972 -2.17 21.831 -2.84 27.656 C-3.01 29.086 -3.18 30.515 -3.35 31.944 C-3.79 35.702 -4.23 39.461 -4.67 43.219 C-5.11 46.955 -5.55 50.69 -5.99 54.426 C-6.16 55.897 -6.34 57.369 -6.51 58.841 C-6.85 61.752 -7.2 64.662 -7.54 67.573 C-8.32 74.15 -9.08 80.727 -9.82 87.309 C-9.94 88.431 -10.07 89.554 -10.2 90.71 C-10.43 92.743 -10.66 94.777 -10.88 96.812 C-12.23 108.566 -14.45 121.218 -23 130 C-32.93 137.708 -42.12 140.096 -54.66 140.161 C-55.39 140.166 -56.12 140.171 -56.88 140.176 C-59.27 140.191 -61.67 140.198 -64.06 140.203 C-65.3 140.207 -65.3 140.207 -66.56 140.212 C-70.91 140.227 -75.26 140.236 -79.61 140.24 C-84.1 140.246 -88.58 140.27 -93.06 140.298 C-96.52 140.317 -99.98 140.322 -103.44 140.324 C-105.09 140.327 -106.75 140.335 -108.4 140.348 C-110.71 140.365 -113.03 140.363 -115.34 140.356 C-117.31 140.362 -117.31 140.362 -119.32 140.367 C-126.99 139.601 -132.99 135.789 -138 130 C-142.68 121.871 -141.57 111.922 -140.08 103.035 C-138.93 95.775 -138.13 88.498 -137.38 81.188 C-137.24 79.911 -137.11 78.634 -136.97 77.318 C-136.64 74.213 -136.32 71.106 -136 68 C-134.78 67.729 -134.78 67.729 -133.53 67.453 C-83.55 56.291 -36.76 36.763 0 0Z" fill="#F27C2B" transform="translate(814,590)"/>
+      </svg>
+      <span style="position:relative;margin-left:-5px"><span style="position:relative">un<span style="position:absolute;left:-1px;right:-1px;top:50%;height:2px;background:var(--accent);border-radius:2px;"></span></span>employed.sk</span>
+    </div>
+    <p data-i18n-html="footer.text">&copy; 2026 unemployed.sk &middot; Vyrobené na Slovensku &#127480;&#127472;</p>
+  </footer>
+
+  <script>
+    // Student tab toggle
+    document.querySelectorAll('.student-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.student-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.student-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Nav scroll transparency
+    const nav = document.querySelector('nav');
+    function updateNav() {
+      const t = Math.min(window.scrollY / 120, 1);
+      const isLight = document.body.classList.contains('light-mode');
+      if (isLight) {
+        nav.style.background = `rgba(255,255,255,${0.12 + t * 0.12})`;
+        nav.style.borderColor = `rgba(255,255,255,${0.18 + t * 0.25})`;
+        nav.style.borderTopColor = `rgba(255,255,255,${0.35 + t * 0.4})`;
+        nav.style.boxShadow = `0 12px 40px rgba(0,0,0,${0.08 + t*0.1}), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,${0.3 + t*0.55})`;
+      } else {
+        nav.style.background = `rgba(10,10,10,${0.15 + t * 0.15})`;
+        nav.style.borderColor = `rgba(255,255,255,${0.08 + t * 0.06})`;
+        nav.style.borderTopColor = `rgba(255,255,255,${0.15 + t * 0.1})`;
+        nav.style.boxShadow = `0 12px 40px rgba(0,0,0,${0.15 + t*0.35}), inset 0 1px 0 rgba(255,255,255,${0.08 + t*0.1})`;
+      }
+    }
+    window.addEventListener('scroll', updateNav, { passive: true });
+    updateNav();
+
+    // Theme toggle
+    const toggle = document.getElementById('themeToggle');
+    const toggleMobile = document.getElementById('themeToggleMobile');
+
+    function applyThemeToggle() {
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      // Sync both desktop and mobile toggle icons
+      [toggle, toggleMobile].forEach(function(btn) {
+        var moon = btn.querySelector('.icon-moon');
+        var sun = btn.querySelector('.icon-sun');
+        if (moon) moon.style.display = isLight ? 'block' : 'none';
+        if (sun) sun.style.display = isLight ? 'none' : 'block';
+      });
+      setCookie('theme', isLight ? 'light' : 'dark', 8760);
+      setTimeout(updateNav, 10);
+      // sync theme to demo iframes
+      var demoIframe = document.getElementById('demoIframe');
+      if (demoIframe && demoIframe.contentWindow) {
+        demoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+      }
+      var empDemoIframe = document.getElementById('empDemoIframe');
+      if (empDemoIframe && empDemoIframe.contentWindow) {
+        empDemoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+      }
+    }
+
+    toggle.addEventListener('click', applyThemeToggle);
+    toggleMobile.addEventListener('click', applyThemeToggle);
+
+    // Mobile menu
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+
+    menuBtn.addEventListener('click', () => {
+      mobileNav.classList.toggle('open');
+    });
+
+    document.querySelectorAll('.mobile-dropdown .mobile-link, .mobile-dropdown .mobile-cta').forEach(link => {
+      link.addEventListener('click', () => mobileNav.classList.remove('open'));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!mobileNav.contains(e.target) && !menuBtn.contains(e.target)) {
+        mobileNav.classList.remove('open');
+      }
+    });
+
+    // Close mobile menu when resizing past the mobile breakpoint
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 900 && mobileNav.classList.contains('open')) {
+        mobileNav.classList.remove('open');
+      }
+    });
+
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    reveals.forEach(el => observer.observe(el));
+
+    // Rotating hero words
+    const rotatingWord = document.getElementById('rotatingWord');
+    const words = ['prv\u00FA', 'vysn\u00EDvan\u00FA', 'perfektn\u00FA', 'dobre platen\u00FA', 'flexibiln\u00FA', 'vzdialen\u00FA'];
+    let wordIndex = 0;
+    rotatingWord.classList.add('in');
+
+    setInterval(() => {
+      rotatingWord.classList.remove('in');
+      rotatingWord.classList.add('out');
+      setTimeout(() => {
+        wordIndex = (wordIndex + 1) % words.length;
+        rotatingWord.textContent = words[wordIndex];
+        rotatingWord.classList.remove('out');
+        rotatingWord.classList.add('in');
+      }, 400);
+    }, 2500);
+
+    // Card stack rotation
+    const cards = document.querySelectorAll('.card-carousel .phone-card');
+    const totalCards = cards.length;
+    let activeIndex = 0;
+    let autoTimer;
+
+    function layoutCards() {
+      cards.forEach((card, i) => {
+        let offset = i - activeIndex;
+        if (offset > totalCards / 2) offset -= totalCards;
+        if (offset < -totalCards / 2) offset += totalCards;
+
+        const absOffset = Math.abs(offset);
+        const spread = window.innerWidth < 600 ? 80 : 160;
+        const xShift = offset * spread;
+        const scale = Math.max(1 - absOffset * 0.1, 0.7);
+        const rotate = offset * 4;
+        const zIndex = totalCards - absOffset;
+        const opacity = Math.max(1 - absOffset * 0.25, 0.15);
+
+        card.style.transform = `translateX(${xShift}px) scale(${scale}) rotate(${rotate}deg)`;
+        card.style.zIndex = zIndex;
+        card.style.opacity = opacity;
+        card.style.borderColor = offset === 0 ? 'var(--accent)' : 'var(--border)';
+        card.style.boxShadow = offset === 0
+          ? '0 16px 50px rgba(255,92,0,0.25)'
+          : '0 8px 30px rgba(0,0,0,0.25)';
+        card.style.cursor = offset === 0 ? 'default' : 'pointer';
+      });
+    }
+
+    function startAutoRotate() {
+      clearInterval(autoTimer);
+      autoTimer = setInterval(() => {
+        activeIndex = (activeIndex + 1) % totalCards;
+        layoutCards();
+      }, 5000);
+    }
+
+    // Click card to make it active
+    cards.forEach((card, i) => {
+      card.addEventListener('click', (e) => {
+        if (i === activeIndex) return;
+        if (e.target.closest('.swipe-btn')) return;
+        activeIndex = i;
+        layoutCards();
+        startAutoRotate();
+      });
+    });
+
+    // Swipe buttons
+    function swipeCard(direction) {
+      const card = cards[activeIndex];
+      const xOut = direction === 'like' ? 600 : -600;
+      const rotOut = direction === 'like' ? 20 : -20;
+      card.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+      card.style.transform = `translateX(${xOut}px) scale(0.8) rotate(${rotOut}deg)`;
+      card.style.opacity = '0';
+
+      setTimeout(() => {
+        card.style.transition = 'none';
+        activeIndex = (activeIndex + 1) % totalCards;
+        layoutCards();
+        requestAnimationFrame(() => {
+          cards.forEach(c => {
+            c.style.transition = 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease, border-color 0.3s, background 0.3s, box-shadow 0.7s ease, z-index 0s';
+          });
+        });
+        startAutoRotate();
+      }, 500);
+    }
+
+    document.querySelectorAll('.swipe-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.phone-card');
+        const cardIndex = [...cards].indexOf(card);
+        if (cardIndex !== activeIndex) return;
+        const isLike = btn.classList.contains('like');
+        swipeCard(isLike ? 'like' : 'dislike');
+      });
+    });
+
+    layoutCards();
+    startAutoRotate();
+
+    // Country prefix picker
+    const countries = [
+      ["AF","Afghanistan","+93"],["AL","Albania","+355"],["DZ","Algeria","+213"],["AD","Andorra","+376"],
+      ["AO","Angola","+244"],["AG","Antigua and Barbuda","+1-268"],["AR","Argentina","+54"],["AM","Armenia","+374"],
+      ["AU","Australia","+61"],["AT","Austria","+43"],["AZ","Azerbaijan","+994"],["BS","Bahamas","+1-242"],
+      ["BH","Bahrain","+973"],["BD","Bangladesh","+880"],["BB","Barbados","+1-246"],["BY","Belarus","+375"],
+      ["BE","Belgium","+32"],["BZ","Belize","+501"],["BJ","Benin","+229"],["BT","Bhutan","+975"],
+      ["BO","Bolivia","+591"],["BA","Bosnia and Herzegovina","+387"],["BW","Botswana","+267"],["BR","Brazil","+55"],
+      ["BN","Brunei","+673"],["BG","Bulgaria","+359"],["BF","Burkina Faso","+226"],["BI","Burundi","+257"],
+      ["KH","Cambodia","+855"],["CM","Cameroon","+237"],["CA","Canada","+1"],["CV","Cape Verde","+238"],
+      ["CF","Central African Republic","+236"],["TD","Chad","+235"],["CL","Chile","+56"],["CN","China","+86"],
+      ["CO","Colombia","+57"],["KM","Comoros","+269"],["CD","Congo (DRC)","+243"],["CG","Congo","+242"],
+      ["CR","Costa Rica","+506"],["HR","Croatia","+385"],["CU","Cuba","+53"],["CY","Cyprus","+357"],
+      ["CZ","Czech Republic","+420"],["DK","Denmark","+45"],["DJ","Djibouti","+253"],["DM","Dominica","+1-767"],
+      ["DO","Dominican Republic","+1-809"],["EC","Ecuador","+593"],["EG","Egypt","+20"],["SV","El Salvador","+503"],
+      ["GQ","Equatorial Guinea","+240"],["ER","Eritrea","+291"],["EE","Estonia","+372"],["SZ","Eswatini","+268"],
+      ["ET","Ethiopia","+251"],["FJ","Fiji","+679"],["FI","Finland","+358"],["FR","France","+33"],
+      ["GA","Gabon","+241"],["GM","Gambia","+220"],["GE","Georgia","+995"],["DE","Germany","+49"],
+      ["GH","Ghana","+233"],["GR","Greece","+30"],["GD","Grenada","+1-473"],["GT","Guatemala","+502"],
+      ["GN","Guinea","+224"],["GW","Guinea-Bissau","+245"],["GY","Guyana","+592"],["HT","Haiti","+509"],
+      ["HN","Honduras","+504"],["HU","Hungary","+36"],["IS","Iceland","+354"],["IN","India","+91"],
+      ["ID","Indonesia","+62"],["IR","Iran","+98"],["IQ","Iraq","+964"],["IE","Ireland","+353"],
+      ["IL","Israel","+972"],["IT","Italy","+39"],["CI","Ivory Coast","+225"],["JM","Jamaica","+1-876"],
+      ["JP","Japan","+81"],["JO","Jordan","+962"],["KZ","Kazakhstan","+7"],["KE","Kenya","+254"],
+      ["KI","Kiribati","+686"],["KW","Kuwait","+965"],["KG","Kyrgyzstan","+996"],["LA","Laos","+856"],
+      ["LV","Latvia","+371"],["LB","Lebanon","+961"],["LS","Lesotho","+266"],["LR","Liberia","+231"],
+      ["LY","Libya","+218"],["LI","Liechtenstein","+423"],["LT","Lithuania","+370"],["LU","Luxembourg","+352"],
+      ["MG","Madagascar","+261"],["MW","Malawi","+265"],["MY","Malaysia","+60"],["MV","Maldives","+960"],
+      ["ML","Mali","+223"],["MT","Malta","+356"],["MH","Marshall Islands","+692"],["MR","Mauritania","+222"],
+      ["MU","Mauritius","+230"],["MX","Mexico","+52"],["FM","Micronesia","+691"],["MD","Moldova","+373"],
+      ["MC","Monaco","+377"],["MN","Mongolia","+976"],["ME","Montenegro","+382"],["MA","Morocco","+212"],
+      ["MZ","Mozambique","+258"],["MM","Myanmar","+95"],["NA","Namibia","+264"],["NR","Nauru","+674"],
+      ["NP","Nepal","+977"],["NL","Netherlands","+31"],["NZ","New Zealand","+64"],["NI","Nicaragua","+505"],
+      ["NE","Niger","+227"],["NG","Nigeria","+234"],["KP","North Korea","+850"],["MK","North Macedonia","+389"],
+      ["NO","Norway","+47"],["OM","Oman","+968"],["PK","Pakistan","+92"],["PW","Palau","+680"],
+      ["PS","Palestine","+970"],["PA","Panama","+507"],["PG","Papua New Guinea","+675"],["PY","Paraguay","+595"],
+      ["PE","Peru","+51"],["PH","Philippines","+63"],["PL","Poland","+48"],["PT","Portugal","+351"],
+      ["QA","Qatar","+974"],["RO","Romania","+40"],["RU","Russia","+7"],["RW","Rwanda","+250"],
+      ["KN","Saint Kitts and Nevis","+1-869"],["LC","Saint Lucia","+1-758"],["VC","Saint Vincent","+1-784"],
+      ["WS","Samoa","+685"],["SM","San Marino","+378"],["ST","Sao Tome and Principe","+239"],
+      ["SA","Saudi Arabia","+966"],["SN","Senegal","+221"],["RS","Serbia","+381"],["SC","Seychelles","+248"],
+      ["SL","Sierra Leone","+232"],["SG","Singapore","+65"],["SK","Slovakia","+421"],["SI","Slovenia","+386"],
+      ["SB","Solomon Islands","+677"],["SO","Somalia","+252"],["ZA","South Africa","+27"],
+      ["KR","South Korea","+82"],["SS","South Sudan","+211"],["ES","Spain","+34"],["LK","Sri Lanka","+94"],
+      ["SD","Sudan","+249"],["SR","Suriname","+597"],["SE","Sweden","+46"],["CH","Switzerland","+41"],
+      ["SY","Syria","+963"],["TW","Taiwan","+886"],["TJ","Tajikistan","+992"],["TZ","Tanzania","+255"],
+      ["TH","Thailand","+66"],["TL","Timor-Leste","+670"],["TG","Togo","+228"],["TO","Tonga","+676"],
+      ["TT","Trinidad and Tobago","+1-868"],["TN","Tunisia","+216"],["TR","Turkey","+90"],
+      ["TM","Turkmenistan","+993"],["TV","Tuvalu","+688"],["UG","Uganda","+256"],["UA","Ukraine","+380"],
+      ["AE","United Arab Emirates","+971"],["GB","United Kingdom","+44"],["US","United States","+1"],
+      ["UY","Uruguay","+598"],["UZ","Uzbekistan","+998"],["VU","Vanuatu","+678"],["VA","Vatican City","+379"],
+      ["VE","Venezuela","+58"],["VN","Vietnam","+84"],["YE","Yemen","+967"],["ZM","Zambia","+260"],
+      ["ZW","Zimbabwe","+263"]
+    ];
+
+    function countryFlag(code) {
+      return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    }
+
+    const phonePrefix = document.getElementById('phonePrefix');
+    countries.forEach(([code, name, dial]) => {
+      const opt = document.createElement('option');
+      opt.value = dial;
+      opt.textContent = countryFlag(code) + ' ' + dial;
+      if (code === 'SK') opt.selected = true;
+      phonePrefix.appendChild(opt);
+    });
+
+    // Background grid
+    (function() {
+      const canvas = document.getElementById('bgGrid');
+      const ctx = canvas.getContext('2d');
+      const GRID = 80;
+      const flashes = [];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function addFlash() {
+        const isDark = !document.body.classList.contains('light-mode');
+        const cols = Math.ceil(canvas.width / GRID) + 1;
+        const rows = Math.ceil(canvas.height / GRID) + 1;
+        const isV = Math.random() > 0.5;
+        flashes.push({
+          isV,
+          idx: isV ? Math.floor(Math.random() * cols) : Math.floor(Math.random() * rows),
+          alpha: 0,
+          growing: true,
+          speed: 0.03 + Math.random() * 0.03
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const isDark = !document.body.classList.contains('light-mode');
+        const baseAlpha = isDark ? 0.045 : 0.055;
+        const baseColor = isDark
+          ? `rgba(255,255,255,${baseAlpha})`
+          : `rgba(0,0,0,${baseAlpha})`;
+
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 1;
+
+        for (let x = 0; x <= canvas.width + GRID; x += GRID) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y <= canvas.height + GRID; y += GRID) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+
+        for (let i = flashes.length - 1; i >= 0; i--) {
+          const f = flashes[i];
+          if (f.growing) {
+            f.alpha += f.speed;
+            if (f.alpha >= 1) f.growing = false;
+          } else {
+            f.alpha -= f.speed * 0.6;
+          }
+          if (f.alpha <= 0) { flashes.splice(i, 1); continue; }
+
+          ctx.save();
+          ctx.strokeStyle = `rgba(255,92,0,${f.alpha * 0.25})`;
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = `rgba(255,92,0,${f.alpha * 0.4})`;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          if (f.isV) {
+            const x = f.idx * GRID;
+            ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+          } else {
+            const y = f.idx * GRID;
+            ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+        requestAnimationFrame(draw);
+      }
+
+      setInterval(addFlash, 2000);
+      draw();
+    })();
+
+    // ── i18n ──
+    const translations = {
+      sk: {
+        'nav.students': 'Uchádzači',
+        'nav.graduates': 'Absolventi',
+        'nav.employers': 'Zamestnávatelia',
+        'nav.signup': 'Registruj sa',
+        'hero.title': 'Nájdi svoju<br><span class="accent"><span class="rotating-word" id="rotatingWord">prvú</span> prácu.</span>',
+        'hero.desc': 'Brigády, stáže a plné úväzky pre študentov a absolventov na Slovensku. Inteligentné párovanie, transparentný plat a overení zamestnávatelia — pomôžeme ti byť <span class="strikethrough-wrap"><span class="strike-un">un</span><span class="strike-line"></span></span>employed.',
+        'hero.learnMore': 'Zisti viac',
+        'card.marketingIntern': 'Marketingový stážista',
+        'card.internship': 'Stáž',
+        'card.hybrid': 'Hybridné',
+        'card.partTime': 'Čiastočný úväzok',
+        'card.hrs20': '20 hod/týždeň',
+        'card.juniorDev': 'Junior vývojár',
+        'card.fullTime': 'Plný úväzok',
+        'card.onSite': 'V kancelárii',
+        'card.noExp': 'Bez praxe',
+        'card.cashier': 'Víkendový pokladník',
+        'card.weekends': 'Víkendy',
+        'card.flexible': 'Flexibilné',
+        'card.dataAnalyst': 'Dátový analytik',
+        'card.remote': 'Na diaľku',
+        'card.6months': '6 mesiacov',
+        'card.warehouse': 'Skladník',
+        'card.evenings': 'Večery',
+        'card.loc.bratislava': 'Bratislava, Slovensko',
+        'card.loc.kosice': 'Košice, Slovensko',
+        'card.loc.zilina': 'Žilina, Slovensko',
+        'card.loc.nitra': 'Nitra, Slovensko',
+        'card.rate.850': '8,50 € <span>/hod</span>',
+        'card.rate.1800': '1 800 € <span>/mes</span>',
+        'card.rate.720': '7,20 € <span>/hod</span>',
+        'card.rate.1000': '10,00 € <span>/hod</span>',
+        'card.rate.780': '7,80 € <span>/hod</span>',
+        'card.hrs40': '40 hod/týždeň',
+        'card.hrs12': '12 hod/týždeň',
+        'card.hrs25': '25 hod/týždeň',
+        'card.hrs16': '16 hod/týždeň',
+        'students.label': 'Pre študentov a absolventov',
+        'students.title': 'Od tvojej prvej práce až po tvoj dream job',
+        'students.desc': 'Či už hľadáš brigádu, stáž alebo prvú kariérnu pozíciu — máme pre teba to pravé.',
+        'students.highschool': 'Stredná škola',
+        'students.university': 'Vysoká škola',
+        'students.graduates': 'Absolventi',
+        'hs.find.title': 'Nájdi svoju prvú prácu',
+        'hs.find.desc': 'Žiadne skúsenosti? Žiadny problém. Pozície, kde žiadna kvalifikácia nie je potrebná.',
+        'hs.easy.title': 'Jednoducho a rýchlo',
+        'hs.easy.desc': 'Prihlás sa jedným klikom — až 3× rýchlejšie ako na bežných portáloch.',
+        'hs.gigs.title': 'Jednorázové brigády',
+        'hs.gigs.desc': 'Krátkodobé brigády na mieru — odpracuj, zarob a žiadne záväzky.',
+        'uni.salary.title': 'Transparentný plat',
+        'uni.salary.desc': 'Každá pozícia ukazuje presne, koľko zarobíš — žiadne hádanky, žiadne prekvapenia.',
+        'uni.internships.title': 'Stáže pre tvoj odbor',
+        'uni.internships.desc': 'Náš párovací algoritmus ti nájde stáže na mieru — a swipovaním štýlom Tinder si rýchlo vyberieš tie, ktoré ťa zaujmú.',
+        'uni.comms.title': 'Komunikácia na jednom mieste',
+        'uni.comms.desc': 'Správy, pohovory a aktualizácie — všetko prehľadne v jednej aplikácii.',
+        'grads.refs.title': 'Referencie a odznaky',
+        'grads.refs.desc': 'Získaj odporúčania z predchádzajúcich brigád a odznaky, ktoré dokazujú tvoje výsledky.',
+        'grads.jobs.title': 'Top pozície s najlepším platom',
+        'grads.jobs.desc': 'Najlepšie platené juniorské pozície na jednom mieste — žiadne pasce typu „5 rokov praxe".',
+        'grads.screening.title': 'Overené firmy a stáže na mieru',
+        'grads.screening.desc': 'Každá firma je overená a stáže sú vybrané podľa toho, čo ti naozaj sedí.',
+        'emp.label': 'Pre zamestnávateľov',
+        'emp.title': 'Nábor mladých talentov, bez zbytočnej práce',
+        'emp.desc': 'AI predvýber, overení kandidáti a analytika na jednom mieste — nájdite správnych ľudí rýchlejšie.',
+        'emp.ai.title': 'AI predvýber a párovanie',
+        'emp.ai.desc': 'Naše AI predvyberá a páruje uchádzačov k vašim pozíciám — vidíte len kandidátov, ktorí naozaj sedia.',
+        'emp.invite.title': 'Pozvánky z našej databázy',
+        'emp.invite.desc': 'Prehľadávajte našu databázu overených kandidátov a pozvite ich priamo na vaše otvorené pozície.',
+        'emp.analytics.title': 'Analytika a export dát',
+        'emp.analytics.desc': 'Sledujte zobrazenia, prihlášky a výkon náboru — všetko z dashboardu s možnosťou exportu.',
+        'emp.autofill.title': 'AI tvorba inzerátov',
+        'emp.autofill.desc': 'Vytvorte pracovný inzerát za sekundy — naše AI napíše popis, požiadavky a tagy za vás.',
+        'emp.demo': 'Vyskúšaj employer demo',
+        'emp.contact': 'Kontaktujte sales pre cenník',
+        'emp.toggleLabel': 'Pre zamestnávateľov — zobraziť viac',
+        'students.demo': 'Vyskúšaj demo',
+        'signup.label': 'Skorý prístup',
+        'signup.title': 'Buď jeden z prvých.<br><span style="font-style:italic">Aplikácia príde už čoskoro.</span>',
+        'signup.desc': 'Zaregistruj sa a získaj prednostný prístup pred oficiálnym launchom.',
+        'signup.counter': '5 000+ registrovaných',
+        'signup.emailPh': 'Tvoj email',
+        'signup.phonePh': 'Telefónne číslo',
+        'signup.iAm': 'Som...',
+        'signup.hsStudent': 'Stredoškolák',
+        'signup.uniStudent': 'Vysokoškolák',
+        'signup.graduate': 'Absolvent',
+        'signup.employer': 'Zamestnávateľ',
+        'signup.agreeToTerms': 'Súhlasím so <a id="openPrivacy2">Zásadami ochrany osobných údajov</a> a <a id="openTos">Všeobecnými obchodnými podmienkami</a>.',
+        'signup.marketingConsent': 'Chcem dostávať novinky a aktualizácie produktu (nepovinné).',
+        'signup.submit': 'Registrácia',
+        'signup.sending': 'Odosielam…',
+        'signup.alreadySubmitted': 'Už si sa zaregistroval/a. Ozveme sa ti čoskoro!',
+        'signup.error': 'Nastala chyba. Skús to znova.',
+        'signup.prefixLabel': 'Predvoľba krajiny',
+        'signup.downloadOn': 'Stiahni na',
+        'signup.comingSoon': 'Už čoskoro',
+        'toast.success': 'Údaje odoslané — ozveme sa ti!',
+        'footer.text': '&copy; 2026 unemployed.sk &middot; Vyrobené na Slovensku 🇸🇰',
+        'consent.title': 'Súkromie & cookies',
+        'consent.text': 'Používame <strong>funkčné cookies</strong> (jazyk, téma) nevyhnutné pre správne fungovanie webu a <strong>analytické cookies</strong> na zlepšenie služieb. Kliknutím na „Odmietnuť" odmietate len analytické cookies — funkčné cookies zostanú aktívne. Vaše údaje spracúvame podľa <a id="consentPrivacyLink">zásad ochrany súkromia</a>.',
+        'consent.accept': 'Súhlasím',
+        'consent.decline': 'Odmietnuť',
+        'privacy.close': 'Zavrieť',
+        'privacy.title': 'Zásady ochrany osobných údajov',
+        'privacy.operator': 'Prevádzkovateľ: unemployed.sk &middot; Platné od: 1. apríla 2026',
+        'privacy.s1.title': '1. Aké údaje zbierame',
+        'privacy.s1.email': 'E-mailová adresa (povinná)',
+        'privacy.s1.phone': 'Telefónne číslo vrátane predvoľby krajiny (nepovinné)',
+        'privacy.s1.usertype': 'Typ používateľa (stredoškolák / vysokoškolák / absolvent / zamestnávateľ)',
+        'privacy.s1.ip': 'IP adresa — zbieraná výlučne na bezpečnostné účely, prevenciu spamu a obmedzenie počtu požiadaviek. Pred uložením je jednosmerným hašovaním (SHA-256) nezvratne anonymizovaná a nie je spájaná s konkrétnou osobou.',
+        'privacy.s2.title': '2. Účel spracovania',
+        'privacy.s2.desc': 'Údaje spracúvame výlučne za účelom poskytnutia skorého prístupu k aplikácii unemployed.sk a zasielania informácií o jej spustení. Právnym základom je Váš dobrovoľný súhlas (čl. 6 ods. 1 písm. a) GDPR).',
+        'privacy.s3.title': '3. Príjemcovia údajov',
+        'privacy.s3.desc': 'Vaše osobné údaje neposkytujeme tretím stranám na marketingové účely. Údaje môžeme zdieľať iba s dodávateľmi technickej infraštruktúry (hostingové služby) nevyhnutnej na prevádzku webu, a to výlučne na základe spracovateľských zmlúv.',
+        'privacy.s4.title': '4. Doba uchovávania',
+        'privacy.s4.desc': 'Údaje uchovávame po dobu nevyhnutnú na splnenie účelu (max. 24 mesiacov od registrácie), alebo kým neodvoláte súhlas.',
+        'privacy.s5.title': '5. Vaše práva',
+        'privacy.s5.access': 'Právo na prístup k údajom',
+        'privacy.s5.rectify': 'Právo na opravu alebo vymazanie',
+        'privacy.s5.portability': 'Právo na prenosnosť údajov',
+        'privacy.s5.withdraw': 'Právo kedykoľvek odvolať súhlas bez vplyvu na zákonnosť predchádzajúceho spracovania',
+        'privacy.s5.complain': 'Právo podať sťažnosť na Úrade na ochranu osobných údajov SR (<a href="https://dataprotection.gov.sk" target="_blank" rel="noopener">dataprotection.gov.sk</a>)',
+        'privacy.s6.title': '6. Kontakt',
+        'privacy.s6.desc': 'Pre uplatnenie práv alebo otázky k ochrane súkromia nás kontaktujte na: <strong>unemployed.sk@gmail.com</strong>',
+        'tos.close': 'Zavrieť',
+        'tos.title': 'Všeobecné obchodné podmienky',
+        'tos.operator': 'Prevádzkovateľ: unemployed.sk &middot; Platné od: 1. apríla 2026',
+        'tos.s1.title': '1. Predmet a rozsah služby',
+        'tos.s1.desc': 'Tieto podmienky upravujú používanie čakacej listiny (waitlist) webovej stránky unemployed.sk. Registráciou na čakacej listine nevzniká žiadny zmluvný nárok na prístup k platforme, na konkrétnu funkčnosť ani na termín spustenia. Ide výlučne o predbežný záujem o skorý prístup po spustení služby.',
+        'tos.s2.title': '2. Povinnosti používateľa',
+        'tos.s2.desc': 'Používateľ sa zaväzuje uviesť pravdivé a aktuálne kontaktné údaje. Registrácia prostredníctvom automatizovaných nástrojov, botov alebo falošných identít je zakázaná.',
+        'tos.s3.title': '3. Vylúčenie zodpovednosti',
+        'tos.s3.desc': 'Webová stránka a čakacia listina sú poskytované „tak, ako sú" bez akýchkoľvek záruk. Prevádzkovateľ nezodpovedá za žiadne priame ani nepriame škody vyplývajúce z registrácie na čakacej listine, nedostupnosti služby ani z prípadného oneskorenia alebo zrušenia spustenia platformy.',
+        'tos.s4.title': '4. Duševné vlastníctvo',
+        'tos.s4.desc': 'Všetok obsah webovej stránky unemployed.sk (texty, grafika, logá, zdrojový kód) je chránený autorskými právami prevádzkovateľa. Akékoľvek kopírovanie alebo šírenie bez písomného súhlasu je zakázané.',
+        'tos.s5.title': '5. Zmeny podmienok',
+        'tos.s5.desc': 'Prevádzkovateľ si vyhradzuje právo tieto podmienky kedykoľvek zmeniť. Aktuálna verzia je vždy dostupná na tejto stránke. Ďalšie používanie služby po zverejnení zmien sa považuje za súhlas s novými podmienkami.',
+        'tos.s6.title': '6. Rozhodné právo',
+        'tos.s6.desc': 'Tieto podmienky sa riadia právnym poriadkom Slovenskej republiky. Prípadné spory budú riešené pred príslušnými súdmi Slovenskej republiky.',
+        'tos.s7.title': '7. Kontakt',
+        'tos.s7.desc': 'Otázky k podmienkam zasielajte na: <strong>unemployed.sk@gmail.com</strong>',
+      },
+      en: {
+        'nav.students': 'Job seekers',
+        'nav.graduates': 'Graduates',
+        'nav.employers': 'Employers',
+        'nav.signup': 'Sign up',
+        'hero.title': 'Find your<br><span class="accent"><span class="rotating-word" id="rotatingWord">first</span> job.</span>',
+        'hero.desc': 'Part-time jobs, internships and full-time roles for students and graduates in Slovakia. Smart matching, transparent pay and verified employers — we\'ll help you be <span class="strikethrough-wrap"><span class="strike-un">un</span><span class="strike-line"></span></span>employed.',
+        'hero.learnMore': 'Learn more',
+        'card.marketingIntern': 'Marketing Intern',
+        'card.internship': 'Internship',
+        'card.hybrid': 'Hybrid',
+        'card.partTime': 'Part-time',
+        'card.hrs20': '20 hrs/week',
+        'card.juniorDev': 'Junior Developer',
+        'card.fullTime': 'Full-time',
+        'card.onSite': 'On-site',
+        'card.noExp': 'No experience',
+        'card.cashier': 'Weekend Cashier',
+        'card.weekends': 'Weekends',
+        'card.flexible': 'Flexible',
+        'card.dataAnalyst': 'Data Analyst',
+        'card.remote': 'Remote',
+        'card.6months': '6 months',
+        'card.warehouse': 'Warehouse Worker',
+        'card.evenings': 'Evenings',
+        'card.loc.bratislava': 'Bratislava, Slovakia',
+        'card.loc.kosice': 'Košice, Slovakia',
+        'card.loc.zilina': 'Žilina, Slovakia',
+        'card.loc.nitra': 'Nitra, Slovakia',
+        'card.rate.850': '€8.50 <span>/hr</span>',
+        'card.rate.1800': '€1,800 <span>/mo</span>',
+        'card.rate.720': '€7.20 <span>/hr</span>',
+        'card.rate.1000': '€10.00 <span>/hr</span>',
+        'card.rate.780': '€7.80 <span>/hr</span>',
+        'card.hrs40': '40 hrs/week',
+        'card.hrs12': '12 hrs/week',
+        'card.hrs25': '25 hrs/week',
+        'card.hrs16': '16 hrs/week',
+        'students.label': 'For students & graduates',
+        'students.title': 'From your first job to your dream job',
+        'students.desc': 'Whether you\'re looking for a gig, an internship or your first career role — we\'ve got you covered.',
+        'students.highschool': 'High school',
+        'students.university': 'University',
+        'students.graduates': 'Graduates',
+        'hs.find.title': 'Find your first job',
+        'hs.find.desc': 'No experience? No problem. Positions where no qualifications are needed.',
+        'hs.easy.title': 'Simple & fast',
+        'hs.easy.desc': 'Apply with one click — up to 3× faster than on regular job portals.',
+        'hs.gigs.title': 'One-off gigs',
+        'hs.gigs.desc': 'Short-term gigs tailored to you — work, earn and no strings attached.',
+        'uni.salary.title': 'Transparent pay',
+        'uni.salary.desc': 'Every listing shows exactly how much you\'ll earn — no guessing, no surprises.',
+        'uni.internships.title': 'Internships for your field',
+        'uni.internships.desc': 'Our matching algorithm finds internships tailored to you — and with Tinder-style swiping you can quickly shortlist the ones you like.',
+        'uni.comms.title': 'All-in-one communication',
+        'uni.comms.desc': 'Messages, interviews and updates — everything in one place, one app.',
+        'grads.refs.title': 'Referrals & badges',
+        'grads.refs.desc': 'Get recommendations from past jobs and badges that prove your track record.',
+        'grads.jobs.title': 'Top positions, highest pay',
+        'grads.jobs.desc': 'The best-paid junior positions in one place — no "5 years experience" traps.',
+        'grads.screening.title': 'Verified companies & tailored roles',
+        'grads.screening.desc': 'Every company is verified and roles are selected based on what truly fits you.',
+        'emp.label': 'For employers',
+        'emp.title': 'Hire young talent, without the hassle',
+        'emp.desc': 'AI pre-screening, verified candidates and analytics in one place — find the right people faster.',
+        'emp.ai.title': 'AI pre-screening & matching',
+        'emp.ai.desc': 'Our AI pre-screens and matches applicants to your roles — you only see candidates who truly fit.',
+        'emp.invite.title': 'Invite from our database',
+        'emp.invite.desc': 'Browse our database of verified candidates and invite them directly to your open positions.',
+        'emp.analytics.title': 'Analytics & data export',
+        'emp.analytics.desc': 'Track views, applications and hiring performance — all from your dashboard with export options.',
+        'emp.autofill.title': 'AI-powered listing creation',
+        'emp.autofill.desc': 'Create a job listing in seconds — our AI writes the description, requirements and tags for you.',
+        'emp.demo': 'Try the employer demo',
+        'emp.contact': 'Contact sales for pricing',
+        'emp.toggleLabel': 'For employers — show more',
+        'students.demo': 'Try the demo',
+        'signup.label': 'Early access',
+        'signup.title': 'Be one of the first.<br><span style="font-style:italic">The app is coming soon.</span>',
+        'signup.desc': 'Sign up and get priority access before the official launch.',
+        'signup.counter': '5,000+ registered',
+        'signup.emailPh': 'Your email',
+        'signup.phonePh': 'Phone number',
+        'signup.iAm': 'I am...',
+        'signup.hsStudent': 'High school student',
+        'signup.uniStudent': 'University student',
+        'signup.graduate': 'Graduate',
+        'signup.employer': 'Employer',
+        'signup.agreeToTerms': 'I agree to the <a id="openPrivacy2">Privacy Policy</a> and <a id="openTos">Terms &amp; Conditions</a>.',
+        'signup.marketingConsent': 'I\'d like to receive product news and updates (optional).',
+        'signup.submit': 'Sign up',
+        'signup.sending': 'Sending…',
+        'signup.alreadySubmitted': 'You\'ve already signed up. We\'ll be in touch soon!',
+        'signup.error': 'An error occurred. Please try again.',
+        'signup.prefixLabel': 'Country code',
+        'signup.downloadOn': 'Download on',
+        'signup.comingSoon': 'Coming soon',
+        'toast.success': 'Data submitted — we\'ll be in touch!',
+        'footer.text': '&copy; 2026 unemployed.sk &middot; Made in Slovakia 🇸🇰',
+        'consent.title': 'Privacy & cookies',
+        'consent.text': 'We use <strong>functional cookies</strong> (language, theme) essential for the site to work, and <strong>analytics cookies</strong> to improve our service. Clicking "Decline" rejects only analytics cookies — functional cookies will remain active. Your data is processed according to our <a id="consentPrivacyLink">privacy policy</a>.',
+        'consent.accept': 'Accept',
+        'consent.decline': 'Decline',
+        'privacy.close': 'Close',
+        'privacy.title': 'Privacy Policy',
+        'privacy.operator': 'Controller: unemployed.sk &middot; Effective: 1 April 2026',
+        'privacy.s1.title': '1. What data we collect',
+        'privacy.s1.email': 'Email address (required)',
+        'privacy.s1.phone': 'Phone number including country code (optional)',
+        'privacy.s1.usertype': 'User type (high school student / university student / graduate / employer)',
+        'privacy.s1.ip': 'IP address — collected solely for security, spam prevention, and rate-limiting purposes. It is irreversibly anonymised via one-way SHA-256 hashing before being stored and cannot be linked back to any individual.',
+        'privacy.s2.title': '2. Purpose of processing',
+        'privacy.s2.desc': 'We process your data solely for the purpose of providing early access to the unemployed.sk app and sending information about its launch. The legal basis is your voluntary consent (Art. 6(1)(a) GDPR).',
+        'privacy.s3.title': '3. Recipients of data',
+        'privacy.s3.desc': 'We do not share your personal data with third parties for marketing purposes. We may share data only with technical infrastructure providers (hosting services) necessary to operate the website, and only under data processing agreements.',
+        'privacy.s4.title': '4. Retention period',
+        'privacy.s4.desc': 'We retain your data for the time necessary to fulfil the purpose (max. 24 months from registration), or until you withdraw your consent.',
+        'privacy.s5.title': '5. Your rights',
+        'privacy.s5.access': 'Right of access to your data',
+        'privacy.s5.rectify': 'Right to rectification or erasure',
+        'privacy.s5.portability': 'Right to data portability',
+        'privacy.s5.withdraw': 'Right to withdraw consent at any time without affecting the lawfulness of prior processing',
+        'privacy.s5.complain': 'Right to lodge a complaint with the Slovak Data Protection Authority (<a href="https://dataprotection.gov.sk" target="_blank" rel="noopener">dataprotection.gov.sk</a>)',
+        'privacy.s6.title': '6. Contact',
+        'privacy.s6.desc': 'To exercise your rights or for any privacy-related questions, contact us at: <strong>unemployed.sk@gmail.com</strong>',
+        'tos.close': 'Close',
+        'tos.title': 'Terms & Conditions',
+        'tos.operator': 'Operator: unemployed.sk &middot; Effective: 1 April 2026',
+        'tos.s1.title': '1. Scope of service',
+        'tos.s1.desc': 'These terms govern use of the unemployed.sk waitlist. Registering on the waitlist creates no contractual entitlement to platform access, specific features, or a launch date. It represents solely a preliminary expression of interest in early access once the service launches.',
+        'tos.s2.title': '2. User obligations',
+        'tos.s2.desc': 'Users agree to provide accurate and up-to-date contact details. Registration via automated tools, bots, or false identities is prohibited.',
+        'tos.s3.title': '3. Limitation of liability',
+        'tos.s3.desc': 'The website and waitlist are provided "as is" without any warranties. The operator is not liable for any direct or indirect damages arising from waitlist registration, service unavailability, or any delay or cancellation of the platform launch.',
+        'tos.s4.title': '4. Intellectual property',
+        'tos.s4.desc': 'All content on unemployed.sk (text, graphics, logos, source code) is protected by the operator\'s copyright. Any copying or distribution without written consent is prohibited.',
+        'tos.s5.title': '5. Changes to terms',
+        'tos.s5.desc': 'The operator reserves the right to modify these terms at any time. The current version is always available on this page. Continued use of the service after changes are published constitutes acceptance of the updated terms.',
+        'tos.s6.title': '6. Governing law',
+        'tos.s6.desc': 'These terms are governed by the laws of the Slovak Republic. Any disputes shall be resolved before the competent courts of the Slovak Republic.',
+        'tos.s7.title': '7. Contact',
+        'tos.s7.desc': 'Questions about these terms: <strong>unemployed.sk@gmail.com</strong>',
+      }
+    };
+
+    const heroWordsI18n = {
+      sk: ['prvú', 'vysnívanú', 'perfektnú', 'dobre platenú', 'flexibilnú', 'vzdialenú'],
+      en: ['first', 'dream', 'perfect', 'well-paid', 'flexible', 'remote']
+    };
+
+    let currentLang = 'sk';
+
+    function setLang(lang) {
+      currentLang = lang;
+      setCookie('lang', lang, 8760);
+      const t = translations[lang];
+      document.documentElement.lang = lang;
+
+      // text content
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.textContent = t[key];
+      });
+
+      // innerHTML content
+      document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        if (t[key]) el.innerHTML = t[key];
+      });
+
+      // placeholders
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (t[key]) el.placeholder = t[key];
+      });
+
+      // aria-labels
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        const key = el.getAttribute('data-i18n-aria-label');
+        if (t[key]) el.setAttribute('aria-label', t[key]);
+      });
+
+      // update rotating words
+      words.length = 0;
+      heroWordsI18n[lang].forEach(w => words.push(w));
+      wordIndex = 0;
+      rotatingWord.textContent = words[0];
+
+      // re-bind privacy modal link after innerHTML swap
+      const privacyLink = document.getElementById('openPrivacy');
+      if (privacyLink) {
+        privacyLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          privacyOverlay.classList.add('open');
+        });
+      }
+      const privacyLink2 = document.getElementById('openPrivacy2');
+      if (privacyLink2) {
+        privacyLink2.addEventListener('click', (e) => {
+          e.preventDefault();
+          privacyOverlay.classList.add('open');
+        });
+      }
+      const tosLink = document.getElementById('openTos');
+      if (tosLink) {
+        tosLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          tosOverlay.classList.add('open');
+        });
+      }
+
+      // re-bind consent banner privacy link after innerHTML swap
+      if (typeof bindConsentPrivacyLink === 'function') bindConsentPrivacyLink();
+
+      // update active lang buttons
+      document.querySelectorAll('.lang-switch button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+
+      // sync language to demo iframe
+      var demoIframe = document.getElementById('demoIframe');
+      if (demoIframe && demoIframe.contentWindow) {
+        demoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, '*');
+      }
+      var empDemoIframe = document.getElementById('empDemoIframe');
+      if (empDemoIframe && empDemoIframe.contentWindow) {
+        empDemoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, '*');
+      }
+    }
+
+    // Wire up lang switch buttons
+    document.querySelectorAll('.lang-switch button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setLang(btn.dataset.lang);
+      });
+    });
+
+    // Privacy modal
+    const privacyOverlay = document.getElementById('privacyOverlay');
+    var openPrivacyEl = document.getElementById('openPrivacy');
+    if (openPrivacyEl) {
+      openPrivacyEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        privacyOverlay.classList.add('open');
+      });
+    }
+    var openPrivacy2El = document.getElementById('openPrivacy2');
+    if (openPrivacy2El) {
+      openPrivacy2El.addEventListener('click', (e) => {
+        e.preventDefault();
+        privacyOverlay.classList.add('open');
+      });
+    }
+    document.getElementById('closePrivacy').addEventListener('click', () => {
+      privacyOverlay.classList.remove('open');
+    });
+    privacyOverlay.addEventListener('click', (e) => {
+      if (e.target === privacyOverlay) privacyOverlay.classList.remove('open');
+    });
+
+    // Terms & Conditions modal
+    const tosOverlay = document.getElementById('tosOverlay');
+    var openTosEl = document.getElementById('openTos');
+    if (openTosEl) {
+      openTosEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        tosOverlay.classList.add('open');
+      });
+    }
+    document.getElementById('closeTos').addEventListener('click', () => {
+      tosOverlay.classList.remove('open');
+    });
+    tosOverlay.addEventListener('click', (e) => {
+      if (e.target === tosOverlay) tosOverlay.classList.remove('open');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        privacyOverlay.classList.remove('open');
+        tosOverlay.classList.remove('open');
+      }
+    });
+
+    // ── Cookie helpers (defined early for consent banner) ──
+    function setCookie(name, value, hours) {
+      var expires = new Date(Date.now() + hours * 3600000).toUTCString();
+      document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    }
+    function getCookie(name) {
+      var match = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    // ── Consent banner ──
+    (function() {
+      var banner = document.getElementById('consentBanner');
+      var acceptBtn = document.getElementById('consentAccept');
+      var declineBtn = document.getElementById('consentDecline');
+
+      function show() { banner.classList.add('show'); }
+      function hide() { banner.classList.remove('show'); }
+
+      window.showConsentBanner = show;
+      window.hideConsentBanner = hide;
+
+      window.bindConsentPrivacyLink = function() {
+        var link = document.getElementById('consentPrivacyLink');
+        if (link) {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            privacyOverlay.classList.add('open');
+          });
+        }
+      };
+
+      acceptBtn.addEventListener('click', function() {
+        localStorage.setItem('consentStatus', 'accepted');
+        setCookie('consentStatus', 'accepted', 8760);
+        hide();
+      });
+
+      declineBtn.addEventListener('click', function() {
+        localStorage.setItem('consentStatus', 'declined');
+        setCookie('consentStatus', 'declined', 8760);
+        hide();
+      });
+
+      if (!localStorage.getItem('consentStatus') && !getCookie('consentStatus')) {
+        setTimeout(show, 800);
+      }
+
+      window.bindConsentPrivacyLink();
+    })();
+
+    function hasSubmittedRecently() {
+      var cookieVal = getCookie('form_submitted_at');
+      if (cookieVal && (Date.now() - parseInt(cookieVal, 10)) < 86400000) return true;
+      var lsVal = localStorage.getItem('lastSubmitTime');
+      if (lsVal && (Date.now() - parseInt(lsVal, 10)) < 86400000) return true;
+      return false;
+    }
+
+    function markSubmitted() {
+      var now = Date.now().toString();
+      setCookie('form_submitted_at', now, 24);
+      localStorage.setItem('lastSubmitTime', now);
+    }
+
+    // ── Form submit + toast + rate limiting + overlay ──
+    var signupForm = document.getElementById('signupForm');
+    var toast = document.getElementById('toast');
+    var formOverlay = document.getElementById('formSubmittedOverlay');
+    var toastTimer;
+
+    // Show overlay if already submitted within 24h
+    if (hasSubmittedRecently()) {
+      formOverlay.classList.add('show');
+    }
+
+    signupForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      // If user hasn't accepted consent, show the banner
+      if (localStorage.getItem('consentStatus') !== 'accepted') {
+        window.showConsentBanner();
+        return;
+      }
+
+      // Rate limit: 24h between submissions (cookie + localStorage)
+      if (hasSubmittedRecently()) {
+        formOverlay.classList.add('show');
+        return;
+      }
+
+      var submitBtn = signupForm.querySelector('button[type="submit"]');
+      var originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = translations[currentLang]['signup.sending'];
+
+      var formData = new URLSearchParams(new FormData(signupForm));
+      formData.set('consented', document.getElementById('consentTerms').checked ? '1' : '0');
+      formData.set('marketingConsent', document.getElementById('consentMarketing').checked ? '1' : '0');
+
+      try {
+        var res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString(),
+        });
+        if (res.ok) {
+          signupForm.reset();
+          markSubmitted();
+          clearTimeout(toastTimer);
+          toast.classList.add('show');
+          toastTimer = setTimeout(function() {
+            toast.classList.remove('show');
+            // Fade in overlay only after toast disappears
+            formOverlay.classList.add('animate');
+            requestAnimationFrame(function() {
+              formOverlay.classList.add('show');
+            });
+          }, 5000);
+        } else {
+          var errData = null;
+          try { errData = await res.json(); } catch(_) {}
+          toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.error'];
+          toast.classList.add('show');
+          setTimeout(function(){ toast.classList.remove('show'); }, 5000);
+        }
+      } catch(err) {
+        toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.error'];
+        toast.classList.add('show');
+        setTimeout(function(){ toast.classList.remove('show'); }, 5000);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
+    // ── Restore theme & language from cookies ──
+    (function() {
+      var savedTheme = getCookie('theme');
+      if (savedTheme === 'light' && !document.body.classList.contains('light-mode')) {
+        document.body.classList.add('light-mode');
+        document.querySelectorAll('.theme-toggle').forEach(function(btn) {
+          var m = btn.querySelector('.icon-moon');
+          var s = btn.querySelector('.icon-sun');
+          if (m) m.style.display = 'block';
+          if (s) s.style.display = 'none';
+        });
+        updateNav();
+      }
+      var savedLang = getCookie('lang');
+      if (savedLang && savedLang !== currentLang && translations[savedLang]) {
+        setLang(savedLang);
+      }
+      // Save consent status to cookie too
+      var consent = localStorage.getItem('consentStatus');
+      if (consent) setCookie('consentStatus', consent, 8760);
+    })();
+
+    // ── Custom cursor glow ──
+    (function() {
+      var glow = document.createElement('div');
+      glow.className = 'cursor-glow';
+      document.body.appendChild(glow);
+
+      var mx = -200, my = -200, gx = -200, gy = -200;
+      var rafId;
+
+      document.addEventListener('mousemove', function(e) {
+        mx = e.clientX;
+        my = e.clientY;
+        if (!rafId) rafId = requestAnimationFrame(animateGlow);
+      });
+
+      function animateGlow() {
+        gx += (mx - gx) * 0.1;
+        gy += (my - gy) * 0.1;
+        glow.style.left = gx + 'px';
+        glow.style.top = gy + 'px';
+        if (Math.abs(mx - gx) > 0.5 || Math.abs(my - gy) > 0.5) {
+          rafId = requestAnimationFrame(animateGlow);
+        } else {
+          glow.style.left = mx + 'px';
+          glow.style.top = my + 'px';
+          rafId = null;
+        }
+      }
+
+      document.addEventListener('mouseenter', function() {
+        glow.style.opacity = '1';
+      });
+      document.addEventListener('mouseleave', function() {
+        glow.style.opacity = '0';
+      });
+
+      var hoverSelector = 'a, button, [role="button"], input, select, textarea, .card, .app-badge, .tab-btn, .nav-link, .consent-btn-accept, .consent-btn-decline';
+      document.addEventListener('mouseover', function(e) {
+        if (e.target.closest(hoverSelector)) glow.classList.add('hovering');
+      });
+      document.addEventListener('mouseout', function(e) {
+        if (e.target.closest(hoverSelector)) glow.classList.remove('hovering');
+      });
+    })();
+
+    // ── DEMO POPUP ──
+    (function() {
+      const trigger = document.getElementById('demoTriggerBtn');
+      const overlay = document.getElementById('demoOverlay');
+      const closeBtn = document.getElementById('demoCloseBtn');
+      if (!trigger || !overlay) return;
+
+      var cursorGlow = document.querySelector('.cursor-glow');
+
+      trigger.addEventListener('click', function() {
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        if (cursorGlow) cursorGlow.style.display = 'none';
+        // sync current theme + lang to iframe
+        var iframe = document.getElementById('demoIframe');
+        if (iframe && iframe.contentWindow) {
+          var isLight = document.body.classList.contains('light-mode');
+          iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+          iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+        }
+      });
+
+      function closeDemo() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        if (cursorGlow) cursorGlow.style.display = '';
+        var iframe = document.getElementById('demoIframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'reset' }, '*');
+        }
+      }
+
+      closeBtn.addEventListener('click', closeDemo);
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeDemo();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeDemo();
+      });
+    })();
+
+    // ── EMPLOYER DEMO POPUP ──
+    (function() {
+      const trigger = document.getElementById('empDemoTriggerBtn');
+      const overlay = document.getElementById('empDemoOverlay');
+      const closeBtn = document.getElementById('empDemoCloseBtn');
+      if (!trigger || !overlay) return;
+
+      var cursorGlow = document.querySelector('.cursor-glow');
+
+      trigger.addEventListener('click', function() {
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        if (cursorGlow) cursorGlow.style.display = 'none';
+        var iframe = document.getElementById('empDemoIframe');
+        if (iframe && iframe.contentWindow) {
+          var isLight = document.body.classList.contains('light-mode');
+          iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+          iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+        }
+      });
+
+      function closeEmpDemo() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        if (cursorGlow) cursorGlow.style.display = '';
+        var iframe = document.getElementById('empDemoIframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'reset' }, '*');
+        }
+      }
+
+      closeBtn.addEventListener('click', closeEmpDemo);
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeEmpDemo();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeEmpDemo();
+      });
+    })();
+
+    // ── EMPLOYERS COLLAPSIBLE TOGGLE ──
+    (function() {
+      const toggle = document.getElementById('empToggle');
+      const body = document.getElementById('empBody');
+      if (!toggle || !body) return;
+
+      toggle.addEventListener('click', function() {
+        const expanded = body.classList.toggle('expanded');
+        toggle.classList.toggle('expanded', expanded);
+        toggle.setAttribute('aria-expanded', expanded);
+        // Re-trigger reveal animations for newly visible content
+        if (expanded) {
+          body.querySelectorAll('.reveal').forEach(function(el) {
+            el.classList.add('visible');
+          });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
