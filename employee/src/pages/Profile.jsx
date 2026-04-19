@@ -61,10 +61,43 @@ export default function Profile() {
 
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Shield size={16} color="var(--blue)" /> Verejné referencie
+            Tvoje odznaky
           </h3>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
-            Ohodnoť zamestnávateľa po prvej práci a získaj odznak spoľahlivosti, ktorý ti otvorí dvere k lepším platom.
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+            {/* Verified Student Badge */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--green)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--green)', opacity: 0.1, borderRadius: '50%' }} />
+              <Shield size={20} color="var(--green)" style={{ marginBottom: '8px' }} />
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>Overený študent</div>
+              <div style={{ fontSize: '10px', color: 'var(--green)' }}>ISIC overený</div>
+            </div>
+
+            {/* Top Match Badge */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--accent)', opacity: 0.1, borderRadius: '50%' }} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)" stroke="none" style={{ marginBottom: '8px' }}>
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>Top 10% Zhoda</div>
+              <div style={{ fontSize: '10px', color: 'var(--accent)' }}>Vysoká aktivita</div>
+            </div>
+
+            {/* Responsive Badge */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--blue)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--blue)', opacity: 0.1, borderRadius: '50%' }} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" style={{ marginBottom: '8px' }}>
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>Rýchla odozva</div>
+              <div style={{ fontSize: '10px', color: 'var(--blue)' }}>Do 2 hodín</div>
+            </div>
+            
+            {/* Locked Badge */}
+            <div style={{ background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
+              <div style={{ fontSize: '20px', marginBottom: '4px' }}>🔒</div>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)' }}>Ďalší level</div>
+            </div>
           </div>
         </div>
 

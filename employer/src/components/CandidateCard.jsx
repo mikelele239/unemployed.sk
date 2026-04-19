@@ -19,10 +19,38 @@ const CandidateCard = ({ candidate, isInvited, onInvite }) => {
         {initials}
       </div>
       <div style={{ flex: 1 }}>
-        <h4 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{candidate.student_name}</h4>
+        <h4 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>
+          {candidate.student_name}
+        </h4>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
           {profile.school || 'Univerzita'} • {profile.field || 'Študent'}
         </div>
+        {profile.badges && profile.badges.length > 0 && (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+            {profile.badges.map(b => (
+              <div 
+                key={b.id} 
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: '4px', 
+                  padding: '2px 6px', borderRadius: '4px', 
+                  background: `${b.color}15`, color: b.color, 
+                  fontSize: '10px', fontWeight: '600', border: `1px solid ${b.color}30`
+                }}
+              >
+                {b.id === 'verified' && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                )}
+                {b.id === 'top_match' && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                )}
+                {b.id === 'responsive' && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                )}
+                {b.label}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* AI Score Badge */}

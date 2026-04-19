@@ -20,6 +20,29 @@ const MatchCard = ({ match, isAccepted, onAccept, onSkip }) => {
         <div>
           <h4 style={{ fontSize: '13px', fontWeight: '600' }}>{match.name}</h4>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{match.position}</div>
+          {match.student_profile?.badges && match.student_profile.badges.length > 0 && (
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+              {match.student_profile.badges.map(b => (
+                <div 
+                  key={b.id} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: '3px', 
+                    padding: '2px 5px', borderRadius: '4px', 
+                    background: `${b.color}15`, color: b.color, 
+                    fontSize: '9px', fontWeight: '600', border: `1px solid ${b.color}30`
+                  }}
+                >
+                  {b.id === 'verified' && (
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                  )}
+                  {b.id === 'top_match' && (
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  )}
+                  {b.label}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: isAccepted ? 'var(--green)' : 'var(--accent)' }}>
           {match.score}<span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>%</span>
