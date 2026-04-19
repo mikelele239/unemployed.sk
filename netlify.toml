@@ -1,0 +1,12 @@
+[build]
+  publish = "website"
+
+[[redirects]]
+  from = "/website/*"
+  to = "/:splat"
+  status = 301
+
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 301
