@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
-import { AI_MATCHES } from '../mockData';
+import { isDemoMode } from '../demoMode';
+import { CANDIDATES, AI_MATCHES } from '../mockData';
 import CandidateCard from '../components/CandidateCard';
-import MatchCard from '../components/MatchCard';
 import Toast from '../components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Candidates = () => {
   const { t } = useI18n();
-  const { invitedIds, setInvitedIds, acceptedIds, setAcceptedIds, companyProfile } = useAppState();
+  const { invitedIds, setInvitedIds, acceptedIds, setAcceptedIds, companyProfile, refreshAnalytics } = useAppState();
   
   const [candidates, setCandidates] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMsg, setToastMsg] = useState('');
@@ -18,26 +19,93 @@ const Candidates = () => {
   const [skippedMatches, setSkippedMatches] = useState([]);
 
   useEffect(() => {
-    const fetchCandidates = async () => {
+    const fetchData = async () => {
+      const demo = isDemoMode();
+      if (demo) {
+        setCandidates(CANDIDATES);
+        setMatches(AI_MATCHES);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[DEBUG] Fetching candidates and matches...');
       try {
-        const companyName = companyProfile?.name || 'Compx';
-        const res = await fetch(`/api/applications?company=${encodeURIComponent(companyName)}`);
-        const data = await res.json();
-        setCandidates(Array.isArray(data) ? data : []);
+        const token = localStorage.getItem('employer_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        // 1. Fetch Applications (Recent applicants)
+        const resApps = await fetch('/api/applications', { headers });
+        if (resApps.ok) {
+          const data = await resApps.json();
+          console.log(`[DEBUG] Received ${data.length} applications:`, data);
+          setCandidates(Array.isArray(data) ? data : []);
+        } else {
+          console.error('[DEBUG] Failed to fetch applications:', resApps.status);
+        }
+
+        // 2. Fetch AI Matches (Real student profiles filtered by relevance)
+        const resMatches = await fetch('/api/employer/matches', { headers });
+        if (resMatches.ok) {
+          const data = await resMatches.json();
+          console.log(`[DEBUG] Received ${data.length} AI matches:`, data);
+          setMatches(Array.isArray(data) ? data : []);
+        } else {
+          console.error('[DEBUG] Failed to fetch AI matches:', resMatches.status);
+        }
+        
       } catch (err) {
-        console.error('Fetch error:', err);
+        console.error('[DEBUG] Big fetch error in Candidates page:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCandidates();
-  }, [companyProfile]);
+    fetchData();
+  }, []);
 
-  const handleInvite = (id) => {
-    if (!invitedIds.includes(id)) {
-      setInvitedIds([...invitedIds, id]);
-      setToastMsg(t('toastInvite'));
-      setShowToast(true);
+  const handleInvite = async (id, status = 'Interview', interviewDates = null) => {
+    const demo = isDemoMode();
+    try {
+      if (demo) {
+        if (status === 'Interview' && !invitedIds.includes(id)) {
+          setInvitedIds([...invitedIds, id]);
+        }
+        setCandidates(prev => prev.map(c => c.id === id ? { 
+          ...c, 
+          status, 
+          interviewInfo: interviewDates ? { offered_dates: interviewDates } : c.interviewInfo 
+        } : c));
+        setToastMsg(status === 'Hired' ? 'Kandidát bol úspešne prijatý!' : t('toastInvite'));
+        setShowToast(true);
+        return;
+      }
+
+      const token = localStorage.getItem('employer_token');
+      const res = await fetch(`/api/applications/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status, interviewDates })
+      });
+
+      if (res.ok) {
+        if (status === 'Interview' && !invitedIds.includes(id)) {
+          setInvitedIds([...invitedIds, id]);
+        }
+        // Update local status and info immediately
+        setCandidates(prev => prev.map(c => c.id === id ? { 
+          ...c, 
+          status, 
+          interviewInfo: interviewDates ? { offered_dates: interviewDates } : c.interviewInfo 
+        } : c));
+        
+        setToastMsg(status === 'Hired' ? 'Kandidát bol úspešne prijatý!' : t('toastInvite'));
+        setShowToast(true);
+        refreshAnalytics();
+      }
+    } catch (err) {
+      console.error('Update status error:', err);
     }
   };
 
@@ -54,14 +122,14 @@ const Candidates = () => {
   };
 
   const filteredCandidates = candidates.filter(c => 
-    !invitedIds.includes(c.id) && (
-      c.student_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (c.student_profile?.field || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.student_profile?.school || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (c.status || '').toLowerCase() !== 'rejected' &&
+    (
+      (c.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (c.student_profile?.field || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
-  const visibleMatches = AI_MATCHES.filter(m => !skippedMatches.includes(m.id) && !acceptedIds.includes(m.id));
+  const visibleMatches = matches.filter(m => !skippedMatches.includes(m.student_id) && !acceptedIds.includes(m.student_id));
 
   return (
     <div style={{ animation: 'tabSlideIn 0.3s cubic-bezier(0.4, 0, 0.15, 1)' }}>
@@ -119,35 +187,6 @@ const Candidates = () => {
               </motion.div>
             ))
           )}
-        </AnimatePresence>
-      </div>
-
-      {/* AI Matches Header */}
-      <div style={{ padding: '16px 18px 10px', marginTop: '8px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700' }}>{t('matchTitle')}</h1>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('matchSub')}</p>
-      </div>
-
-      {/* AI Matches List */}
-      <div style={{ padding: '0 18px' }}>
-        <AnimatePresence mode="popLayout">
-          {visibleMatches.map(m => (
-            <motion.div
-              key={m.id}
-              layout="position"
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-            >
-              <MatchCard 
-                match={m} 
-                isAccepted={acceptedIds.includes(m.id)} 
-                onAccept={handleAcceptMatch} 
-                onSkip={handleSkipMatch} 
-              />
-            </motion.div>
-          ))}
         </AnimatePresence>
       </div>
 

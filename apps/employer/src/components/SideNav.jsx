@@ -49,7 +49,7 @@ const SideNav = () => {
                 right: '-1px', 
                 top: '50%', 
                 height: '2px', 
-                background: 'var(--accent)', 
+                background: 'var(--border)', 
                 borderRadius: '2px' 
               }} />
             </span>
@@ -104,10 +104,26 @@ const SideNav = () => {
       {/* Bottom Context */}
       <div style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', border: '1px solid var(--border)' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
           <span style={{ fontSize: '13px', fontWeight: '600' }}>Executive Account</span>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Plan</span>
         </div>
+        <button 
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = '/employer';
+          }}
+          title="Odhlásiť sa"
+          style={{
+            background: 'none', border: 'none', color: '#ff4747',
+            padding: '8px', cursor: 'pointer', borderRadius: '6px',
+            display: 'flex', alignItems: 'center', transition: 'background 0.2s'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 71, 71, 0.1)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
       </div>
     </aside>
   );

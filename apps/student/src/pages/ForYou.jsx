@@ -1,29 +1,85 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
+import { getAccessToken } from '../supabase';
+import { isDemoMode } from '../demoMode';
 import SwipeCard from '../components/SwipeCard';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
 
 export default function ForYou() {
+  const demo = isDemoMode();
   const { t } = useTranslation();
-  const { jobs, loading } = useJobs();
+  const { jobs, loading } = useJobs(true);
   const [cards, setCards] = useState([]);
   const [profile, setProfile] = useState({});
   const [selectedJob, setSelectedJob] = useState(null);
   const [toast, setToast] = useState(false);
-  const { addApplication, hasApplied } = useApplications();
+  const { addApplication, hasApplied, applications } = useApplications();
 
-  useEffect(() => {
-    if (!loading && jobs.length > 0) {
-      setCards([...jobs].reverse());
+  const logJobView = async (jobId) => {
+    if (!jobId || demo) return; // Skip in demo mode
+    try {
+      const token = getAccessToken();
+      console.log(`[SYNC] Triggering view for Job=${jobId}`);
+      const res = await fetch(`/api/jobs/${jobId}/view`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error(`[SYNC] View failed for Job=${jobId}:`, errorData);
+      }
+    } catch (e) { 
+      console.error(`[SYNC] Network error while logging view for Job=${jobId}:`, e);
     }
-  }, [loading, jobs]);
+  };
 
   useEffect(() => {
-    const prof = JSON.parse(localStorage.getItem('unemployed_profile')) || {};
-    setProfile(prof);
+    if (!loading) {
+      // Exclude jobs that have already been applied to
+      const filtered = jobs.filter(j => !hasApplied(j.id));
+      console.log(`[DEBUG] Filtering cards: ${jobs.length} total -> ${filtered.length} remaining`);
+      setCards([...filtered].reverse());
+      
+      // Log view for the top card if it exists
+      if (filtered.length > 0) {
+        logJobView(filtered[0]?.id);
+      }
+    }
+  }, [loading, jobs, applications]);
+
+  useEffect(() => {
+    if (demo) {
+      // Demo mode: use localStorage profile only
+      const prof = JSON.parse(localStorage.getItem('unemployed_profile')) || {};
+      setProfile(prof);
+      return;
+    }
+    const fetchProfile = async () => {
+      try {
+        const token = getAccessToken();
+        const res = await fetch('/api/profile', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Map backend names back to expected frontend state
+          setProfile({
+            ...data,
+            name: `${data.first_name} ${data.last_name || ''}`.trim()
+          });
+        } else {
+          // Fallback to local
+          const prof = JSON.parse(localStorage.getItem('unemployed_profile')) || {};
+          setProfile(prof);
+        }
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+      }
+    };
+    fetchProfile();
   }, []);
 
   const handleSwipe = (direction, job) => {
@@ -32,7 +88,12 @@ export default function ForYou() {
       setToast(true);
       setTimeout(() => setToast(false), 2200);
     }
-    setCards(prev => prev.filter(c => c.id !== job.id));
+    const nextCards = cards.filter(c => c.id !== job.id);
+    setCards(nextCards);
+    // Log view for the next card revealed
+    if (nextCards.length > 0) {
+      logJobView(nextCards[nextCards.length - 1].id);
+    }
   };
 
   const handleApplyFromDetail = (job) => {
@@ -49,7 +110,7 @@ export default function ForYou() {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}</p>
       </div>
 
-      <div style={{ position: 'relative', flex: 1, margin: '16px', perspective: 800 }}>
+      <div style={{ position: 'relative', flex: 1, margin: '16px 24px', perspective: 800 }}>
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
             <div className="typing-cursor" style={{ width: 30, height: 30, marginBottom: 12 }}></div>

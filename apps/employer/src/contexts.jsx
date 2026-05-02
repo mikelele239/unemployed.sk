@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { translations } from './i18n';
-
+import { isDemoMode } from './demoMode';
+import { INITIAL_LISTINGS, CHART_DATA } from './mockData';
 const VALID_LANGS = ['sk', 'en'];
 const DEMO_PROFILE = { name: 'Compx', industry: 'IT', locations: ['Bratislava'], hiring: ['Stáž', 'Brigáda'] };
 
@@ -103,7 +104,20 @@ function safeParseJSON(str, fallback) {
   }
 }
 
+// Mock analytics for demo mode
+const DEMO_ANALYTICS = {
+  total_views: 1842,
+  total_applications: 47,
+  active_jobs: 3,
+  avg_match_score: 89,
+  pipeline_stats: { Pending: 12, Viewed: 18, Interview: 8, Hired: 5, Rejected: 4 },
+  recent_candidates: [],
+  recent_apps_trend: CHART_DATA
+};
+
 export const AppStateProvider = ({ children }) => {
+  const demo = isDemoMode();
+
   const [invitedIds, setInvitedIds] = useState(() => {
     return safeParseJSON(localStorage.getItem('employer_invited'), []);
   });
@@ -112,18 +126,15 @@ export const AppStateProvider = ({ children }) => {
     return safeParseJSON(localStorage.getItem('employer_accepted'), []);
   });
 
-  const [listings, setListings] = useState([]);
+  const [listings, setListings] = useState(demo ? INITIAL_LISTINGS : []);
+  const [companyProfile, setCompanyProfile] = useState(demo ? DEMO_PROFILE : { name: 'Vaša Firma', industry: 'Hľadáme talenty' });
+  const [analytics, setAnalytics] = useState(
+    demo ? DEMO_ANALYTICS : { total_views: 0, total_applications: 0, active_jobs: 0, recent_views_trend: [0,0,0,0,0,0,0] }
+  );
 
-  const [companyProfile, setCompanyProfile] = useState(() => {
-    const saved = safeParseJSON(localStorage.getItem('employer_profile'), null);
-    if (saved && typeof saved === 'object' && saved.name) return saved;
-    // Pre-seed demo profile so employer demo always shows the dashboard
-    localStorage.setItem('employer_profile', JSON.stringify(DEMO_PROFILE));
-    return DEMO_PROFILE;
-  });
-
-  // Fetch jobs from backend on mount
+  // Fetch jobs from backend on mount — ONLY in live mode
   useEffect(() => {
+    if (demo) return;
     fetch('/api/jobs')
       .then(res => res.json())
       .then(data => {
@@ -132,10 +143,53 @@ export const AppStateProvider = ({ children }) => {
       .catch(err => console.error('Failed to fetch jobs:', err));
   }, []);
 
+  const fetchAnalytics = async (token) => {
+    if (demo) return; // Skip in demo mode
+    try {
+      const res = await fetch('/api/employer/analytics', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data);
+      }
+    } catch (err) {
+      console.error('Analytics fetch error:', err);
+    }
+  };
+
+  // Fetch employer profile — ONLY in live mode
+  useEffect(() => {
+    if (demo) return;
+    const fetchEmployerProfile = async () => {
+      const token = localStorage.getItem('employer_token');
+      if (!token) return;
+
+      try {
+        const res = await fetch('/api/auth/employer/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCompanyProfile(data && data.name ? data : { name: 'Vaša Firma', industry: 'Hľadáme talenty' });
+        } else {
+          setCompanyProfile({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
+        }
+        
+        // Also fetch analytics
+        fetchAnalytics(token);
+      } catch (err) {
+        console.error('Employer profile fetch error:', err);
+        setCompanyProfile({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
+      }
+    };
+    fetchEmployerProfile();
+  }, []);
+
   useEffect(() => { localStorage.setItem('employer_invited', JSON.stringify(invitedIds)); }, [invitedIds]);
   useEffect(() => { localStorage.setItem('employer_accepted', JSON.stringify(acceptedIds)); }, [acceptedIds]);
   useEffect(() => {
-    if (companyProfile) localStorage.setItem('employer_profile', JSON.stringify(companyProfile));
+    if (companyProfile && !demo) localStorage.setItem('employer_profile', JSON.stringify(companyProfile));
   }, [companyProfile]);
 
   return (
@@ -143,7 +197,8 @@ export const AppStateProvider = ({ children }) => {
       invitedIds, setInvitedIds,
       acceptedIds, setAcceptedIds,
       listings, setListings,
-      companyProfile, setCompanyProfile
+      companyProfile, setCompanyProfile,
+      analytics, refreshAnalytics: () => demo ? null : fetchAnalytics(localStorage.getItem('employer_token'))
     }}>
       {children}
     </AppStateContext.Provider>

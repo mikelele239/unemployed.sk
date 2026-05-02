@@ -39,7 +39,7 @@ const CreateListing = () => {
     location: 'Bratislava',
     duration: '3 months',
     startDate: new Date().toISOString().split('T')[0],
-    rate: '8,00',
+    rate: '8.00',
     rateUnit: '/hod',
     hours: '20 hod/týždenne',
     description: '',
@@ -62,10 +62,18 @@ const CreateListing = () => {
     } catch (err) { console.error(err); }
   };
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const handleSave = async () => {
+    if (!formData.title || !formData.description) {
+      setError('Prosím vyplňte názov a popis pozície.');
+      return;
+    }
+
     const newItem = {
       ...formData,
-      company: companyProfile?.name || 'Compx',
+      company: companyProfile?.name || 'Vaša Firma',
       tags: [formData.type, formData.workModel, 'Nástup: ' + formData.startDate],
       rate: formData.rate + '€',
       logo: 'CX',
@@ -73,17 +81,30 @@ const CreateListing = () => {
     };
 
     try {
+      setLoading(true);
+      setError('');
+      const token = localStorage.getItem('employer_token');
       const res = await fetch('/api/jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify(newItem)
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setListings(prev => [{ ...newItem, id: data.id, match: 95 }, ...prev]);
         navigate('/listings');
+      } else {
+        setError(data.error || 'Nepodarilo sa uložiť ponuku.');
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err); 
+      setError('Chyba spojenia so serverom.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -138,7 +159,7 @@ const CreateListing = () => {
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Hodinová mzda (€)</label>
-              <input className="text-input" type="number" value={formData.rate} onChange={e => setFormData({...formData, rate: e.target.value})} />
+              <input className="text-input" type="number" step="0.01" value={formData.rate} onChange={e => setFormData({...formData, rate: e.target.value})} />
             </div>
 
             <div>
@@ -175,7 +196,24 @@ const CreateListing = () => {
             />
           </div>
 
-          <button className="btn-main" onClick={handleSave} style={{ height: '52px', fontSize: '16px' }}>Publikovať ponuku</button>
+          {error && (
+            <div style={{ color: '#ef4444', background: '#fee2e2', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '13px', border: '1px solid #fecaca' }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          <button 
+            className="btn-main" 
+            onClick={handleSave} 
+            disabled={loading}
+            style={{ 
+              height: '52px', fontSize: '16px', width: '100%',
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer' 
+            }}
+          >
+            {loading ? 'Publikujem...' : 'Publikovať ponuku'}
+          </button>
         </div>
 
         {/* Info/Map Side */}

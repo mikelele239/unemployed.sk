@@ -13,6 +13,7 @@ export const JOBS = [
     tags: ['Stáž', 'Hybridne', 'Čiastočný'], 
     schedule: 'Po-Pi', 
     match: 94, 
+    lat: 48.1439, lng: 17.1097, // Bratislava Center
     reason: 'Sedí k tvojmu záujmu o marketing a lokácii v Bratislave.',
     description: 'Hľadáme študenta VŠ na výpomoc v marketingovom oddelení. Budeš sa učiť pracovať s kampaňami, sociálnymi sieťami a dátovou analytikou.',
     requirements: '• Študent 2. alebo 3. ročníka VŠ (najlepšie zameranie na marketing)\n• Výborná znalosť gramatiky\n• Chuť učiť sa nové veci'
@@ -31,6 +32,7 @@ export const JOBS = [
     tags: ['Brigáda', 'Víkendy', 'Flexibilné'], 
     schedule: 'Víkendy', 
     match: 88, 
+    lat: 48.1542, lng: 17.1558, // Ružinov
     reason: 'Perfektne sedí k tvojej víkendovej dostupnosti.',
     description: 'Hľadáme usmievavého kolegu do našej prevádzky na víkendové smeny. Práca s pokladňou a komunikácia so zákazníkmi.',
     requirements: '• Základná znalosť práce s počítačom\n• Príjemné vystupovanie\n• Potravinársky preukaz (vybavíme)'
@@ -49,6 +51,7 @@ export const JOBS = [
     tags: ['Brigáda', 'Flexibilné', 'Bez praxe'], 
     schedule: 'Flexibilne', 
     match: 87, 
+    lat: 48.1447, lng: 17.1129, // Old Town
     reason: 'Flexibilné hodiny a tvoja komunikatívna osobnosť — skvelá zhoda.',
     description: 'Baví ťa káva? Pridaj sa k nám do Urban House! Naučíme ťa pripravovať skvelú kávu a latte art.',
     requirements: '• Komunikatívnosť a úsmev na tvári\n• Časová flexibilita\n• Skúsenosti nie sú nutné, všetko ťa naučíme'
@@ -67,6 +70,7 @@ export const JOBS = [
     tags: ['Plný úväzok', 'V kancelárii', 'Bez praxe'], 
     schedule: 'Po-Pi', 
     match: 91, 
+    lat: 48.1425, lng: 17.1235, // Eurovea area
     reason: 'Silná zhoda pre tvoje analytické zručnosti a záujem o tech.',
     description: 'Hľadáme čerstvého absolventa so záujmom o dáta. Budeš analyzovať hrozby a spracovávať reporty pre náš bezpečnostný tím.',
     requirements: '• VŠ vzdelanie technického alebo ekonomického smeru\n• Znalosť SQL a Excelu na mierne pokročilej úrovni\n• Anglický jazyk B2'
@@ -85,6 +89,7 @@ export const JOBS = [
     tags: ['Brigáda', 'Večery', 'Bez praxe'], 
     schedule: 'Večery', 
     match: 83, 
+    lat: 48.1465, lng: 17.1085, // Martinus OBchodna
     reason: 'Večerné zmeny sedia k tvojmu rozvrhu.',
     description: 'Miluješ knihy? Hľadáme výpomoc na poobedné a večerné smeny do nášho kníhkupectva.',
     requirements: '• Láska ku knihám\n• Spoľahlivosť\n• Príjemné vystupovanie'
@@ -103,6 +108,7 @@ export const JOBS = [
     tags: ['Jednorázovka', 'Víkendy', 'Fyzická'], 
     schedule: 'Víkend', 
     match: 76, 
+    lat: 48.2185, lng: 17.3985, // Senec area
     reason: 'Rýchla jednorázovka blízko Bratislavy.',
     description: 'Potrebujeme výpomoc so sťahovaním skladu počas najbližšieho víkendu.',
     requirements: '• Fyzická zdatnosť\n• Vek 18+\n• Presnosť a dochvíľnosť'

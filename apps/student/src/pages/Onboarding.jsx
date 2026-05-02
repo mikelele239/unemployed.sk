@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, Sparkles, CheckCircle2, ChevronRight, FileText, BrainCircuit } from 'lucide-react';
 import { useTranslation } from '../I18nContext';
+import { cvApi } from '../services/cvApi';
+import { getAccessToken } from '../supabase';
+import { isDemoMode } from '../demoMode';
 
 const SKILLS_POOL_SK = ['Komunikatívny', 'Tímový hráč', 'Spoľahlivý', 'Rýchlo sa učí', 'Kreatívny', 'Detailista', 'Líder', 'Riešiteľ', 'Organizovaný', 'Angličtina B2'];
 const SKILLS_POOL_EN = ['Communicative', 'Team player', 'Reliable', 'Fast learner', 'Creative', 'Detail-oriented', 'Leader', 'Problem solver', 'Organised', 'English B2'];
@@ -15,7 +18,7 @@ export default function Onboarding({ onComplete }) {
   const [phase, setPhase] = useState('welcome');
   const [parsingProgress, setParsingProgress] = useState(0);
   const [climaxStep, setClimaxStep] = useState(0);
-  const [data, setData] = useState({ name: '', edu: '', loc: '', avail: [], jobType: [], skills: [] });
+  const [data, setData] = useState({ name: '', edu: '', loc: '', avail: [], jobType: [], skills: [], cv_id: null });
   const [manualStep, setManualStep] = useState(0);
 
   const MANUAL_STEPS = [
@@ -43,8 +46,16 @@ export default function Onboarding({ onComplete }) {
     if (e.target.files?.[0]) startParsing(e.target.files[0]);
   };
 
-  // 3. Faux parsing simulation
-  const startParsing = (fileObj) => {
+    // 3. Faux parsing simulation + Real CV Upload
+  const startParsing = async (fileObj) => {
+    // Real Upload triggered in background
+    try {
+      const cvData = await cvApi.uploadCV(fileObj);
+      setData(prev => ({ ...prev, cv_id: cvData.id }));
+    } catch (err) {
+      console.error("Submitting CV failed:", err);
+    }
+
     // Simulate AI extracting name from filename (e.g. "Tomas_Horvath_CV.pdf" -> "Tomas Horvath")
     let extractedName = fileObj.name.replace(/\.[^/.]+$/, ""); // remove extension
     extractedName = extractedName.replace(/_|-|cv|resume|životopis|zivotopis/gi, " ").replace(/\s+/g, " ").trim();
@@ -92,9 +103,41 @@ export default function Onboarding({ onComplete }) {
   };
 
   // 5. Climax animation then complete
-  const finalizeMatching = () => {
-    localStorage.setItem('unemployed_profile', JSON.stringify(data));
+  const finalizeMatching = async () => {
     setPhase('climax');
+    
+    // Sync to Supabase securely
+    const profilePayload = {
+      name: data.name,
+      education: data.edu,
+      location: data.loc,
+      skills: data.skills,
+      jobPreferences: data.jobType,
+      cv_id: data.cv_id
+    };
+
+    try {
+      if (isDemoMode()) {
+        localStorage.setItem('unemployed_profile', JSON.stringify(data));
+        localStorage.setItem('unemployed_profile_started', 'true');
+      } else {
+        const token = getAccessToken();
+        await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(profilePayload)
+        });
+        // Save full profile and mark as started
+        localStorage.setItem('unemployed_profile', JSON.stringify(data));
+        localStorage.setItem('unemployed_profile_started', 'true');
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    }
+
     let step = 0;
     const interval = setInterval(() => {
       step++;
@@ -142,14 +185,27 @@ export default function Onboarding({ onComplete }) {
 
             <label
               onDragOver={handleDragOver} onDrop={handleDrop}
-              style={{ width: '100%', maxWidth: 400, flex: 1, maxHeight: 300, border: '2px dashed var(--border)', borderRadius: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              style={{ 
+                width: '100%', maxWidth: 440, flex: 1, maxHeight: 320, 
+                border: '2px dashed var(--border)', borderRadius: 32, 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                background: 'var(--bg-card)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                padding: '40px 24px', textAlign: 'center'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-lighter)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}
             >
               <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} style={{ display: 'none' }} />
-              <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <UploadCloud size={32} />
+              <div style={{ 
+                width: 72, height: 72, borderRadius: 24, 
+                background: 'var(--accent)', color: '#fff', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                marginBottom: 20, boxShadow: '0 8px 24px rgba(255,92,0,0.25)' 
+              }}>
+                <UploadCloud size={36} />
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{t('ob.uploadCta')}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('ob.uploadFormats')}</p>
+              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.3px' }}>{t('ob.uploadCta')}</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: '240px', lineHeight: 1.5 }}>{t('ob.uploadFormats')}</p>
             </label>
 
             <button onClick={() => setPhase('manual')}

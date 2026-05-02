@@ -18,6 +18,16 @@ export const translations = {
     dashCreate: 'Vytvoriť inzerát',
     chartTitle: 'Prihlášky za posledných 7 dní',
     
+    recentCandTitle: 'Poslední kandidáti',
+    recentCandSub: 'Prehľad najnovších prihlášok',
+    tableCandidate: 'Kandidát',
+    tableJob: 'Pozícia',
+    tableScore: 'AI Skóre',
+    tableDate: 'Dátum',
+    noCandYet: 'Zatiaľ žiadni kandidáti',
+    avgMatchChange: 'Priemerná kvalita talentov',
+    pipelineSummary: 'Spracovaných prihlášok celkovo',
+    
     candTitle: 'Kandidáti',
     candSub: 'Prehliadajte overených kandidátov',
     candSearch: 'Hľadať kandidátov...',
@@ -101,6 +111,16 @@ export const translations = {
     statActiveChange: '3 new this month',
     dashCreate: 'Create listing',
     chartTitle: 'Applications over the last 7 days',
+    
+    recentCandTitle: 'Recent Candidates',
+    recentCandSub: 'Overview of latest applications',
+    tableCandidate: 'Candidate',
+    tableJob: 'Position',
+    tableScore: 'AI Score',
+    tableDate: 'Date',
+    noCandYet: 'No candidates yet',
+    avgMatchChange: 'Average talent quality',
+    pipelineSummary: 'Total applications processed',
     
     candTitle: 'Candidates',
     candSub: 'Browse verified candidates',

@@ -36,10 +36,14 @@ CREATE TABLE IF NOT EXISTS public.jobs (
 );
 
 -- 3. Enable RLS (Row Level Security) - Basic Setup
--- For now, we allow reading and writing for development
 ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read jobs" ON public.jobs;
 CREATE POLICY "Allow public read jobs" ON public.jobs FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert jobs" ON public.jobs;
 CREATE POLICY "Allow public insert jobs" ON public.jobs FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public insert submissions" ON public.submissions;
 CREATE POLICY "Allow public insert submissions" ON public.submissions FOR INSERT WITH CHECK (true);

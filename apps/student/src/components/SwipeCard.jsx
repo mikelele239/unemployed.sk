@@ -89,7 +89,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       whileDrag={{ scale: 1.02 }}
     >
       {/* ── MAP HERO ── */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '54%', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '65%', pointerEvents: 'none' }}>
         {job.lat && job.lng ? (
           <MapContainer
             center={[Number(job.lat), Number(job.lng)]}
@@ -125,11 +125,11 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       </div>
 
       {/* ── CONTENT (Only fully visible for top/active card to prevent overlap ghosting) ── */}
-      <div style={{
+        <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          padding: '24px', background: 'var(--bg-card)',
-          borderTop: '1px solid var(--border)', top: '46%',
-          display: 'flex', flexDirection: 'column', gap: 12,
+          padding: '16px 20px 80px', background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border)', top: '32%',
+          display: 'flex', flexDirection: 'column', gap: 8,
           visibility: index > 1 ? 'hidden' : 'visible' // Performance & anti-glitch
         }}
       >
@@ -160,34 +160,34 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
           ))}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--accent)' }}>
-            {job.rate} <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{job.rateUnit}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent)' }}>
+            {job.rate} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.rateUnit}</span>
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{job.hours}</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{job.hours}</div>
         </div>
       </div>
 
       {/* ── ACTION BUTTONS ── */}
       {isTop && (
-        <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 40, zIndex: 100 }}>
+        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 32, zIndex: 100 }}>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('left', job); }}
             style={{ 
-              width: 64, height: 64, borderRadius: 32, 
-              border: '2px solid var(--border)', background: 'var(--bg-card)', 
-              backdropFilter: 'blur(16px)', color: 'var(--text-muted)', 
-              fontSize: 24, cursor: 'pointer', transition: 'all 0.2s',
+              width: 48, height: 48, borderRadius: 24, 
+              border: '1px solid var(--border)', background: 'var(--bg-card)', 
+              boxShadow: '0 8px 24px rgba(0,0,0,0.2)', color: 'var(--text-muted)', 
+              fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >✕</button>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('right', job); }}
             style={{ 
-              width: 64, height: 64, borderRadius: 32, 
-              border: '2px solid var(--accent)', background: 'rgba(255,92,0,0.2)', 
-              backdropFilter: 'blur(16px)', color: 'var(--accent)', 
-              fontSize: 24, cursor: 'pointer', transition: 'all 0.2s',
+              width: 48, height: 48, borderRadius: 24, 
+              border: 'none', background: 'var(--accent)', 
+              boxShadow: '0 8px 24px rgba(255,92,0,0.4)', color: '#fff', 
+              fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >♥</button>

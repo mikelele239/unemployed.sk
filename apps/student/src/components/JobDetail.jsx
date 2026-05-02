@@ -56,7 +56,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 4 }}>{job.title}</h2>
-            <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>{job.company} · {job.location}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>{job.company} · {job.location || 'Bratislava'}</div>
 
             {/* MVP Highlights */}
             <div style={{ 
@@ -102,13 +102,13 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
                 </div>
                 <div>
                   <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Úväzok</div>
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>{job.hours}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600 }}>{job.hours || 'Plný'}</div>
                 </div>
               </div>
             </div>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-              {job.tags.map((tag, i) => (
+              {(job.tags || []).map((tag, i) => (
                 <span key={tag} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: i === 0 ? 'var(--accent)' : 'var(--bg-card)', color: i === 0 ? '#fff' : 'var(--text-muted)', border: `1px solid ${i===0?'var(--accent)':'var(--border)'}` }}>{tag}</span>
               ))}
             </div>
@@ -116,8 +116,8 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
             <div style={{ marginBottom: 24 }}>
               <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.rate') || 'Odmena'}</h4>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
-                {job.rate} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{job.rateUnit}</span>
-                <span style={{ fontSize: 14, color: 'var(--text-muted)', marginLeft: 12 }}>{job.hours}</span>
+                {job.rate || 'Dohodou'} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{job.rateUnit || ''}</span>
+                <span style={{ fontSize: 14, color: 'var(--text-muted)', marginLeft: 12 }}>{job.hours || ''}</span>
               </p>
             </div>
 
@@ -130,12 +130,12 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
 
             <div style={{ marginBottom: 24 }}>
               <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.description') || 'Popis'}</h4>
-              <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)' }}>{job.description}</p>
+              <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)' }}>{job.description || 'Nie je k dispozícii.'}</p>
             </div>
 
             <div style={{ marginBottom: 32 }}>
               <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>{t('detail.requirements') || 'Požiadavky'}</h4>
-              <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{job.requirements}</p>
+              <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-line' }}>{job.requirements || 'Nie sú špecifikované.'}</p>
             </div>
 
             {job.lat && job.lng && (
@@ -143,7 +143,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
                 <h4 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 12 }}>{t('detail.location') || 'Lokalita na mape'}</h4>
                 <div style={{ height: '220px', minHeight: '220px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 1, background: 'var(--bg-card)' }}>
                   <MapContainer 
-                    key={`${job.id}-${job.lat}-${job.lng}`}
+                    key={`${job.id || job.job_id}-${job.lat}-${job.lng}`}
                     center={[Number(job.lat), Number(job.lng)]} 
                     zoom={14} 
                     style={{ height: '100%', width: '100%', borderRadius: '16px' }} 
