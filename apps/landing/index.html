@@ -1979,7 +1979,7 @@
     <div class="demo-phone-wrap">
       <button class="demo-close-btn" id="demoCloseBtn" aria-label="Close demo">&times;</button>
       <div class="demo-phone-bezel">
-        <iframe src="./prototype.html" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
+        <iframe src="/app?demo=true" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
       </div>
     </div>
   </div>
@@ -1989,7 +1989,7 @@
     <div class="demo-laptop-wrap">
       <button class="demo-close-btn" id="empDemoCloseBtn" aria-label="Close demo">&times;</button>
       <div class="demo-laptop-bezel">
-        <iframe src="./employer-prototype.html" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
+        <iframe src="/employer?demo=true" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
       </div>
     </div>
   </div>
@@ -3086,7 +3086,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('./prototype.html', '_blank');
+          window.open('/app?demo=true', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';
@@ -3136,7 +3136,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('./employer-prototype.html', '_blank');
+          window.open('/employer?demo=true', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';

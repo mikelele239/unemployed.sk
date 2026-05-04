@@ -1,3 +1,4 @@
+// Demo mode detection — checks for ?demo=true in the URL
 export const isDemoMode = () => {
   try {
     const params = new URLSearchParams(window.location.search);

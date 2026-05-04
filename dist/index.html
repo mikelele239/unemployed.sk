@@ -3086,7 +3086,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('/app', '_blank');
+          window.open('/app?demo=true', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';
@@ -3136,7 +3136,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('/employer', '_blank');
+          window.open('/employer?demo=true', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';

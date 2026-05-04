@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "node scripts/assemble.js",
+    "build": "rm -rf dist && mkdir -p dist/app dist/employer && cp -r apps/landing/* dist/ && (cd apps/student && npm install && npm run build) && cp -r apps/student/dist/* dist/app/ && (cd apps/employer && npm install && npm run build) && cp -r apps/employer/dist/* dist/employer/ && cp _redirects dist/",
     "build:student": "cd apps/student && npm run build",
     "build:employer": "cd apps/employer && npm run build",
     "build:all": "npm run build:student && npm run build:employer",
