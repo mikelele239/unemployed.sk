@@ -14,8 +14,7 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const demo = isDemoMode();
-      if (demo) {
+      if (isDemoMode()) {
         const local = JSON.parse(localStorage.getItem('unemployed_profile')) || { name: 'Demo Užívateľ', edu: 'VŠ', loc: 'Bratislava', skills: ['React', 'Design'] };
         setProfile(local);
         return;
