@@ -59,37 +59,12 @@ const SideNav = () => {
       </div>
 
       {/* Main Nav */}
-      <nav style={{ 
-        flex: 1, 
-        padding: window.innerWidth <= 900 ? '0 8px' : '24px 16px', 
-        display: 'flex', 
-        flexDirection: window.innerWidth <= 900 ? 'row' : 'column', 
-        gap: '4px',
-        justifyContent: window.innerWidth <= 900 ? 'space-around' : 'flex-start',
-        alignItems: 'center'
-      }}>
+      <nav className="mobile-nav-container">
         {navItems.map(item => (
           <NavLink 
             key={item.id} 
             to={item.path}
-            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-            style={({ isActive }) => ({
-              display: 'flex',
-              flexDirection: window.innerWidth <= 900 ? 'column' : 'row',
-              alignItems: 'center',
-              gap: window.innerWidth <= 900 ? '4px' : '12px',
-              padding: window.innerWidth <= 900 ? '8px 12px' : '12px 14px',
-              borderRadius: 'var(--radius-sm)',
-              textDecoration: 'none',
-              color: isActive ? 'var(--text)' : 'var(--text-muted)',
-              background: isActive && window.innerWidth > 900 ? 'var(--bg-card-hover)' : 'transparent',
-              fontSize: window.innerWidth <= 900 ? '10px' : '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s ease',
-              border: isActive && window.innerWidth > 900 ? '1px solid var(--border)' : '1px solid transparent',
-              flex: window.innerWidth <= 900 ? 1 : 'none',
-              textAlign: 'center'
-            })}
+            className={({ isActive }) => `sidebar-link mobile-sidebar-link ${isActive ? 'active' : ''}`}
           >
             <div style={{ width: '20px', height: '20px', color: isActive ? 'var(--accent)' : 'inherit' }}>{item.icon}</div>
             <span>{item.label}</span>
