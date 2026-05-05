@@ -915,6 +915,7 @@
             toast.classList.add('show');
             setTimeout(function(){ toast.classList.remove('show'); }, 5000);
           }
+        } // end else (non-ok response)
       } catch(err) {
         toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.error'];
         toast.classList.add('show');
