@@ -20,7 +20,7 @@ const Dashboard = () => {
     return (
       <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: 20, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>Načítavam analytiku centrály...</p>
+        <p style={{ marginTop: 20, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>{lang === 'sk' ? 'Načítavam analytiku centrály...' : 'Loading analytics...'}</p>
       </div>
     );
   }
@@ -33,8 +33,33 @@ const Dashboard = () => {
   };
 
   const pipeline = analytics.pipeline_stats || {};
-  const recentCandidates = analytics.recent_candidates || [];
   const chartData = analytics.recent_apps_trend || [0,0,0,0,0,0,0];
+
+  // Compute live sub-text for each stat card
+  const todayApps = chartData[6] || 0;
+  const yesterdayApps = chartData[5] || 0;
+  const weekTotal = chartData.reduce((a, b) => a + b, 0);
+
+  const viewsSubtext = stats.views > 0
+    ? (lang === 'sk' ? `${stats.views} celkovo zo všetkých ponúk` : `${stats.views} total across all listings`)
+    : (lang === 'sk' ? 'Zatiaľ žiadne zobrazenia' : 'No views yet');
+
+  const appsSubtext = todayApps > 0
+    ? (lang === 'sk' ? `+${todayApps} dnes · ${weekTotal} za 7 dní` : `+${todayApps} today · ${weekTotal} in 7 days`)
+    : weekTotal > 0
+      ? (lang === 'sk' ? `${weekTotal} za posledných 7 dní` : `${weekTotal} in last 7 days`)
+      : (lang === 'sk' ? 'Zatiaľ žiadne prihlášky' : 'No applications yet');
+
+  const processedCount = stats.apps - (pipeline.Pending || 0);
+  const processedSubtext = pipeline.Pending > 0
+    ? (lang === 'sk' ? `${pipeline.Pending} čaká na vyjadrenie` : `${pipeline.Pending} pending decision`)
+    : stats.apps > 0
+      ? (lang === 'sk' ? 'Všetko vybavené ✓' : 'All addressed ✓')
+      : (lang === 'sk' ? 'Žiadne prihlášky' : 'No applications');
+
+  const activeSubtext = stats.active > 0
+    ? (lang === 'sk' ? `${stats.active} ${stats.active === 1 ? 'ponuka' : 'ponuky'} aktívne` : `${stats.active} listing${stats.active === 1 ? '' : 's'} active`)
+    : (lang === 'sk' ? 'Žiadne aktívne ponuky' : 'No active listings');
 
   return (
     <div style={{ animation: 'tabSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
@@ -45,22 +70,19 @@ const Dashboard = () => {
             {lang === 'sk' ? 'Správa pre spoločnosť' : 'Management for'} <span style={{ color: 'var(--text)', fontWeight: 600 }}>{companyProfile?.name}</span>
           </p>
         </div>
-        {/* Removed redundant white button as requested */}
       </div>
 
       <div className="dashboard-grid">
-        <StatCard label={t('statViews')} value={stats.views} unit="" changeText={t('statViewsChange')} changeType="neutral" />
-        <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={t('statAppsChange')} changeType="neutral" />
+        <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType={stats.views > 0 ? 'neutral' : 'neutral'} />
+        <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType={todayApps > 0 ? 'up' : 'neutral'} />
         <StatCard 
           label={lang === 'sk' ? 'Stav náborového procesu' : 'Recruitment Process State'} 
-          value={`${stats.apps - (pipeline.pending || 0)}/${stats.apps}`} 
+          value={`${processedCount}/${stats.apps}`} 
           unit="" 
-          changeText={pipeline.pending > 0 
-            ? (lang === 'sk' ? `${pipeline.pending} čaká na vyjadrenie` : `${pipeline.pending} pending decision`)
-            : (lang === 'sk' ? 'VŠETKO VYBAVENÉ' : 'ALL ADDRESSED')} 
-          changeType={pipeline.pending > 0 ? 'neutral' : 'up'} 
+          changeText={processedSubtext} 
+          changeType={pipeline.Pending === 0 && stats.apps > 0 ? 'up' : 'neutral'} 
         />
-        <StatCard label={t('statActive')} value={stats.active} unit="" changeText={t('statActiveChange')} changeType="neutral" />
+        <StatCard label={t('statActive')} value={stats.active} unit="" changeText={activeSubtext} changeType={stats.active > 0 ? 'up' : 'neutral'} />
       </div>
 
       <div className="dashboard-main-grid">
@@ -77,7 +99,7 @@ const Dashboard = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
             {['Pending', 'Viewed', 'Interview', 'Hired', 'Rejected'].map(status => {
-              const count = pipeline[status] || pipeline[status.toLowerCase()] || 0;
+              const count = pipeline[status] || 0;
               const total = stats.apps || 1;
               const percent = Math.round((count / total) * 100);
               const colors = { 
@@ -129,4 +151,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

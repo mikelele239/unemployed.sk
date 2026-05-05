@@ -125,7 +125,14 @@ export const AppStateProvider = ({ children }) => {
 
       const jobIds = (jobsData || []).map(j => j.id);
 
-      // 3. Analytics from applications
+      // 3. Real analytics from jobs + applications
+      // Total views — sum actual views column from jobs
+      const totalViews = (jobsData || []).reduce((sum, j) => sum + (j.views || 0), 0);
+      // Average match score — from jobs
+      const avgMatch = (jobsData || []).length > 0
+        ? Math.round((jobsData || []).reduce((sum, j) => sum + (j.match_score || 0), 0) / (jobsData || []).length)
+        : 0;
+
       if (jobIds.length > 0) {
         const { data: apps } = await supabase
           .from('applications')
@@ -140,24 +147,38 @@ export const AppStateProvider = ({ children }) => {
           else pipeline.Pending++;
         });
 
+        // Compute real 7-day trend from application created_at
+        const now = new Date();
+        const trend = [0, 0, 0, 0, 0, 0, 0]; // index 0 = 6 days ago, index 6 = today
+        allApps.forEach(a => {
+          if (!a.created_at) return;
+          const appDate = new Date(a.created_at);
+          const diffMs = now.getTime() - appDate.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays < 7) {
+            trend[6 - diffDays]++;
+          }
+        });
+
         setAnalytics({
-          total_views: allApps.length * 12,
+          total_views: totalViews,
           total_applications: allApps.length,
           active_jobs: jobIds.length,
-          avg_match_score: allApps.length > 0
-            ? Math.round(allApps.reduce((s, a) => s + (a.ai_score || 50), 0) / allApps.length) : 0,
+          avg_match_score: avgMatch,
           pipeline_stats: pipeline,
           recent_candidates: allApps.slice(0, 5),
-          recent_apps_trend: [0, 0, 0, 0, 0, 0, allApps.length],
+          recent_apps_trend: trend,
         });
       } else {
-        setAnalytics(prev => ({
-          ...prev,
-          active_jobs: 0,
-          total_applications: 0,
+        setAnalytics({
           total_views: 0,
+          total_applications: 0,
+          active_jobs: 0,
+          avg_match_score: 0,
           pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
-        }));
+          recent_candidates: [],
+          recent_apps_trend: [0, 0, 0, 0, 0, 0, 0],
+        });
       }
     } catch (err) {
       console.error('[AppState] loadAll error:', err);
