@@ -1,9 +1,6 @@
-# Dependency directories
+# Build outputs — Netlify builds from source, not committed dist
+dist/
 node_modules/
-
-# Build outputs (committed for deployment, but re-generated locally)
-# apps/student/dist/
-# apps/employer/dist/
 
 # Local env files
 .env

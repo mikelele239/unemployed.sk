@@ -5,3 +5,9 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# All of these must be set in the Netlify dashboard (Site → Environment variables)
+# SUPABASE_URL          = https://jofrxyimqhbgxwwbqyvs.supabase.co
+# SUPABASE_SERVICE_ROLE_KEY = sb_secret_...   (used by Netlify Function only — never public)
+# VITE_SUPABASE_URL     = https://jofrxyimqhbgxwwbqyvs.supabase.co
+# VITE_SUPABASE_ANON_KEY = sb_publishable_... (baked into client-side bundles — this is safe/public)
