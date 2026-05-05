@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — unemployed.sk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0D0D0D;
+      --bg-card: #1A1A1A;
+      --bg-card-hover: #222;
+      --text: #F5F0E8;
+      --text-muted: #999;
+      --accent: #FF5C00;
+      --accent-hover: #FF7A2E;
+      --border: #2A2A2A;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    canvas#bgGrid {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      opacity: 0.4;
+    }
+
+    .login-container {
+      width: min(90%, 500px);
+      text-align: center;
+      z-index: 1;
+      animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      color: var(--text);
+      text-decoration: none;
+      margin-bottom: 40px;
+      display: inline-block;
+    }
+
+    .nav-brand-un { position: relative; }
+    .nav-brand-strike {
+      position: absolute;
+      left: -1px; right: -1px;
+      top: 50%;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 400;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      font-size: 1.1rem;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .option-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+
+    .option-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 400;
+    }
+
+    .option-card span {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .option-card .icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 92, 0, 0.1);
+      color: var(--accent);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .back-link {
+      margin-top: 40px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bgGrid"></canvas>
+
+  <div class="login-container">
+    <div class="brand">
+      <span class="nav-brand-un">un<span class="nav-brand-strike"></span></span>employed.sk
+    </div>
+
+    <h1>Vitajte späť.</h1>
+    <p>Vyberte si svoj portál a pokračujte.</p>
+
+    <div class="options">
+      <a href="/app" class="option-card">
+        <div class="icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <h2>Som Študent</h2>
+        <span>Hľadám brigádu, stáž alebo prvú prácu.</span>
+      </a>
+
+      <a href="/employer" class="option-card">
+        <div class="icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+        </div>
+        <h2>Som Zamestnávateľ</h2>
+        <span>Hľadám talenty do svojho tímu.</span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('bgGrid');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+
+      const step = 40;
+      for (let x = 0; x < canvas.width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+    draw();
+  </script>
+</body>
+</html>

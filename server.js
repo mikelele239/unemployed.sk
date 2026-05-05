@@ -215,9 +215,19 @@ app.post('/api/profile', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
+    const { name, ...rest } = req.body;
+    let finalProfile = { ...rest, user_id: user.id };
+    
+    // Split name into first and last for the DB schema
+    if (name) {
+      const parts = name.trim().split(' ');
+      finalProfile.first_name = parts[0];
+      finalProfile.last_name = parts.slice(1).join(' ') || '';
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .upsert({ user_id: user.id, ...req.body }, { onConflict: 'user_id' });
+      .upsert(finalProfile, { onConflict: 'user_id' });
 
     if (error) throw error;
     res.json({ success: true });
@@ -442,20 +452,44 @@ app.get('/api/employer/analytics', async (req, res) => {
 // ── API: Auth Proxies ─────────────────────────────────────────────────────────
 
 app.post('/api/auth/student/register', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email a heslo sú povinné.' });
+  const { email, password, fullName } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   try {
-    const { data, error } = await supabase.auth.signUp({
+    // We use the admin API to create the user. This bypasses the need for 
+    // the user to confirm their email before we can setup their role/profile.
+    // It also allows us to manually fix things if the DB triggers fail.
+    const { data: { user }, error: createError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: { data: { role: 'candidate' } }
+      email_confirm: false, // They still need to verify
+      user_metadata: { role: 'candidate', full_name: fullName }
     });
-    if (error) throw error;
-    res.json({ success: true, user: data.user });
+
+    if (createError) {
+      console.error('[AUTH ERROR] Supabase Admin CreateUser failed:', JSON.stringify(createError, null, 2));
+      return res.status(createError.status || 500).json({ 
+        error: createError.message,
+        details: createError.code === 'user_already_exists' ? 'Užívateľ s týmto emailom už existuje.' : createError.message
+      });
+    }
+
+    // Manual 'Self-Heal': Ensure the role exists even if the trigger failed
+    try {
+      const { error: roleErr } = await supabase.from('user_roles').upsert({ user_id: user.id, role: 'candidate' });
+      if (roleErr) console.error('[DB ERROR] Manual role setup failed:', roleErr);
+
+      const { error: profErr } = await supabase.from('profiles').upsert({ user_id: user.id, first_name: fullName });
+      if (profErr) console.error('[DB ERROR] Manual profile setup failed:', profErr);
+
+    } catch (dbErr) {
+      console.error('[CRITICAL DB ERROR] Manual self-heal crashed:', dbErr);
+    }
+
+    res.json({ success: true, message: 'Check your email for the confirmation link.' });
   } catch (err) {
-    console.error('Registration error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('[SERVER CRASH] Registration endpoint failed:', err);
+    res.status(500).json({ error: 'Interná chyba servera.', details: err.message });
   }
 });
 
@@ -504,6 +538,9 @@ app.post('/api/auth/employer/inquiry', async (req, res) => {
 });
 
 // ── SPA Fallbacks ──────────────────────────────────────────────────────────────
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'apps', 'landing', 'login.html'));
+});
 
 app.get('/app(/*)?', (req, res) => {
   res.sendFile(path.join(__dirname, 'apps', 'student', 'dist', 'index.html'));

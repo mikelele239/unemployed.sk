@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { isDemoMode } from '../demoMode';
 
 export function useApplications() {
-  const demo = isDemoMode();
-  const storageKey = demo ? 'demo_apps' : 'unemployed_apps';
+  const storageKey = 'unemployed_apps';
 
   const [applications, setApplications] = useState(() => {
     return JSON.parse(localStorage.getItem(storageKey)) || [];

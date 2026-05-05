@@ -31,8 +31,8 @@ const SideNav = () => {
       zIndex: 100,
       position: 'relative'
     }}>
-      {/* Brand Section */}
-      <div style={{ padding: '32px 24px', borderBottom: '1px solid var(--border)' }}>
+      {/* Brand Section - Desktop Only */}
+      <div className="desktop-only" style={{ padding: '32px 24px', borderBottom: '1px solid var(--border)' }}>
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
           <span style={{ 
             fontFamily: 'var(--font-display)', 
@@ -59,7 +59,15 @@ const SideNav = () => {
       </div>
 
       {/* Main Nav */}
-      <nav style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <nav style={{ 
+        flex: 1, 
+        padding: window.innerWidth <= 900 ? '0 8px' : '24px 16px', 
+        display: 'flex', 
+        flexDirection: window.innerWidth <= 900 ? 'row' : 'column', 
+        gap: '4px',
+        justifyContent: window.innerWidth <= 900 ? 'space-around' : 'flex-start',
+        alignItems: 'center'
+      }}>
         {navItems.map(item => (
           <NavLink 
             key={item.id} 
@@ -67,26 +75,29 @@ const SideNav = () => {
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
             style={({ isActive }) => ({
               display: 'flex',
+              flexDirection: window.innerWidth <= 900 ? 'column' : 'row',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 14px',
+              gap: window.innerWidth <= 900 ? '4px' : '12px',
+              padding: window.innerWidth <= 900 ? '8px 12px' : '12px 14px',
               borderRadius: 'var(--radius-sm)',
               textDecoration: 'none',
               color: isActive ? 'var(--text)' : 'var(--text-muted)',
-              background: isActive ? 'var(--bg-card-hover)' : 'transparent',
-              fontSize: '14px',
-              fontWeight: '500',
+              background: isActive && window.innerWidth > 900 ? 'var(--bg-card-hover)' : 'transparent',
+              fontSize: window.innerWidth <= 900 ? '10px' : '14px',
+              fontWeight: '600',
               transition: 'all 0.2s ease',
-              border: isActive ? '1px solid var(--border)' : '1px solid transparent'
+              border: isActive && window.innerWidth > 900 ? '1px solid var(--border)' : '1px solid transparent',
+              flex: window.innerWidth <= 900 ? 1 : 'none',
+              textAlign: 'center'
             })}
           >
-            <div style={{ width: '20px', height: '20px' }}>{item.icon}</div>
+            <div style={{ width: '20px', height: '20px', color: isActive ? 'var(--accent)' : 'inherit' }}>{item.icon}</div>
             <span>{item.label}</span>
           </NavLink>
         ))}
 
-        {/* Create Button */}
-        <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+        {/* Create Button - Desktop Only (or floating on mobile if needed, but for now desktop only) */}
+        <div className="desktop-only" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
           <button 
             onClick={() => navigate('/create-listing')}
             className="btn-main"
@@ -101,8 +112,8 @@ const SideNav = () => {
         </div>
       </nav>
 
-      {/* Bottom Context */}
-      <div style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* Bottom Context - Desktop Only */}
+      <div className="desktop-only" style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', border: '1px solid var(--border)' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
           <span style={{ fontSize: '13px', fontWeight: '600' }}>Executive Account</span>

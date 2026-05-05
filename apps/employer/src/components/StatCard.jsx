@@ -40,10 +40,10 @@ const StatCard = ({ label, value, unit = '', changeText, changeType = 'neutral' 
       boxShadow: isSuccess ? '0 8px 30px rgba(34, 197, 94, 0.12)' : 'none',
       transform: isSuccess ? 'translateY(-2px)' : 'none'
     }}>
-      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', opacity: isSuccess ? 0.8 : 1 }}>
+      <div className="stat-label" style={{ opacity: isSuccess ? 0.8 : 1 }}>
         {label}
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '900', letterSpacing: '-0.8px', color: mainColor }}>
+      <div className="stat-value" style={{ color: mainColor }}>
         {typeof value === 'number' ? displayValue.toLocaleString('sk') : displayValue}{unit}
       </div>
       <div style={{ fontSize: '11px', fontWeight: '800', marginTop: '6px', color: changeColor, letterSpacing: '0.4px' }}>

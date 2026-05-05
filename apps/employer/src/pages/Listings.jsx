@@ -3,7 +3,6 @@ import { useI18n, useAppState } from '../contexts';
 import { INITIAL_LISTINGS } from '../mockData';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isDemoMode } from '../demoMode';
 
 const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus }) => {
   const [isConfirming, setIsConfirming] = useState(false);
@@ -36,8 +35,8 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
       }}
       className="listing-card"
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-        <div style={{ flex: 1, marginRight: '12px' }}>
+      <div className="flex-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ flex: 1 }}>
           <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '6px', color: 'var(--text)' }}>{title}</h3>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -80,7 +79,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: '40px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+      <div style={{ display: 'flex', gap: window.innerWidth <= 900 ? '20px' : '40px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{l.applications || 0}</div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('applications')}</div>
@@ -128,7 +127,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
 };
 
 const Listings = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { listings, setListings } = useAppState();
 
   const [loading, setLoading] = useState(true);
@@ -137,10 +136,6 @@ const Listings = () => {
 
   useEffect(() => {
     const fetchMyJobs = async () => {
-      if (isDemoMode()) {
-        setLoading(false);
-        return;
-      }
       try {
         const token = localStorage.getItem('employer_token');
         const res = await fetch('/api/jobs/my', {
@@ -202,12 +197,12 @@ const Listings = () => {
 
       <motion.div 
         layout
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '24px' }}
       >
         <AnimatePresence mode="popLayout">
           {listings.map(l => (
             <ListingCard 
-              key={l.id} l={l} t={t} 
+              key={l.id} l={l} t={t} lang={lang}
               onDelete={handleDelete} onEdit={setEditingListing}
               getStatusColor={getStatusColor} translateStatus={translateStatus}
             />

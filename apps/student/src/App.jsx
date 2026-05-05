@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import Onboarding from './pages/Onboarding';
 import MainLayout from './components/MainLayout';
 import ForYou from './pages/ForYou';
@@ -11,125 +10,98 @@ import CandidateAuth from './pages/CandidateAuth';
 import './index.css';
 
 import { supabase, getAccessToken } from './supabase';
-import { isDemoMode } from './demoMode';
 
 function App() {
-  const demo = isDemoMode();
   const [session, setSession] = useState(null);
-  const [loadingSession, setLoadingSession] = useState(!demo); // skip loading in demo
+  const [loading, setLoading] = useState(true);
+  const [profileStarted, setProfileStarted] = useState(false);
 
-  const [profileStarted, setProfileStarted] = useState(() => {
-    if (demo) return false; // Always show onboarding in demo
-    return localStorage.getItem('unemployed_profile_started') === 'true';
-  });
-
-  // Supabase Auth Listener — only in live mode
+  // 1. Handle Auth Session
   useEffect(() => {
-    if (demo) return;
-
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoadingSession(false);
+      if (!session) setLoading(false);
     });
 
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (!session) {
+        setProfileStarted(false);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Smart Onboarding: Check if profile already exists in DB — only in live mode
+  // 2. Fetch Profile from DB if session exists
   useEffect(() => {
-    if (demo) return;
-    if (session && !profileStarted) {
-      const checkProfile = async () => {
-        try {
-          const token = getAccessToken();
-          if (!token) return;
-          
-          console.log('[AUTH] Checking for existing profile in DB...');
-          const res = await fetch('/api/profile', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (res.ok) {
-            const profile = await res.json();
-            // If we get a valid profile back with a name, mark onboarding as complete
-            if (profile && profile.first_name) {
-              console.log('[AUTH] Profile found, skipping onboarding.');
-              completeOnboarding();
-            } else {
-               console.log('[AUTH] No profile found in DB, proceeding to onboarding.');
-            }
-          }
-        } catch (e) {
-          console.error('Smart onboarding check failed:', e);
-        }
-      };
-      checkProfile();
-    }
-  }, [session, profileStarted]);
+    if (!session) return;
 
-  useEffect(() => {
-    const handleMessage = (e) => {
-      if (e.data && e.data.type === 'reset') {
-        localStorage.removeItem('unemployed_profile_started');
-        localStorage.removeItem('unemployed_profile');
-        setProfileStarted(false);
-        // If reset includes a lang, re-broadcast it so I18nContext picks it up
-        if (e.data.lang) {
-          window.dispatchEvent(new MessageEvent('message', { data: { type: 'lang', lang: e.data.lang } }));
+    const fetchProfile = async () => {
+      try {
+        const token = getAccessToken();
+        if (!token) return;
+
+        const res = await fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setLoading(false);
+          return;
         }
+
+        if (res.ok) {
+          const profile = await res.json();
+          // If profile exists in DB (even a stub with first_name), onboarding was started
+          if (profile && (profile.first_name || profile.name)) {
+            setProfileStarted(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+      } finally {
+        setLoading(false);
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+
+    fetchProfile();
+  }, [session]);
 
   const completeOnboarding = () => {
-    if (!demo) localStorage.setItem('unemployed_profile_started', 'true');
     setProfileStarted(true);
   };
 
-  // ── Demo Mode: No auth, straight to app ──
-  if (demo) {
+  if (loading) {
     return (
-      <BrowserRouter basename="/app">
-        <Routes>
-          {!profileStarted ? (
-            <>
-              <Route path="/onboarding" element={<Onboarding onComplete={completeOnboarding} />} />
-              <Route path="*" element={<Navigate to="/onboarding" replace />} />
-            </>
-          ) : (
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Navigate to="/foryou" replace />} />
-              <Route path="foryou" element={<ForYou />} />
-              <Route path="search" element={<Search />} />
-              <Route path="applications" element={<Applications />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="*" element={<Navigate to="/foryou" replace />} />
-            </Route>
-          )}
-        </Routes>
-      </BrowserRouter>
+      <div style={{ 
+        height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+        background: '#0a0a0a', color: '#fff', gap: 20 
+      }}>
+        <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>NAČÍTAVAM PROFIL...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     );
   }
 
-  // ── Live Mode: Full Supabase auth ──
-  if (loadingSession) return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Overujem prihlásenie...</div>;
-
+  // ── Auth Gate ──
   if (!session) {
     return (
       <BrowserRouter basename="/app">
         <Routes>
-          <Route path="*" element={<CandidateAuth onLoginSuccess={(newSession) => setSession(newSession)} />} />
+          <Route path="*" element={<CandidateAuth onLoginSuccess={(s) => setSession(s)} />} />
         </Routes>
       </BrowserRouter>
     );
   }
 
+  // ── Main App Logic ──
   return (
     <BrowserRouter basename="/app">
       <Routes>

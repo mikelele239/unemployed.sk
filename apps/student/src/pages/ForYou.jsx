@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import { getAccessToken } from '../supabase';
-import { isDemoMode } from '../demoMode';
 import SwipeCard from '../components/SwipeCard';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
 
 export default function ForYou() {
-  const demo = isDemoMode();
   const { t } = useTranslation();
   const { jobs, loading } = useJobs(true);
   const [cards, setCards] = useState([]);
@@ -19,7 +17,7 @@ export default function ForYou() {
   const { addApplication, hasApplied, applications } = useApplications();
 
   const logJobView = async (jobId) => {
-    if (!jobId || demo) return; // Skip in demo mode
+    if (!jobId) return; 
     try {
       const token = getAccessToken();
       console.log(`[SYNC] Triggering view for Job=${jobId}`);
@@ -51,12 +49,6 @@ export default function ForYou() {
   }, [loading, jobs, applications]);
 
   useEffect(() => {
-    if (demo) {
-      // Demo mode: use localStorage profile only
-      const prof = JSON.parse(localStorage.getItem('unemployed_profile')) || {};
-      setProfile(prof);
-      return;
-    }
     const fetchProfile = async () => {
       try {
         const token = getAccessToken();

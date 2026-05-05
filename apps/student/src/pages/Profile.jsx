@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Settings, LogOut, CheckCircle, Shield } from 'lucide-react';
 import { getAccessToken } from '../supabase';
 import { useTranslation } from '../I18nContext';
-import { isDemoMode } from '../demoMode';
 
 export default function Profile() {
   const { lang, t } = useTranslation();
@@ -14,11 +13,6 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (isDemoMode()) {
-        const local = JSON.parse(localStorage.getItem('unemployed_profile')) || { name: 'Demo Užívateľ', edu: 'VŠ', loc: 'Bratislava', skills: ['React', 'Design'] };
-        setProfile(local);
-        return;
-      }
       try {
         const token = getAccessToken();
         const res = await fetch('/api/profile', {

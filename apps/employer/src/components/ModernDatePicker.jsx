@@ -40,9 +40,11 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       style={{
-        background: '#000', color: '#fff', padding: '28px', borderRadius: '16px',
+        background: '#000', color: '#fff', 
+        padding: window.innerWidth <= 900 ? '20px' : '28px', 
+        borderRadius: '16px',
         border: '1px solid #333', boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
-        width: '360px', zIndex: 1000, position: 'relative',
+        width: 'min(calc(100vw - 32px), 360px)', zIndex: 1000, position: 'relative',
         fontFamily: 'var(--font-body)'
       }}
     >

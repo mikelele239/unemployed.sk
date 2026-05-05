@@ -1,9 +1,9 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { translations } from './i18n';
-import { isDemoMode } from './demoMode';
 import { INITIAL_LISTINGS, CHART_DATA } from './mockData';
+import { supabase } from './supabase';
+
 const VALID_LANGS = ['sk', 'en'];
-const DEMO_PROFILE = { name: 'Compx', industry: 'IT', locations: ['Bratislava'], hiring: ['Stáž', 'Brigáda'] };
 
 // ── i18n Context ──────────────────────────────────────────────────────────────
 const I18nContext = createContext();
@@ -116,8 +116,6 @@ const DEMO_ANALYTICS = {
 };
 
 export const AppStateProvider = ({ children }) => {
-  const demo = isDemoMode();
-
   const [invitedIds, setInvitedIds] = useState(() => {
     return safeParseJSON(localStorage.getItem('employer_invited'), []);
   });
@@ -126,15 +124,18 @@ export const AppStateProvider = ({ children }) => {
     return safeParseJSON(localStorage.getItem('employer_accepted'), []);
   });
 
-  const [listings, setListings] = useState(demo ? INITIAL_LISTINGS : []);
-  const [companyProfile, setCompanyProfile] = useState(demo ? DEMO_PROFILE : { name: 'Vaša Firma', industry: 'Hľadáme talenty' });
-  const [analytics, setAnalytics] = useState(
-    demo ? DEMO_ANALYTICS : { total_views: 0, total_applications: 0, active_jobs: 0, recent_views_trend: [0,0,0,0,0,0,0] }
-  );
+  const [listings, setListings] = useState([]);
+  const [companyProfile, setCompanyProfile] = useState({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
+  const [analytics, setAnalytics] = useState({ 
+    total_views: 0, 
+    total_applications: 0, 
+    active_jobs: 0, 
+    recent_views_trend: [0,0,0,0,0,0,0],
+    pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 }
+  });
 
-  // Fetch jobs from backend on mount — ONLY in live mode
+  // Fetch jobs from backend on mount
   useEffect(() => {
-    if (demo) return;
     fetch('/api/jobs')
       .then(res => res.json())
       .then(data => {
@@ -144,7 +145,6 @@ export const AppStateProvider = ({ children }) => {
   }, []);
 
   const fetchAnalytics = async (token) => {
-    if (demo) return; // Skip in demo mode
     try {
       const res = await fetch('/api/employer/analytics', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -158,11 +158,11 @@ export const AppStateProvider = ({ children }) => {
     }
   };
 
-  // Fetch employer profile — ONLY in live mode
+  // Fetch employer profile
   useEffect(() => {
-    if (demo) return;
     const fetchEmployerProfile = async () => {
-      const token = localStorage.getItem('employer_token');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       if (!token) return;
 
       try {
@@ -189,7 +189,7 @@ export const AppStateProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('employer_invited', JSON.stringify(invitedIds)); }, [invitedIds]);
   useEffect(() => { localStorage.setItem('employer_accepted', JSON.stringify(acceptedIds)); }, [acceptedIds]);
   useEffect(() => {
-    if (companyProfile && !demo) localStorage.setItem('employer_profile', JSON.stringify(companyProfile));
+    if (companyProfile) localStorage.setItem('employer_profile', JSON.stringify(companyProfile));
   }, [companyProfile]);
 
   return (
@@ -198,7 +198,10 @@ export const AppStateProvider = ({ children }) => {
       acceptedIds, setAcceptedIds,
       listings, setListings,
       companyProfile, setCompanyProfile,
-      analytics, refreshAnalytics: () => demo ? null : fetchAnalytics(localStorage.getItem('employer_token'))
+      analytics, refreshAnalytics: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) fetchAnalytics(session.access_token);
+      }
     }}>
       {children}
     </AppStateContext.Provider>

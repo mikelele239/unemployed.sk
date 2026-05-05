@@ -1,5 +1,4 @@
 import { getAccessToken } from '../supabase';
-import { isDemoMode } from '../demoMode';
 
 // Assuming you store the user's session token securely, 
 // e.g., in localStorage or context state after login.
@@ -10,9 +9,6 @@ const getAuthToken = () => {
 
 export const cvApi = {
     async uploadCV(file) {
-        if (isDemoMode()) {
-            return { id: 'mock-cv-id', name: file.name };
-        }
         const token = getAuthToken();
         if (!token) throw new Error('Not authenticated');
 

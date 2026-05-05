@@ -11,27 +11,34 @@ const Dashboard = () => {
 
   useEffect(() => {
     refreshAnalytics();
-    const interval = setInterval(refreshAnalytics, 10000);
+    const interval = setInterval(refreshAnalytics, 15000);
     return () => clearInterval(interval);
   }, [lang]);
 
+  // Loading / Blank Screen Guard
+  if (!analytics || !analytics.pipeline_stats) {
+    return (
+      <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <p style={{ marginTop: 20, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>Načítavam analytiku centrály...</p>
+      </div>
+    );
+  }
+
   const stats = { 
-    views: analytics?.total_views || 0, 
-    apps: analytics?.total_applications || 0, 
-    match: analytics?.avg_match_score || 0, 
-    active: analytics?.active_jobs || 0 
+    views: analytics.total_views || 0, 
+    apps: analytics.total_applications || 0, 
+    match: analytics.avg_match_score || 0, 
+    active: analytics.active_jobs || 0 
   };
 
-  const pipeline = analytics?.pipeline_stats || {};
-  const recentCandidates = analytics?.recent_candidates || [];
-  const chartData = analytics?.recent_apps_trend || [0,0,0,0,0,0,0];
-
-  // Logic: Highlight if match is low (< 60%)
-  const isMatchLow = stats.match > 0 && stats.match < 60;
+  const pipeline = analytics.pipeline_stats || {};
+  const recentCandidates = analytics.recent_candidates || [];
+  const chartData = analytics.recent_apps_trend || [0,0,0,0,0,0,0];
 
   return (
     <div style={{ animation: 'tabSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div className="flex-responsive" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800', letterSpacing: '-0.5px' }}>{t('dashTitle')}</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -41,7 +48,7 @@ const Dashboard = () => {
         {/* Removed redundant white button as requested */}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+      <div className="dashboard-grid">
         <StatCard label={t('statViews')} value={stats.views} unit="" changeText={t('statViewsChange')} changeType="neutral" />
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={t('statAppsChange')} changeType="neutral" />
         <StatCard 
@@ -56,7 +63,7 @@ const Dashboard = () => {
         <StatCard label={t('statActive')} value={stats.active} unit="" changeText={t('statActiveChange')} changeType="neutral" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '32px' }}>
+      <div className="dashboard-main-grid">
         {/* Scalable Funnel Section */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '24px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: '24px' }}>

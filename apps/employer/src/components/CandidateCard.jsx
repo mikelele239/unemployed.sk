@@ -58,7 +58,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
       boxShadow: expanded ? '0 10px 30px rgba(0,0,0,0.1)' : 'none'
     }} onClick={() => setExpanded(!expanded)}>
       {/* Main Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '18px 20px' }}>
+      <div className="flex-responsive" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '18px 20px' }}>
         <div style={{
           width: '46px', height: '46px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontWeight: '700', fontSize: '16px', color: '#fff', flexShrink: 0, 
@@ -115,7 +115,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             onClick={(e) => e.stopPropagation()} 
-            style={{ borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', padding: '32px' }}
+            style={{ borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', padding: window.innerWidth <= 900 ? '20px' : '32px' }}
           >
             {/* Compact CV Preview Chip */}
             <div style={{ marginBottom: '32px' }}>
@@ -186,7 +186,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                </AnimatePresence>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '48px' }}>
+            <div className="grid-responsive cols-2" style={{ display: 'grid', gap: '48px' }}>
               <div>
                 <h5 style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 900, letterSpacing: '1.5px' }}>Výkonné zhrnutie (AI Analysis)</h5>
                 <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '6px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>

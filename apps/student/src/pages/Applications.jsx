@@ -4,7 +4,6 @@ import { useApplications } from '../hooks/useApplications';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
 import { getAccessToken } from '../supabase';
-import { isDemoMode } from '../demoMode';
 
 export default function Applications() {
   const { t } = useTranslation();
@@ -118,15 +117,6 @@ export default function Applications() {
                               btn.disabled = true;
                               btn.innerText = 'Spracovávam...';
                               try {
-                                if (isDemoMode()) {
-                                  const apps = JSON.parse(localStorage.getItem('demo_apps')) || [];
-                                  const updated = apps.map(a => a.id === app.id ? { ...a, interviewInfo: { ...a.interviewInfo, declined: true } } : a);
-                                  localStorage.setItem('demo_apps', JSON.stringify(updated));
-                                  setConfirmDeclineId(null);
-                                  fetchApplications();
-                                  return;
-                                }
-
                                 const token = getAccessToken();
                                 await fetch(`/api/applications/${app.id}/interview`, {
                                   method: 'PATCH',
@@ -200,18 +190,6 @@ export default function Applications() {
                                   btn.disabled = true;
                                   
                                   try {
-                                    if (isDemoMode()) {
-                                      const apps = JSON.parse(localStorage.getItem('demo_apps')) || [];
-                                      const updated = apps.map(a => a.id === app.id ? { ...a, interviewInfo: { ...a.interviewInfo, selected_date: date } } : a);
-                                      localStorage.setItem('demo_apps', JSON.stringify(updated));
-                                      setSuccessId(app.id);
-                                      setTimeout(() => {
-                                        setSuccessId(null);
-                                        fetchApplications();
-                                      }, 2000);
-                                      return;
-                                    }
-
                                     const token = getAccessToken();
                                     const res = await fetch(`/api/applications/${app.id}/interview`, {
                                       method: 'PATCH',

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
-import { isDemoMode } from '../demoMode';
 import { CANDIDATES, AI_MATCHES } from '../mockData';
 import CandidateCard from '../components/CandidateCard';
 import Toast from '../components/Toast';
@@ -20,14 +19,6 @@ const Candidates = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const demo = isDemoMode();
-      if (demo) {
-        setCandidates(CANDIDATES);
-        setMatches(AI_MATCHES);
-        setLoading(false);
-        return;
-      }
-
       console.log('[DEBUG] Fetching candidates and matches...');
       try {
         const token = localStorage.getItem('employer_token');
@@ -37,24 +28,17 @@ const Candidates = () => {
         const resApps = await fetch('/api/applications', { headers });
         if (resApps.ok) {
           const data = await resApps.json();
-          console.log(`[DEBUG] Received ${data.length} applications:`, data);
           setCandidates(Array.isArray(data) ? data : []);
-        } else {
-          console.error('[DEBUG] Failed to fetch applications:', resApps.status);
         }
 
-        // 2. Fetch AI Matches (Real student profiles filtered by relevance)
+        // 2. Fetch AI Matches
         const resMatches = await fetch('/api/employer/matches', { headers });
         if (resMatches.ok) {
           const data = await resMatches.json();
-          console.log(`[DEBUG] Received ${data.length} AI matches:`, data);
           setMatches(Array.isArray(data) ? data : []);
-        } else {
-          console.error('[DEBUG] Failed to fetch AI matches:', resMatches.status);
         }
-        
       } catch (err) {
-        console.error('[DEBUG] Big fetch error in Candidates page:', err);
+        console.error('Big fetch error in Candidates page:', err);
       } finally {
         setLoading(false);
       }
@@ -63,22 +47,7 @@ const Candidates = () => {
   }, []);
 
   const handleInvite = async (id, status = 'Interview', interviewDates = null) => {
-    const demo = isDemoMode();
     try {
-      if (demo) {
-        if (status === 'Interview' && !invitedIds.includes(id)) {
-          setInvitedIds([...invitedIds, id]);
-        }
-        setCandidates(prev => prev.map(c => c.id === id ? { 
-          ...c, 
-          status, 
-          interviewInfo: interviewDates ? { offered_dates: interviewDates } : c.interviewInfo 
-        } : c));
-        setToastMsg(status === 'Hired' ? 'Kandidát bol úspešne prijatý!' : t('toastInvite'));
-        setShowToast(true);
-        return;
-      }
-
       const token = localStorage.getItem('employer_token');
       const res = await fetch(`/api/applications/${id}/status`, {
         method: 'PATCH',
@@ -93,7 +62,6 @@ const Candidates = () => {
         if (status === 'Interview' && !invitedIds.includes(id)) {
           setInvitedIds([...invitedIds, id]);
         }
-        // Update local status and info immediately
         setCandidates(prev => prev.map(c => c.id === id ? { 
           ...c, 
           status, 
