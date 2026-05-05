@@ -101,9 +101,9 @@ const SideNav = () => {
           <NavLink 
             key={item.id} 
             to={item.path}
-            className={(navData) => `sidebar-link mobile-sidebar-link ${navData && navData.isActive ? 'active' : ''}`}
+            className={(navData) => `sidebar-link ${navData && navData.isActive ? 'active' : ''}`}
           >
-            <div style={{ width: '20px', height: '20px' }}>{item.icon}</div>
+            {item.icon}
             <span>{item.label}</span>
           </NavLink>
         ))}
