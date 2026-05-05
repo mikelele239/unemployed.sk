@@ -103,10 +103,10 @@ const SideNav = () => {
             to={item.path}
             className={(navData) => `sidebar-link mobile-sidebar-link ${navData && navData.isActive ? 'active' : ''}`}
           >
-            <div style={{ width: '22px', height: '22px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="nav-icon-wrap" style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {item.icon}
             </div>
-            <span style={{ textAlign: 'center', width: '100%' }}>{item.label}</span>
+            <span className="nav-label">{item.label}</span>
           </NavLink>
         ))}
 

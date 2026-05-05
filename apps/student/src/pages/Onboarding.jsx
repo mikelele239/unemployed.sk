@@ -20,6 +20,7 @@ export default function Onboarding({ onComplete }) {
   const [climaxStep, setClimaxStep] = useState(0);
   const [data, setData] = useState({ name: '', edu: '', loc: '', avail: [], jobType: [], skills: [], bio: '', cv_id: null });
   const [manualStep, setManualStep] = useState(0);
+  const [addingSkillReview, setAddingSkillReview] = useState(false);
 
   const MANUAL_STEPS = [
     { id: 'name',    type: 'text',   title: 'Ako sa voláš?',  sub: 'Tvoje celé meno pre zamestnávateľov.', placeholder: 'Janko Hraško' },
@@ -290,11 +291,20 @@ export default function Onboarding({ onComplete }) {
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12, display: 'block' }}>{t('ob.reviewSkills')}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {data.skills.map(s => (
-                    <span key={s} style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600 }}>{s}</span>
+                    <span key={s} onClick={() => setData(prev => ({ ...prev, skills: prev.skills.filter(x => x !== s) }))} style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.2s' }} title={lang === 'en' ? 'Click to remove' : 'Klikni na odstránenie'}>{s} ✕</span>
                   ))}
-                  <span style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600 }}>
-                    {t('ob.reviewAddMore')}
-                  </span>
+                  {addingSkillReview ? (
+                    <>
+                      {(lang === 'en' ? SKILLS_POOL_EN : SKILLS_POOL_SK).filter(s => !data.skills.includes(s)).map(s => (
+                        <span key={s} onClick={() => { setData(prev => ({ ...prev, skills: [...prev.skills, s] })); }} style={{ background: 'var(--bg)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600, border: '1px dashed var(--border)', cursor: 'pointer', transition: 'all 0.2s' }}>{s}</span>
+                      ))}
+                      <span onClick={() => setAddingSkillReview(false)} style={{ background: 'transparent', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>✕ {lang === 'en' ? 'Close' : 'Zavrieť'}</span>
+                    </>
+                  ) : (
+                    <span onClick={() => setAddingSkillReview(true)} style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }}>
+                      {t('ob.reviewAddMore')}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

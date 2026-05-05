@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../I18nContext';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -17,6 +18,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 300], [-30, 30]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
@@ -140,7 +142,12 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
             fontWeight: 850, color: '#fff', fontSize: 18
           }}>{job.logo}</div>
           <div>
-            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>{job.company}</div>
+            <div 
+              onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
+              style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)', cursor: 'pointer', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+              onMouseLeave={e => e.target.style.color = 'var(--text)'}
+            >{job.company}</div>
             <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{t('card.verified')}</div>
           </div>
         </div>

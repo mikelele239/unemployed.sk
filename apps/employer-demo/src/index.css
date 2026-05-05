@@ -41,15 +41,15 @@ html, body, #root {
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s ease;
-  width: 100%;
+  width: auto;
 }
 
 .sidebar-link:hover {
@@ -111,10 +111,14 @@ html, body, #root {
 
 .mobile-nav-container {
   flex: 1;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+
+.nav-label {
+  white-space: nowrap;
 }
 
 .mobile-only {
@@ -221,6 +225,21 @@ html, body, #root {
     min-width: 22px;
     margin: 0 auto !important;
     display: block !important;
+  }
+
+  .sidebar-link.mobile-sidebar-link .nav-icon-wrap {
+    width: 22px !important;
+    height: 22px !important;
+    margin: 0 auto;
+  }
+
+  .sidebar-link.mobile-sidebar-link .nav-label {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
   }
 }
 

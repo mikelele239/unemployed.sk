@@ -153,21 +153,33 @@ const Listings = () => {
     if (!editingListing.title) return;
     try {
       setSaveLoading(true);
-      const { error } = await supabase
-        .from('jobs')
-        .update({
-          title: editingListing.title,
-          description: editingListing.description,
-          rate: editingListing.rate,
-          work_model: editingListing.work_model || editingListing.workModel,
-          location: editingListing.location,
-        })
-        .eq('id', editingListing.id);
-      if (!error) {
-        setListings(prev => prev.map(l => l.id === editingListing.id ? { ...editingListing } : l));
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const payload = {
+        title: editingListing.title,
+        description: editingListing.description || '',
+        requirements: editingListing.requirements || '',
+        rate: editingListing.rate || '',
+        rate_unit: editingListing.rate_unit || editingListing.rateUnit || '',
+        work_model: editingListing.work_model || editingListing.workModel || 'On-site',
+        location: editingListing.location || '',
+        hours: editingListing.hours || '',
+        type: editingListing.type || '',
+        duration: editingListing.duration || '',
+        start_date: editingListing.start_date || editingListing.startDate || '',
+        tags: editingListing.tags || [],
+      };
+      const res = await fetch(`/api/employer/jobs/${editingListing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setListings(prev => prev.map(l => l.id === editingListing.id ? { ...l, ...payload } : l));
         setEditingListing(null);
       } else {
-        alert(`Chyba: ${error.message}`);
+        const err = await res.json();
+        alert(`Chyba: ${err.error}`);
       }
     } catch (err) { console.error(err); } finally { setSaveLoading(false); }
   };
@@ -220,26 +232,65 @@ const Listings = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Názov pozície</label>
-                  <input className="text-input" value={editingListing.title} onChange={e => setEditingListing({...editingListing, title: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Názov pozície' : 'Job Title'}</label>
+                  <input className="text-input" value={editingListing.title || ''} onChange={e => setEditingListing({...editingListing, title: e.target.value})} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Pracovný model</label>
-                  <select className="text-input" value={editingListing.work_model || editingListing.workModel} onChange={e => setEditingListing({...editingListing, work_model: e.target.value, workModel: e.target.value})}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Lokalita' : 'Location'}</label>
+                  <input className="text-input" value={editingListing.location || ''} onChange={e => setEditingListing({...editingListing, location: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Pracovný model' : 'Work Model'}</label>
+                  <select className="text-input" value={editingListing.work_model || editingListing.workModel || 'On-site'} onChange={e => setEditingListing({...editingListing, work_model: e.target.value})}>
                     <option value="On-site">On-site</option>
                     <option value="Hybrid">Hybrid</option>
                     <option value="Remote">Remote</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Hodinová mzda</label>
-                  <input className="text-input" value={editingListing.rate} onChange={e => setEditingListing({...editingListing, rate: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Odmena' : 'Rate'}</label>
+                  <input className="text-input" value={editingListing.rate || ''} onChange={e => setEditingListing({...editingListing, rate: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Jednotka odmeny' : 'Rate Unit'}</label>
+                  <input className="text-input" placeholder="napr. €/hod, €/mes" value={editingListing.rate_unit || editingListing.rateUnit || ''} onChange={e => setEditingListing({...editingListing, rate_unit: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Typ' : 'Type'}</label>
+                  <select className="text-input" value={editingListing.type || ''} onChange={e => setEditingListing({...editingListing, type: e.target.value})}>
+                    <option value="">—</option>
+                    <option value="internship">Internship</option>
+                    <option value="part-time">Part-time</option>
+                    <option value="full-time">Full-time</option>
+                    <option value="contract">Contract</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Úväzok (hodiny)' : 'Hours'}</label>
+                  <input className="text-input" placeholder="napr. 20 hod/týždenne" value={editingListing.hours || ''} onChange={e => setEditingListing({...editingListing, hours: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Trvanie' : 'Duration'}</label>
+                  <input className="text-input" placeholder="napr. 3 mesiace" value={editingListing.duration || ''} onChange={e => setEditingListing({...editingListing, duration: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Dátum nástupu' : 'Start Date'}</label>
+                  <input className="text-input" type="date" value={editingListing.start_date || editingListing.startDate || ''} onChange={e => setEditingListing({...editingListing, start_date: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Tagy' : 'Tags'}</label>
+                  <input className="text-input" placeholder="marketing, dizajn, ..." value={(editingListing.tags || []).join(', ')} onChange={e => setEditingListing({...editingListing, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})} />
                 </div>
               </div>
 
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Popis' : 'Description'}</label>
+                <textarea className="text-input" style={{ minHeight: '120px', resize: 'vertical' }} value={editingListing.description || ''} onChange={e => setEditingListing({...editingListing, description: e.target.value})} />
+              </div>
+
               <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Popis</label>
-                <textarea className="text-input" style={{ minHeight: '120px', resize: 'vertical' }} value={editingListing.description} onChange={e => setEditingListing({...editingListing, description: e.target.value})} />
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Požiadavky' : 'Requirements'}</label>
+                <textarea className="text-input" style={{ minHeight: '100px', resize: 'vertical' }} value={editingListing.requirements || ''} onChange={e => setEditingListing({...editingListing, requirements: e.target.value})} />
               </div>
 
               <button className="btn-main" onClick={handleUpdate} disabled={saveLoading} style={{ width: '100%', height: '52px' }}>

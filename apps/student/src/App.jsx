@@ -7,6 +7,7 @@ import ForYou from './pages/ForYou';
 import Search from './pages/Search';
 import Applications from './pages/Applications';
 import Profile from './pages/Profile';
+import CompanyProfile from './pages/CompanyProfile';
 import CandidateAuth from './pages/CandidateAuth';
 import './index.css';
 
@@ -109,6 +110,7 @@ function App() {
             <Route path="search" element={<Search />} />
             <Route path="applications" element={<Applications />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="company/:companyName" element={<CompanyProfile />} />
             <Route path="*" element={<Navigate to="/foryou" replace />} />
           </Route>
         )}

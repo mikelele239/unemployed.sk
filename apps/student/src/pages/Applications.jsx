@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApplications } from '../hooks/useApplications';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
-import { getAccessToken } from '../supabase';
+import { supabase } from '../supabase';
 
 export default function Applications() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { applications, fetchApplications } = useApplications();
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState(null);
@@ -65,7 +67,14 @@ export default function Applications() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.title}</h3>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>{app.company}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
+                      <span 
+                        onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(app.company)}`); }}
+                        style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                        onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                        onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+                      >{app.company}</span>
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: getStatusColor(app.status), display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
@@ -117,14 +126,15 @@ export default function Applications() {
                               btn.disabled = true;
                               btn.innerText = 'Spracovávam...';
                               try {
-                                const token = getAccessToken();
-                                await fetch(`/api/applications/${app.id}/interview`, {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (!session) return;
+                                await fetch(`/api/applications/${app.appId || app.id}`, {
                                   method: 'PATCH',
                                   headers: { 
                                     'Content-Type': 'application/json', 
-                                    'Authorization': `Bearer ${token}` 
+                                    'Authorization': `Bearer ${session.access_token}` 
                                   },
-                                  body: JSON.stringify({ declined: true })
+                                  body: JSON.stringify({ status: 'Declined' })
                                 });
                               } catch (err) {
                                 console.error('Decline error:', err);
@@ -190,14 +200,15 @@ export default function Applications() {
                                   btn.disabled = true;
                                   
                                   try {
-                                    const token = getAccessToken();
-                                    const res = await fetch(`/api/applications/${app.id}/interview`, {
+                                    const { data: { session } } = await supabase.auth.getSession();
+                                    if (!session) return;
+                                    const res = await fetch(`/api/applications/${app.appId || app.id}`, {
                                       method: 'PATCH',
                                       headers: { 
                                         'Content-Type': 'application/json', 
-                                        'Authorization': `Bearer ${token}` 
+                                        'Authorization': `Bearer ${session.access_token}` 
                                       },
-                                      body: JSON.stringify({ selectedDate: date })
+                                      body: JSON.stringify({ status: 'Interview-Confirmed' })
                                     });
                                     if (res.ok) {
                                       setSuccessId(app.id);

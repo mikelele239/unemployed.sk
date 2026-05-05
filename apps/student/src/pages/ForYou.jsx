@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import { supabase } from '../supabase';
@@ -10,6 +11,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
 export default function ForYou() {
   const { t, lang } = useTranslation();
+  const navigate = useNavigate();
   const { jobs, loading } = useJobs(true);
   const [cards, setCards] = useState([]);
   const [profile, setProfile] = useState({});
@@ -17,6 +19,20 @@ export default function ForYou() {
   const [toast, setToast] = useState(false);
   const { addApplication, hasApplied, applications } = useApplications();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  // Track ALL dismissed jobs (both liked and skipped) in localStorage
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('unemployed_dismissed')) || []; } catch { return []; }
+  });
+
+  const dismissJob = (jobId) => {
+    setDismissedIds(prev => {
+      if (prev.includes(jobId)) return prev;
+      const next = [...prev, jobId];
+      try { localStorage.setItem('unemployed_dismissed', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
@@ -27,15 +43,20 @@ export default function ForYou() {
   const logJobView = async (jobId) => {
     if (!jobId) return;
     try {
-      await supabase.rpc('increment_job_views', { job_id_input: jobId });
-    } catch (e) {
-      console.warn('[ForYou] View tracking failed (non-fatal):', e);
-    }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await fetch('/api/job-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ job_id: jobId })
+        });
+      }
+    } catch {}
   };
 
   useEffect(() => {
     if (!loading) {
-      const filtered = jobs.filter(j => !hasApplied(j.id));
+      const filtered = jobs.filter(j => !dismissedIds.includes(j.id) && !hasApplied(j.id));
       setCards([...filtered].reverse());
       if (filtered.length > 0) logJobView(filtered[0]?.id);
     }
@@ -63,6 +84,9 @@ export default function ForYou() {
   }, []);
 
   const handleSwipe = (direction, job) => {
+    // Always dismiss the job so it never reappears
+    dismissJob(job.id);
+
     if (direction === 'right') {
       addApplication(job);
       setToast(true);
@@ -84,7 +108,7 @@ export default function ForYou() {
   const currentJob = cards.length > 0 ? cards[cards.length - 1] : null;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // DESKTOP LAYOUT — Full detail view with inline actions
+  // DESKTOP LAYOUT — Two-column grid with details left, map+actions right
   // ═══════════════════════════════════════════════════════════════════════
   if (isDesktop) {
     return (
@@ -133,7 +157,12 @@ export default function ForYou() {
                     boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
                   }}>{currentJob.logo || currentJob.company?.charAt(0)}</div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{currentJob.company}</div>
+                    <div 
+                      onClick={() => navigate(`/company/${encodeURIComponent(currentJob.company)}`)}
+                      style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', cursor: 'pointer', transition: 'color 0.2s' }}
+                      onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                      onMouseLeave={e => e.target.style.color = 'var(--text)'}
+                    >{currentJob.company}</div>
                     <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                       {t('card.verified')}
                     </div>

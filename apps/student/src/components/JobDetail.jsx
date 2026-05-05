@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -16,6 +17,7 @@ import { useTranslation } from '../I18nContext';
 
 export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   if (!isOpen || !job) return null;
 
   return (
@@ -56,7 +58,14 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 4 }}>{job.title}</h2>
-            <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>{job.company} · {job.location || 'Bratislava'}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
+              <span 
+                onClick={() => { onClose(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
+                style={{ cursor: 'pointer', fontWeight: 600, transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+              >{job.company}</span> · {job.location || 'Bratislava'}
+            </div>
 
             {/* MVP Highlights */}
             <div style={{ 

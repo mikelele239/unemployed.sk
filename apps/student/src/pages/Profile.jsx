@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Settings, LogOut, CheckCircle, Shield } from 'lucide-react';
-import { supabase } from '../supabase';
+import { supabase, getAccessToken } from '../supabase';
 import { useTranslation } from '../I18nContext';
 
 export default function Profile() {
@@ -10,6 +10,9 @@ export default function Profile() {
   const [cvs, setCvs] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [addingSkill, setAddingSkill] = useState(false);
+  const [newSkill, setNewSkill] = useState('');
+  const skillInputRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -37,6 +40,24 @@ export default function Profile() {
       }
     };
     fetchProfile();
+  }, []);
+
+  // Load CVs on mount
+  useEffect(() => {
+    const loadCvs = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch('/api/cvs', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCvs(Array.isArray(data) ? data : []);
+        }
+      } catch (err) { console.error('Load CVs error:', err); }
+    };
+    loadCvs();
   }, []);
 
   const handleSave = async () => {
@@ -71,19 +92,23 @@ export default function Profile() {
 
     try {
       setUploading(true);
-      const token = getAccessToken();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const formData = new FormData();
       formData.append('cv', file);
 
       const res = await fetch('/api/cvs/upload', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
         body: formData
       });
 
       if (res.ok) {
         const data = await res.json();
         setCvs(prev => [data.cv, ...prev]);
+      } else {
+        const err = await res.json();
+        console.error('Upload error:', err);
       }
     } catch (err) { console.error('Upload error:', err); }
     finally { setUploading(false); }
@@ -91,15 +116,28 @@ export default function Profile() {
 
   const handleCvPreview = async (cvId) => {
     try {
-      const token = getAccessToken();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       const res = await fetch(`/api/cvs/download/${cvId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       if (res.ok) {
         const data = await res.json();
         window.open(data.url, '_blank');
       }
     } catch (err) { console.error('CV preview error:', err); }
+  };
+
+  const handleAddSkill = () => {
+    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
+      setProfile(prev => ({ ...prev, skills: [...(prev.skills || []), newSkill.trim()] }));
+      setNewSkill('');
+      setAddingSkill(false);
+    }
+  };
+
+  const handleRemoveSkill = (skill) => {
+    setProfile(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
   };
 
   const completionPercent = profile.name && profile.skills?.length > 0 ? 85 : 40;
@@ -171,7 +209,28 @@ export default function Profile() {
                 {skill}
               </span>
             ))}
-            <button style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>{lang === 'en' ? '+ Add' : '+ Pridať'}</button>
+            {isEditing && (profile.skills || []).map(skill => (
+              <button key={`rm-${skill}`} onClick={() => handleRemoveSkill(skill)} style={{ position: 'relative' }} title={lang === 'en' ? 'Remove' : 'Odstrániť'}>
+              </button>
+            ))}
+            {addingSkill ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  ref={skillInputRef}
+                  type="text"
+                  value={newSkill}
+                  onChange={e => setNewSkill(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddSkill(); if (e.key === 'Escape') { setAddingSkill(false); setNewSkill(''); } }}
+                  placeholder={lang === 'en' ? 'Skill name...' : 'Názov skill-u...'}
+                  autoFocus
+                  style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--accent)', outline: 'none', width: 120 }}
+                />
+                <button onClick={handleAddSkill} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>✓</button>
+                <button onClick={() => { setAddingSkill(false); setNewSkill(''); }} style={{ padding: '6px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }}>✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setAddingSkill(true)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>{lang === 'en' ? '+ Add' : '+ Pridať'}</button>
+            )}
           </div>
         </div>
 

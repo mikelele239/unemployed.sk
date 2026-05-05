@@ -23,23 +23,13 @@ const Candidates = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { setLoading(false); return; }
 
-        // Get employer's job IDs
-        const { data: jobs } = await supabase
-          .from('jobs')
-          .select('id')
-          .eq('employer_id', session.user.id);
-        const jobIds = (jobs || []).map(j => j.id);
-
-        if (jobIds.length === 0) { setLoading(false); return; }
-
-        // Fetch applications for those jobs
-        const { data: apps } = await supabase
-          .from('applications')
-          .select('*, job:job_id(title, company)')
-          .in('job_id', jobIds)
-          .order('created_at', { ascending: false });
-
-        setCandidates(Array.isArray(apps) ? apps : []);
+        const res = await fetch('/api/employer/candidates', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        if (res.ok) {
+          const { candidates } = await res.json();
+          setCandidates(Array.isArray(candidates) ? candidates : []);
+        }
       } catch (err) {
         console.error('Candidates fetch error:', err);
       } finally {
@@ -51,15 +41,22 @@ const Candidates = () => {
 
   const handleInvite = async (id, status = 'Interview', interviewDates = null) => {
     try {
-      const updatePayload = { status };
-      if (interviewDates) updatePayload.interview_dates = interviewDates;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      const { error } = await supabase
-        .from('applications')
-        .update(updatePayload)
-        .eq('id', id);
+      const body = { status };
+      if (interviewDates) body.interview_dates = interviewDates;
 
-      if (!error) {
+      const res = await fetch(`/api/employer/candidates/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
         if (status === 'Interview' && !invitedIds.includes(id)) {
           setInvitedIds([...invitedIds, id]);
         }

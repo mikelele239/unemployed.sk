@@ -1,27 +1,69 @@
 import { useState } from 'react';
-import { Search as SearchIcon, SlidersHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search as SearchIcon, SlidersHorizontal, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
 
+const RATE_OPTIONS = [
+  { label: '5€+', min: 5 },
+  { label: '7€+', min: 7 },
+  { label: '10€+', min: 10 },
+];
+
+const FOCUS_AREAS = ['Marketing', 'IT & Tech', 'Gastro', 'Retail', 'Administratíva', 'Sklad'];
+
 export default function Search() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const { jobs, loading } = useJobs();
   const [filterQuery, setFilterQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Všetky');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const navigate = useNavigate();
+
+  // Filter states
+  const [minRate, setMinRate] = useState(null);
+  const [selectedFocus, setSelectedFocus] = useState([]);
   
   const tabs = [t('search.all') || 'Všetky', t('search.parttime') || 'Brigády', t('search.internships') || 'Stáže', t('search.gigs') || 'Jednorázovky'];
+
+  const activeFilterCount = (minRate ? 1 : 0) + selectedFocus.length;
+
+  const parseRate = (rateStr) => {
+    if (!rateStr) return 0;
+    const match = String(rateStr).match(/[\d.]+/);
+    return match ? parseFloat(match[0]) : 0;
+  };
 
   const filteredJobs = jobs.filter(job => {
     if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'Brigáda') return false;
     if (activeTab === (t('search.internships') || 'Stáže') && job.type !== 'Stáž') return false;
     if (activeTab === (t('search.gigs') || 'Jednorázovky') && job.type !== 'Jednorázovka') return false;
     if (filterQuery && !job.title.toLowerCase().includes(filterQuery.toLowerCase()) && !job.company.toLowerCase().includes(filterQuery.toLowerCase())) return false;
+    
+    // Min rate filter
+    if (minRate && parseRate(job.rate) < minRate) return false;
+    
+    // Focus area filter — match against tags or title
+    if (selectedFocus.length > 0) {
+      const jobText = [job.title, ...(job.tags || [])].join(' ').toLowerCase();
+      const hasMatch = selectedFocus.some(f => jobText.includes(f.toLowerCase()));
+      if (!hasMatch) return false;
+    }
+    
     return true;
   });
+
+  const handleClearFilters = () => {
+    setMinRate(null);
+    setSelectedFocus([]);
+  };
+
+  const toggleFocus = (area) => {
+    setSelectedFocus(prev => prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]);
+  };
 
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -41,11 +83,43 @@ export default function Search() {
           </div>
           <button 
             onClick={() => setShowFilters(true)}
-            style={{ width: 44, height: 44, borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ 
+              width: 44, height: 44, borderRadius: 12, 
+              border: activeFilterCount > 0 ? '1.5px solid var(--accent)' : '1.5px solid var(--border)', 
+              background: activeFilterCount > 0 ? 'rgba(255,92,0,0.1)' : 'var(--bg-card)', 
+              color: activeFilterCount > 0 ? 'var(--accent)' : 'var(--text)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' 
+            }}
           >
             <SlidersHorizontal size={20} />
+            {activeFilterCount > 0 && (
+              <div style={{ 
+                position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', 
+                background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>{activeFilterCount}</div>
+            )}
           </button>
         </div>
+
+        {/* Active filter pills */}
+        {activeFilterCount > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {minRate && (
+              <span onClick={() => setMinRate(null)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {minRate}€+ <X size={12} />
+              </span>
+            )}
+            {selectedFocus.map(f => (
+              <span key={f} onClick={() => toggleFocus(f)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {f} <X size={12} />
+              </span>
+            ))}
+            <span onClick={handleClearFilters} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
+              {lang === 'en' ? 'Clear all' : 'Vymazať'}
+            </span>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, margin: '0 -20px', padding: '0 20px 8px' }}>
           {tabs.map(tab => (
@@ -95,7 +169,14 @@ export default function Search() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>{job.title}</h3>
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{job.company} · {job.location}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                      <span 
+                        onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
+                        style={{ cursor: 'pointer', fontWeight: 600, transition: 'color 0.2s' }}
+                        onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                        onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+                      >{job.company}</span> · {job.location}
+                    </div>
                     
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
                       {job.tags.slice(0, 2).map((tag, i) => (
@@ -132,32 +213,75 @@ export default function Search() {
             onClick={() => setShowFilters(false)}
           >
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: '0%' }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--bg)', borderRadius: '24px 24px 0 0', padding: '24px' }}
+              initial={{ x: '100%' }} animate={{ x: '0%' }} exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 340, background: 'var(--bg)', borderRadius: '24px 0 0 24px', padding: '24px', overflowY: 'auto', boxShadow: '-8px 0 40px rgba(0,0,0,0.3)' }}
               onClick={e => e.stopPropagation()}
             >
-              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>{t('search.filters') || 'Podrobné filtre'}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <h3 style={{ fontSize: 20, fontWeight: 800 }}>{t('search.filters') || 'Podrobné filtre'}</h3>
+                {activeFilterCount > 0 && (
+                  <button onClick={handleClearFilters} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    {lang === 'en' ? 'Reset' : 'Resetovať'}
+                  </button>
+                )}
+              </div>
               
               <div style={{ marginBottom: 20 }}>
                 <h4 style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{t('search.minRate') || 'Minimálna odmena'}</h4>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {['Od 5€/hod', 'Od 7€/hod', 'Od 10€/hod'].map((o,i) => (
-                    <button key={o} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: i===0?'1px solid var(--accent)':'1px solid var(--border)', background: i===0?'var(--accent-lighter)':'var(--bg-card)', color: i===0?'var(--accent)':'var(--text)', fontSize: 13, fontWeight: 600 }}>{o}</button>
-                  ))}
+                  {RATE_OPTIONS.map(opt => {
+                    const isActive = minRate === opt.min;
+                    return (
+                      <button 
+                        key={opt.min}
+                        onClick={() => setMinRate(isActive ? null : opt.min)}
+                        style={{ 
+                          flex: 1, padding: '10px 0', borderRadius: 8, cursor: 'pointer',
+                          border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)', 
+                          background: isActive ? 'var(--accent-lighter)' : 'var(--bg-card)', 
+                          color: isActive ? 'var(--accent)' : 'var(--text)', 
+                          fontSize: 13, fontWeight: 600, transition: 'all 0.2s' 
+                        }}
+                      >
+                        {lang === 'en' ? `From ${opt.label}` : `Od ${opt.label}`}/{lang === 'en' ? 'hr' : 'hod'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div style={{ marginBottom: 32 }}>
                 <h4 style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{t('search.focus') || 'Zameranie'}</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {['Marketing', 'IT & Tech', 'Gastro', 'Retail', 'Administratíva', 'Sklad'].map((o,i) => (
-                    <button key={o} style={{ padding: '8px 16px', borderRadius: 100, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}>{o}</button>
-                  ))}
+                  {FOCUS_AREAS.map(area => {
+                    const isActive = selectedFocus.includes(area);
+                    return (
+                      <button 
+                        key={area} 
+                        onClick={() => toggleFocus(area)}
+                        style={{ 
+                          padding: '8px 16px', borderRadius: 100, cursor: 'pointer',
+                          border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)', 
+                          background: isActive ? 'var(--accent)' : 'var(--bg-card)', 
+                          color: isActive ? '#fff' : 'var(--text)', 
+                          fontSize: 13, fontWeight: 600, transition: 'all 0.2s' 
+                        }}
+                      >
+                        {area}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <button className="btn-primary" style={{ width: '100%', borderRadius: 12 }} onClick={() => setShowFilters(false)}>{t('search.applyFilters') || 'Aplikovať filtre'}</button>
+              <button 
+                className="btn-primary" 
+                style={{ width: '100%', borderRadius: 12 }} 
+                onClick={() => setShowFilters(false)}
+              >
+                {t('search.applyFilters') || 'Aplikovať filtre'} {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+              </button>
             </motion.div>
           </motion.div>
         )}

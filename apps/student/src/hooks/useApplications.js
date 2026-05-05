@@ -30,8 +30,9 @@ export function useApplications() {
       const token = await getToken();
       if (!token) return;
 
-      // Get profile info for application
+      // Get full profile info for application
       let studentName = '';
+      let studentProfile = {};
       try {
         const profRes = await fetch('/api/student/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -40,6 +41,16 @@ export function useApplications() {
           const { profile } = await profRes.json();
           if (profile) {
             studentName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+            studentProfile = {
+              first_name: profile.first_name || '',
+              last_name: profile.last_name || '',
+              education: profile.education || '',
+              location: profile.location || '',
+              skills: profile.skills || [],
+              cv_id: profile.cv_id || null,
+              original_filename: profile.original_filename || null,
+              school: profile.education || '',
+            };
           }
         }
       } catch {}
@@ -53,7 +64,7 @@ export function useApplications() {
         body: JSON.stringify({
           job_id: job.id,
           student_name: studentName || undefined,
-          student_profile: {},
+          student_profile: studentProfile,
           ai_score: 50,
           ai_reasoning: 'Submitted via Unemployed.sk',
         })
