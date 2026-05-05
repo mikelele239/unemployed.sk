@@ -76,6 +76,8 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'apps', 'landing')));
 app.use('/app', express.static(path.join(__dirname, 'apps', 'student', 'dist')));
 app.use('/employer', express.static(path.join(__dirname, 'apps', 'employer', 'dist')));
+app.use('/student-demo', express.static(path.join(__dirname, 'apps', 'student-demo', 'dist')));
+app.use('/employer-demo', express.static(path.join(__dirname, 'apps', 'employer-demo', 'dist')));
 
 // Simple rate limiter
 const rateMap = new Map();
@@ -548,6 +550,14 @@ app.get('/app(/*)?', (req, res) => {
 
 app.get('/employer(/*)?', (req, res) => {
   res.sendFile(path.join(__dirname, 'apps', 'employer', 'dist', 'index.html'));
+});
+
+app.get('/student-demo(/*)?', (req, res) => {
+  res.sendFile(path.join(__dirname, 'apps', 'student-demo', 'dist', 'index.html'));
+});
+
+app.get('/employer-demo(/*)?', (req, res) => {
+  res.sendFile(path.join(__dirname, 'apps', 'employer-demo', 'dist', 'index.html'));
 });
 
 const server = app.listen(PORT, () => {

@@ -1,0 +1,277 @@
+import React, { useState, useEffect } from 'react';
+import { useI18n, useAppState } from '../contexts';
+import { INITIAL_LISTINGS } from '../mockData';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { isDemoMode } from '../demoMode';
+
+const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus }) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const title = lang === 'sk' ? (l.title || l.title_en) : (l.title_en || l.title);
+  const status = l.status || 'Active';
+  const workModel = l.work_model || l.workModel || 'On-site';
+
+  return (
+    <motion.div 
+      layout="position"
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      onClick={() => onEdit(l)}
+      style={{ 
+        background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '4px solid transparent', borderRadius: 'var(--radius)', 
+        padding: '24px', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer',
+        boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden'
+      }} 
+      onMouseEnter={(e) => { 
+        e.currentTarget.style.boxShadow = '0 8px 30px rgba(255, 92, 0, 0.15)'; 
+        e.currentTarget.style.borderColor = 'var(--accent)'; 
+        e.currentTarget.style.borderLeftColor = 'var(--accent)';
+      }}
+      onMouseLeave={(e) => { 
+        e.currentTarget.style.boxShadow = 'var(--shadow)'; 
+        e.currentTarget.style.borderColor = 'var(--border)'; 
+        e.currentTarget.style.borderLeftColor = 'transparent';
+      }}
+      className="listing-card"
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ flex: 1, marginRight: '12px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '6px', color: 'var(--text)' }}>{title}</h3>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            {l.location} • {workModel}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800', color: 'var(--accent)', background: 'rgba(255, 92, 0, 0.1)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(255, 92, 0, 0.2)' }}>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)', animation: 'blink 1.5s infinite' }}></span>
+              LIVE
+            </div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: getStatusColor(status), background: 'var(--bg)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {translateStatus(status)}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(l); }}
+              style={{
+                padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', 
+                background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsConfirming(true); }}
+              style={{
+                padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', 
+                background: 'rgba(255, 71, 71, 0.1)', color: '#ff4747', cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              title={t('delete')}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div style={{ display: 'flex', gap: '40px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{l.applications || 0}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('applications')}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.views || 0}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('views')}</div>
+        </div>
+      </div>
+
+      {/* Confirmation Overlay */}
+      <AnimatePresence>
+        {isConfirming && (
+          <motion.div 
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(4px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '20px', textAlign: 'center', zIndex: 10
+            }}
+          >
+            <p style={{ color: '#fff', fontSize: '14px', fontWeight: '600', marginBottom: '16px' }}>{t('deleteConfirm')}</p>
+            <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(l.id); }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#ff4747', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer' }}
+              >
+                {t('delete')}
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsConfirming(false); }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Zrušiť
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+const Listings = () => {
+  const { t } = useI18n();
+  const { listings, setListings } = useAppState();
+
+  const [loading, setLoading] = useState(true);
+  const [editingListing, setEditingListing] = useState(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchMyJobs = async () => {
+      if (isDemoMode()) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('employer_token');
+        const res = await fetch('/api/jobs/my', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setListings(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMyJobs();
+  }, []);
+
+  const getStatusColor = (status) => status === 'Active' ? 'var(--green)' : 'var(--accent)';
+  const translateStatus = (s) => t(`status${s}`);
+
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem('employer_token');
+      const res = await fetch(`/api/jobs/${id}`, { 
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (res.ok) setListings(prev => prev.filter(l => l.id !== id));
+    } catch (err) { console.error(err); }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingListing.title) return;
+    try {
+      setSaveLoading(true);
+      const token = localStorage.getItem('employer_token');
+      const res = await fetch(`/api/jobs/${editingListing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(editingListing)
+      });
+      if (res.ok) {
+        setListings(prev => prev.map(l => l.id === editingListing.id ? { ...editingListing } : l));
+        setEditingListing(null);
+      } else {
+        const errData = await res.json();
+        alert(`Chyba: ${errData.error}`);
+      }
+    } catch (err) { console.error(err); } finally { setSaveLoading(false); }
+  };
+
+  return (
+    <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800' }}>{t('listingsTitle')}</h1>
+        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('listingsSub')}</p>
+      </div>
+
+      <motion.div 
+        layout
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '24px' }}
+      >
+        <AnimatePresence mode="popLayout">
+          {listings.map(l => (
+            <ListingCard 
+              key={l.id} l={l} t={t} 
+              onDelete={handleDelete} onEdit={setEditingListing}
+              getStatusColor={getStatusColor} translateStatus={translateStatus}
+            />
+          ))}
+        </AnimatePresence>
+        {!loading && listings.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+            {t('noResults')}
+          </div>
+        )}
+      </motion.div>
+
+      <AnimatePresence>
+        {editingListing && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+            onClick={() => setEditingListing(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', background: 'var(--bg-card)', borderRadius: '24px', border: '1px solid var(--border)', padding: '32px', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 800 }}>Upraviť ponuku</h2>
+                <button onClick={() => setEditingListing(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Názov pozície</label>
+                  <input className="text-input" value={editingListing.title} onChange={e => setEditingListing({...editingListing, title: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Pracovný model</label>
+                  <select className="text-input" value={editingListing.work_model || editingListing.workModel} onChange={e => setEditingListing({...editingListing, work_model: e.target.value, workModel: e.target.value})}>
+                    <option value="On-site">On-site</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Remote">Remote</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Hodinová mzda</label>
+                  <input className="text-input" value={editingListing.rate} onChange={e => setEditingListing({...editingListing, rate: e.target.value})} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Popis</label>
+                <textarea className="text-input" style={{ minHeight: '120px', resize: 'vertical' }} value={editingListing.description} onChange={e => setEditingListing({...editingListing, description: e.target.value})} />
+              </div>
+
+              <button className="btn-main" onClick={handleUpdate} disabled={saveLoading} style={{ width: '100%', height: '52px' }}>
+                {saveLoading ? 'Ukladám...' : 'Uložiť zmeny'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Listings;
