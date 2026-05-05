@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Sparkles, CheckCircle2, ChevronRight, FileText, BrainCircuit } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../I18nContext';
 import { cvApi } from '../services/cvApi';
 import { getAccessToken } from '../supabase';
 import { isDemoMode } from '../demoMode';
 
+import WelcomePhase  from '../components/onboarding/WelcomePhase';
+import UploadPhase   from '../components/onboarding/UploadPhase';
+import ParsingPhase  from '../components/onboarding/ParsingPhase';
+import ReviewPhase   from '../components/onboarding/ReviewPhase';
+import ManualPhase   from '../components/onboarding/ManualPhase';
+import ClimaxPhase   from '../components/onboarding/ClimaxPhase';
+
 const SKILLS_POOL_SK = ['Komunikatívny', 'Tímový hráč', 'Spoľahlivý', 'Rýchlo sa učí', 'Kreatívny', 'Detailista', 'Líder', 'Riešiteľ', 'Organizovaný', 'Angličtina B2'];
 const SKILLS_POOL_EN = ['Communicative', 'Team player', 'Reliable', 'Fast learner', 'Creative', 'Detail-oriented', 'Leader', 'Problem solver', 'Organised', 'English B2'];
-const JOB_TYPES_SK = ['Brigáda', 'Stáž', 'Plný úväzok', 'Jednorázovky', 'Remote'];
-const JOB_TYPES_EN = ['Part-time', 'Internship', 'Full-time', 'One-off gigs', 'Remote'];
+const JOB_TYPES_SK   = ['Brigáda', 'Stáž', 'Plný úväzok', 'Jednorázovky', 'Remote'];
+const JOB_TYPES_EN   = ['Part-time', 'Internship', 'Full-time', 'One-off gigs', 'Remote'];
 
 export default function Onboarding({ onComplete }) {
   const { t, lang } = useTranslation();
 
-  // Phase: 'welcome' | 'upload' | 'parsing' | 'review' | 'manual' | 'climax'
   const [phase, setPhase] = useState('welcome');
   const [parsingProgress, setParsingProgress] = useState(0);
-  const [climaxStep, setClimaxStep] = useState(0);
   const [data, setData] = useState({ name: '', edu: '', loc: '', avail: [], jobType: [], skills: [], cv_id: null });
   const [manualStep, setManualStep] = useState(0);
 
@@ -25,45 +29,31 @@ export default function Onboarding({ onComplete }) {
     { id: 'name',    type: 'text',   title: t('ob.manualName'),  sub: t('ob.manualNameSub'), placeholder: t('ob.manualNamePh') },
     { id: 'edu',     type: 'single', title: t('ob.manualEdu'),   sub: t('ob.manualEduSub'),  options: lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent'] },
     { id: 'loc',     type: 'single', title: t('ob.manualLoc'),   sub: t('ob.manualLocSub'),  options: ['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra', lang === 'en' ? 'Other' : 'Iné'] },
-    { id: 'jobType', type: 'multi',  title: t('ob.manualType'),  sub: t('ob.manualTypeSub'), options: lang === 'en' ? ['Part-time', 'Internship', 'Full-time', 'One-off'] : ['Brigáda', 'Stáž', 'Plný úväzok', 'Jednorázovky'] },
+    { id: 'jobType', type: 'multi',  title: t('ob.manualType'),  sub: t('ob.manualTypeSub'), options: lang === 'en' ? JOB_TYPES_EN : JOB_TYPES_SK },
   ];
 
-  // 1. Welcome auto-advance
+  // Auto-advance from welcome screen
   useEffect(() => {
-    if (phase === 'welcome') {
-      const timer = setTimeout(() => setPhase('upload'), 3000);
-      return () => clearTimeout(timer);
-    }
+    if (phase !== 'welcome') return;
+    const t = setTimeout(() => setPhase('upload'), 3000);
+    return () => clearTimeout(t);
   }, [phase]);
 
-  // 2. Drag & Drop
-  const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
-  const handleDrop = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    if (e.dataTransfer.files?.[0]) startParsing(e.dataTransfer.files[0]);
-  };
-  const handleFileChange = (e) => {
-    if (e.target.files?.[0]) startParsing(e.target.files[0]);
-  };
-
-    // 3. Faux parsing simulation + Real CV Upload
-  const startParsing = async (fileObj) => {
-    // Real Upload triggered in background
+  // CV file handler
+  const handleFile = async (fileObj) => {
     try {
       const cvData = await cvApi.uploadCV(fileObj);
       setData(prev => ({ ...prev, cv_id: cvData.id }));
     } catch (err) {
-      console.error("Submitting CV failed:", err);
+      console.error('CV upload failed:', err);
     }
 
-    // Simulate AI extracting name from filename (e.g. "Tomas_Horvath_CV.pdf" -> "Tomas Horvath")
-    let extractedName = fileObj.name.replace(/\.[^/.]+$/, ""); // remove extension
-    extractedName = extractedName.replace(/_|-|cv|resume|životopis|zivotopis/gi, " ").replace(/\s+/g, " ").trim();
-    if (extractedName) {
-      extractedName = extractedName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-    }
-    
-    setData(prev => ({ ...prev, name: extractedName || '' }));
+    // Extract name from filename heuristically
+    let name = fileObj.name.replace(/\.[^/.]+$/, '')
+      .replace(/_|-|cv|resume|životopis|zivotopis/gi, ' ')
+      .replace(/\s+/g, ' ').trim();
+    if (name) name = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    setData(prev => ({ ...prev, name: name || '' }));
 
     setPhase('parsing');
     let p = 0;
@@ -86,36 +76,15 @@ export default function Onboarding({ onComplete }) {
       ...prev,
       edu: lang === 'en' ? 'University' : 'Vysoká škola',
       loc: 'Bratislava',
-      avail: [],
       jobType: [...jobPool].sort(() => 0.5 - Math.random()).slice(0, 2),
       skills: [...skillsPool].sort(() => 0.5 - Math.random()).slice(0, 3),
     }));
     setTimeout(() => setPhase('review'), 600);
   };
 
-  // 4. Manual fallback chip clicks
-  const handleManualAction = (id, val, isMulti) => {
-    if (isMulti) {
-      setData(prev => ({ ...prev, [id]: prev[id].includes(val) ? prev[id].filter(o => o !== val) : [...prev[id], val] }));
-    } else {
-      setData(prev => ({ ...prev, [id]: val }));
-    }
-  };
-
-  // 5. Climax animation then complete
   const finalizeMatching = async () => {
     setPhase('climax');
-    
-    // Sync to Supabase securely
-    const profilePayload = {
-      name: data.name,
-      education: data.edu,
-      location: data.loc,
-      skills: data.skills,
-      jobPreferences: data.jobType,
-      cv_id: data.cv_id
-    };
-
+    const payload = { name: data.name, education: data.edu, location: data.loc, skills: data.skills, jobPreferences: data.jobType, cv_id: data.cv_id };
     try {
       if (isDemoMode()) {
         localStorage.setItem('unemployed_profile', JSON.stringify(data));
@@ -124,13 +93,9 @@ export default function Onboarding({ onComplete }) {
         const token = getAccessToken();
         await fetch('/api/profile', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(profilePayload)
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
         });
-        // Save full profile and mark as started
         localStorage.setItem('unemployed_profile', JSON.stringify(data));
         localStorage.setItem('unemployed_profile_started', 'true');
       }
@@ -141,279 +106,28 @@ export default function Onboarding({ onComplete }) {
     let step = 0;
     const interval = setInterval(() => {
       step++;
-      setClimaxStep(step);
-      if (step >= 4) {
-        clearInterval(interval);
-        setTimeout(() => onComplete(), 1200);
-      }
+      if (step >= 4) { clearInterval(interval); setTimeout(() => onComplete(), 1200); }
     }, 900);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
       <AnimatePresence mode="wait">
-
-        {/* WELCOME */}
-        {phase === 'welcome' && (
-          <motion.div key="welcome"
-            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}
-          >
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: 16 }}>
-                {t('ob.hook')}
-              </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('ob.hookSub')}</p>
-            </motion.div>
-          </motion.div>
+        {phase === 'welcome' && <WelcomePhase />}
+        {phase === 'upload'  && <UploadPhase onFile={handleFile} onSkip={() => setPhase('manual')} />}
+        {phase === 'parsing' && <ParsingPhase progress={parsingProgress} />}
+        {phase === 'review'  && <ReviewPhase data={data} setData={setData} onConfirm={finalizeMatching} />}
+        {phase === 'manual'  && (
+          <ManualPhase
+            data={data} setData={setData}
+            manualStep={manualStep} setManualStep={setManualStep}
+            steps={MANUAL_STEPS}
+            onBack={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
+            onNext={() => setManualStep(s => s + 1)}
+            onFinish={finalizeMatching}
+          />
         )}
-
-        {/* UPLOAD DROPZONE */}
-        {phase === 'upload' && (
-          <motion.div key="upload"
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', alignItems: 'center' }}
-          >
-            <div style={{ alignSelf: 'flex-start', marginBottom: 40 }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 8, lineHeight: 1.1 }}>
-                {t('ob.uploadTitle')} <br />{t('ob.uploadTitle2')}
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{t('ob.uploadSub')}</p>
-            </div>
-
-            <label
-              onDragOver={handleDragOver} onDrop={handleDrop}
-              style={{ 
-                width: '100%', maxWidth: 440, flex: 1, maxHeight: 320, 
-                border: '2px dashed var(--border)', borderRadius: 32, 
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                background: 'var(--bg-card)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                padding: '40px 24px', textAlign: 'center'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-lighter)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-card)'; }}
-            >
-              <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} style={{ display: 'none' }} />
-              <div style={{ 
-                width: 72, height: 72, borderRadius: 24, 
-                background: 'var(--accent)', color: '#fff', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                marginBottom: 20, boxShadow: '0 8px 24px rgba(255,92,0,0.25)' 
-              }}>
-                <UploadCloud size={36} />
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.3px' }}>{t('ob.uploadCta')}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: '240px', lineHeight: 1.5 }}>{t('ob.uploadFormats')}</p>
-            </label>
-
-            <button onClick={() => setPhase('manual')}
-              style={{ 
-                marginTop: 'auto', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', 
-                color: 'var(--text)', fontSize: 14, fontWeight: 600, padding: '12px 24px', 
-                borderRadius: 100, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            >
-              {t('ob.noCV')} <ChevronRight size={16} />
-            </button>
-          </motion.div>
-        )}
-
-        {/* PARSING */}
-        {phase === 'parsing' && (
-          <motion.div key="parsing"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}
-          >
-            <div style={{ position: 'relative', width: 120, height: 120, marginBottom: 32 }}>
-              <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ position: 'absolute', inset: -20, background: 'var(--accent)', borderRadius: '50%', filter: 'blur(20px)' }}
-              />
-              <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-card)', borderRadius: 24, border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileText size={48} color="var(--accent)" />
-              </div>
-              <motion.div initial={{ top: '0%' }} animate={{ top: '100%' }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                style={{ position: 'absolute', left: -10, right: -10, height: 2, background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}
-              />
-            </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 900, marginBottom: 12 }}>{t('ob.parsing')}</h2>
-            <div style={{ width: '100%', maxWidth: 240, height: 6, background: 'var(--bg-card)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
-              <motion.div style={{ width: `${parsingProgress}%`, height: '100%', background: 'var(--accent)' }} />
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('ob.parsingSub')}</p>
-          </motion.div>
-        )}
-
-        {/* REVIEW */}
-        {phase === 'review' && (
-          <motion.div key="review"
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', overflowY: 'auto' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CheckCircle2 size={24} />
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 32 }}>{t('ob.reviewSub')}</p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewName')}</span>
-                <input value={data.name} onChange={e => setData({ ...data, name: e.target.value })}
-                  placeholder={t('ob.reviewNamePlaceholder')}
-                  style={{ background: 'transparent', border: 'none', color: data.name ? 'var(--text)' : 'var(--text-muted)', fontSize: 18, fontWeight: 700, width: '100%', marginTop: 8, outline: 'none' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewEdu')}</span>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 8 }}>{data.edu}</div>
-                </div>
-                <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewLoc')}</span>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 8 }}>{data.loc}</div>
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12, display: 'block' }}>{t('ob.reviewSkills')}</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {data.skills.map(s => (
-                    <span key={s} style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600 }}>{s}</span>
-                  ))}
-                  <span style={{ background: 'var(--border)', color: 'var(--text-muted)', padding: '6px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600 }}>
-                    {t('ob.reviewAddMore')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 'auto', paddingTop: 32 }}>
-              <button className="btn-primary" onClick={finalizeMatching}
-                style={{ width: '100%', padding: 18, borderRadius: 16, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
-                {t('ob.reviewConfirm')} <Sparkles size={18} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* MANUAL FALLBACK */}
-        {phase === 'manual' && (
-          <motion.div key="manual"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px' }}
-          >
-            <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-              <button onClick={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
-                style={{ width: 40, height: 40, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >←</button>
-              <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: `${((manualStep + 1) / MANUAL_STEPS.length) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-              </div>
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <AnimatePresence mode="wait">
-                {(() => {
-                  const s = MANUAL_STEPS[manualStep];
-                  return (
-                    <motion.div key={manualStep} 
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 900, marginBottom: 8, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.title}</h2>
-                      <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.4 }}>{s.sub}</p>
-
-                      {s.type === 'text' && (
-                        <div style={{ position: 'relative' }}>
-                          <input type="text" placeholder={s.placeholder} value={data[s.id]}
-                            onChange={e => setData({ ...data, [s.id]: e.target.value })}
-                            onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching())}
-                            style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 16, fontWeight: 700, outline: 'none', transition: 'border-color 0.2s' }}
-                            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                            autoFocus
-                          />
-                        </div>
-                      )}
-
-                      {(s.type === 'single' || s.type === 'multi') && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-                          {s.options.map(opt => {
-                            const isSelected = s.type === 'multi' ? data[s.id].includes(opt) : data[s.id] === opt;
-                            return (
-                              <button key={opt} onClick={() => handleManualAction(s.id, opt, s.type === 'multi')}
-                                style={{ 
-                                  padding: '16px 20px', borderRadius: 16, border: '1px solid', 
-                                  borderColor: isSelected ? 'var(--accent)' : 'var(--border)', 
-                                  background: isSelected ? 'var(--accent-light)' : 'var(--bg-card)', 
-                                  color: isSelected ? 'var(--accent)' : 'var(--text)', 
-                                  fontSize: 16, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                                }}
-                              >
-                                {opt}
-                                {isSelected && <CheckCircle2 size={20} />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })()}
-              </AnimatePresence>
-            </div>
-
-            <div style={{ paddingTop: 20, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-              <button onClick={() => manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching()}
-                disabled={MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()}
-                className="btn-primary"
-                style={{ width: '100%', padding: 20, fontSize: 17, fontWeight: 800, borderRadius: 20, opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-              >
-                {manualStep < MANUAL_STEPS.length - 1 ? t('ob.next') : t('ob.finish')}
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* CLIMAX */}
-        {phase === 'climax' && (
-          <motion.div key="climax"
-            initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center', background: 'var(--bg)' }}
-          >
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.2, 1],
-                rotate: [0, 10, -10, 0]
-              }} 
-              transition={{ repeat: Infinity, duration: 3 }} 
-              style={{ marginBottom: 40 }}
-            >
-              <div style={{ 
-                width: 100, height: 100, borderRadius: 30, background: 'var(--accent)', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 20px 40px rgba(255,92,0,0.3)'
-              }}>
-                <Sparkles size={48} color="#fff" />
-              </div>
-            </motion.div>
-            <div style={{ height: 100, display: 'flex', alignItems: 'center' }}>
-               <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
-                 {lang === 'en' ? 'Finding your matches...' : 'Hľadám tvoje ponuky...'}
-               </h2>
-            </div>
-          </motion.div>
-        )}
-
+        {phase === 'climax'  && <ClimaxPhase />}
       </AnimatePresence>
     </div>
   );

@@ -1,16 +1,52 @@
-# React + Vite
+# employer (Live)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Production employer portal — fully Supabase-authenticated.
 
-Currently, two official plugins are available:
+## Stack
+- React + Vite, `basename="/employer"`
+- Supabase Auth (JWT Bearer tokens)
+- `demoMode.js` → returns `false` in production
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Structure
+```
+src/
+├── App.jsx              # Router, Supabase session management, role guard
+├── contexts.jsx         # AppState, I18n contexts
+├── i18n.js              # SK/EN translations
+├── mockData.js          # Fallback data for empty states
+├── demoMode.js          # Returns false in live, true for local dev override
+├── supabase.js          # Supabase client (anon key)
+├── index.css            # Global styles
+├── design/tokens.css    # CSS custom properties
+├── components/
+│   ├── SideNav.jsx
+│   ├── Chart.jsx
+│   ├── StatCard.jsx
+│   ├── CandidateCard.jsx
+│   ├── MatchCard.jsx
+│   ├── Toast.jsx
+│   ├── ModernDatePicker.jsx
+│   └── QuizStep.jsx
+└── pages/
+    ├── Dashboard.jsx    # Analytics, pipeline stats
+    ├── Listings.jsx     # Active job listings
+    ├── CreateListing.jsx
+    ├── Candidates.jsx   # Applicant management
+    ├── Profile.jsx
+    ├── EmployerAuth.jsx # Login gate
+    ├── Onboarding.jsx   # Company setup
+    └── Inquiry.jsx      # Contact form for non-registered employers
+```
 
-## React Compiler
+## Dev
+```bash
+npm install
+npm run dev    # Vite dev server (connects to Supabase via /api proxy)
+npm run build  # Build to dist/
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Auth Flow
+1. User visits `/employer` → `EmployerAuth.jsx` checks session
+2. Login via `/api/auth/employer/login` → server validates role
+3. Session stored in `localStorage` as `employer_token`
+4. All API calls send `Authorization: Bearer <token>`

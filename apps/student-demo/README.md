@@ -1,16 +1,51 @@
-# React + Vite
+# student-demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Isolated student portal demo — no Supabase auth required.
 
-Currently, two official plugins are available:
+## Stack
+- React + Vite, `basename="/student-demo"`
+- Mock jobs from `data/mockJobs.js`
+- `demoMode.js` → always returns `true`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Structure
+```
+src/
+├── App.jsx              # Router, demo mode bypass, session handling
+├── I18nContext.jsx      # SK/EN translation provider
+├── demoMode.js          # Returns true (demo always on)
+├── supabase.js          # Supabase client (unused in demo mode)
+├── index.css            # Global styles + touch handling
+├── design/tokens.css    # CSS custom properties
+├── components/
+│   ├── MainLayout.jsx   # Desktop sidebar + mobile bottom nav
+│   ├── SwipeCard.jsx    # Tinder swipe card (framer-motion + leaflet map)
+│   ├── JobDetail.jsx    # Job details bottom sheet
+│   └── onboarding/      # Onboarding phases (split for modularity)
+│       ├── WelcomePhase.jsx
+│       ├── UploadPhase.jsx
+│       ├── ParsingPhase.jsx
+│       ├── ReviewPhase.jsx
+│       ├── ManualPhase.jsx
+│       └── ClimaxPhase.jsx
+├── hooks/
+│   ├── useJobs.js       # Fetches jobs (mock in demo, API in live)
+│   └── useApplications.js
+├── services/
+│   └── cvApi.js         # CV upload service
+├── data/
+│   └── mockJobs.js      # Demo job listings
+└── pages/
+    ├── Onboarding.jsx   # Orchestrator (delegates to onboarding/ components)
+    ├── ForYou.jsx       # Swipe deck
+    ├── Search.jsx
+    ├── Applications.jsx
+    ├── Profile.jsx
+    └── CandidateAuth.jsx
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Dev
+```bash
+npm install
+npm run dev    # Vite dev server
+npm run build  # Build to dist/
+```

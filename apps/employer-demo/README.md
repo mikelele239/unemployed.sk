@@ -1,16 +1,45 @@
-# React + Vite
+# employer-demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Isolated employer portal demo — no Supabase auth required.
 
-Currently, two official plugins are available:
+## Stack
+- React + Vite, `basename="/employer-demo"`
+- Mock data via `mockData.js`
+- `demoMode.js` → always returns `true`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Structure
+```
+src/
+├── App.jsx              # Router, demo mode bypass
+├── contexts.jsx         # AppState, I18n contexts
+├── i18n.js              # SK/EN translations
+├── mockData.js          # Demo data for listings, candidates
+├── demoMode.js          # Returns true (demo always on)
+├── index.css            # Global styles + mobile nav
+├── design/tokens.css    # CSS custom properties
+├── components/
+│   ├── SideNav.jsx      # Responsive sidebar / mobile bottom nav
+│   ├── Chart.jsx        # Line chart for analytics
+│   ├── StatCard.jsx     # KPI stat cards
+│   ├── CandidateCard.jsx
+│   ├── MatchCard.jsx
+│   ├── Toast.jsx
+│   ├── ModernDatePicker.jsx
+│   └── QuizStep.jsx
+└── pages/
+    ├── Dashboard.jsx
+    ├── Listings.jsx
+    ├── CreateListing.jsx
+    ├── Candidates.jsx
+    ├── Profile.jsx
+    ├── EmployerAuth.jsx
+    ├── Onboarding.jsx
+    └── Inquiry.jsx
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Dev
+```bash
+npm install
+npm run dev    # Vite dev server
+npm run build  # Build to dist/
+```
