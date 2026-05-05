@@ -33,7 +33,7 @@ export default function MainLayout() {
       {/* Sidebar Navigation (Desktop) / Bottom Nav (Mobile) */}
       <nav style={{
         width: isDesktop ? '240px' : '100%',
-        height: isDesktop ? '100%' : 'calc(54px + env(safe-area-inset-bottom, 0px))',
+        height: isDesktop ? '100%' : 'calc(64px + env(safe-area-inset-bottom, 0px))',
         background: 'var(--bg)',
         borderRight: isDesktop ? '1px solid var(--border)' : 'none',
         borderTop: isDesktop ? 'none' : '1px solid var(--border)',
@@ -113,7 +113,7 @@ export default function MainLayout() {
       <div className="scroll-container" style={{ 
         flex: 1, 
         overflowY: 'auto', 
-        paddingBottom: isDesktop ? '0' : 'calc(54px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: isDesktop ? '0' : 'calc(64px + env(safe-area-inset-bottom, 0px))',
         position: 'relative'
       }}>
         <Outlet />

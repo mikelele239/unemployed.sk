@@ -107,7 +107,7 @@ html, body, #root {
   }
   .side-nav {
     width: 100vw;
-    height: calc(54px + env(safe-area-inset-bottom, 0px));
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     flex-direction: row !important;
     border-right: none !important;
     border-top: 1px solid var(--border);
