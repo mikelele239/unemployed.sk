@@ -37,14 +37,29 @@ execSync('npm install', { cwd: path.join(root, 'apps', 'employer'), stdio: 'inhe
 execSync('npm run build', { cwd: path.join(root, 'apps', 'employer'), stdio: 'inherit' });
 copyDir(path.join(root, 'apps', 'employer', 'dist'), path.join(dist, 'employer'));
 
-// 4. Copy Landing Page
+// 4. Build Student Demo App
+console.log('Building Student Demo App...');
+execSync('npm install', { cwd: path.join(root, 'apps', 'student-demo'), stdio: 'inherit' });
+execSync('npm run build', { cwd: path.join(root, 'apps', 'student-demo'), stdio: 'inherit' });
+copyDir(path.join(root, 'apps', 'student-demo', 'dist'), path.join(dist, 'student-demo'));
+
+// 5. Build Employer Demo App
+console.log('Building Employer Demo App...');
+execSync('npm install', { cwd: path.join(root, 'apps', 'employer-demo'), stdio: 'inherit' });
+execSync('npm run build', { cwd: path.join(root, 'apps', 'employer-demo'), stdio: 'inherit' });
+copyDir(path.join(root, 'apps', 'employer-demo', 'dist'), path.join(dist, 'employer-demo'));
+
+// 6. Copy Landing Page
 console.log('Copying Landing Page...');
 copyDir(path.join(root, 'apps', 'landing'), dist);
 
-// 5. Copy _redirects
-console.log('Copying _redirects...');
+// 7. Copy _redirects and _headers
+console.log('Copying _redirects and _headers...');
 if (fs.existsSync(path.join(root, '_redirects'))) {
   fs.copyFileSync(path.join(root, '_redirects'), path.join(dist, '_redirects'));
+}
+if (fs.existsSync(path.join(root, '_headers'))) {
+  fs.copyFileSync(path.join(root, '_headers'), path.join(dist, '_headers'));
 }
 
 console.log('Build complete!');

@@ -209,7 +209,14 @@ export default function Onboarding({ onComplete }) {
             </label>
 
             <button onClick={() => setPhase('manual')}
-              style={{ marginTop: 'auto', background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 15, fontWeight: 600, padding: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ 
+                marginTop: 'auto', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', 
+                color: 'var(--text)', fontSize: 14, fontWeight: 600, padding: '12px 24px', 
+                borderRadius: 100, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
             >
               {t('ob.noCV')} <ChevronRight size={16} />
             </button>
@@ -299,45 +306,61 @@ export default function Onboarding({ onComplete }) {
         {/* MANUAL FALLBACK */}
         {phase === 'manual' && (
           <motion.div key="manual"
-            initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}
           >
-            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
-                style={{ width: 36, height: 36, background: 'var(--bg-card)', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ width: 40, height: 40, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >←</button>
-              <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${((manualStep + 1) / MANUAL_STEPS.length) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s ease' }} />
+              <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${((manualStep + 1) / MANUAL_STEPS.length) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{manualStep + 1}/{MANUAL_STEPS.length}</span>
             </div>
 
-            <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
               <AnimatePresence mode="wait">
                 {(() => {
                   const s = MANUAL_STEPS[manualStep];
                   return (
-                    <motion.div key={manualStep} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}>
-                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 900, marginBottom: 8, letterSpacing: '-0.5px' }}>{s.title}</h2>
-                      <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 32 }}>{s.sub}</p>
+                    <motion.div key={manualStep} 
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.title}</h2>
+                      <p style={{ color: 'var(--text-muted)', fontSize: 16, marginBottom: 40, lineHeight: 1.5 }}>{s.sub}</p>
 
                       {s.type === 'text' && (
-                        <input type="text" placeholder={s.placeholder} value={data[s.id]}
-                          onChange={e => setData({ ...data, [s.id]: e.target.value })}
-                          onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching())}
-                          style={{ width: '100%', padding: '20px', borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 18, fontWeight: 600, outline: 'none' }}
-                          autoFocus
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" placeholder={s.placeholder} value={data[s.id]}
+                            onChange={e => setData({ ...data, [s.id]: e.target.value })}
+                            onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching())}
+                            style={{ width: '100%', padding: '24px', borderRadius: 20, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, fontWeight: 700, outline: 'none', transition: 'border-color 0.2s' }}
+                            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                            autoFocus
+                          />
+                        </div>
                       )}
 
                       {(s.type === 'single' || s.type === 'multi') && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                           {s.options.map(opt => {
                             const isSelected = s.type === 'multi' ? data[s.id].includes(opt) : data[s.id] === opt;
                             return (
                               <button key={opt} onClick={() => handleManualAction(s.id, opt, s.type === 'multi')}
-                                style={{ padding: '14px 22px', borderRadius: 100, border: '2px solid', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'var(--bg-card)', color: isSelected ? '#fff' : 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                              >{opt}</button>
+                                style={{ 
+                                  padding: '20px 24px', borderRadius: 20, border: '1px solid', 
+                                  borderColor: isSelected ? 'var(--accent)' : 'var(--border)', 
+                                  background: isSelected ? 'var(--accent-light)' : 'var(--bg-card)', 
+                                  color: isSelected ? 'var(--accent)' : 'var(--text)', 
+                                  fontSize: 16, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                                }}
+                              >
+                                {opt}
+                                {isSelected && <CheckCircle2 size={20} />}
+                              </button>
                             );
                           })}
                         </div>
@@ -348,13 +371,14 @@ export default function Onboarding({ onComplete }) {
               </AnimatePresence>
             </div>
 
-            <div style={{ padding: '20px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
+            <div style={{ paddingTop: 20, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
               <button onClick={() => manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching()}
                 disabled={MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()}
                 className="btn-primary"
-                style={{ width: '100%', padding: 20, fontSize: 16, fontWeight: 700, borderRadius: 16, opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1 }}
+                style={{ width: '100%', padding: 20, fontSize: 17, fontWeight: 800, borderRadius: 20, opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
               >
                 {manualStep < MANUAL_STEPS.length - 1 ? t('ob.next') : t('ob.finish')}
+                <ChevronRight size={20} />
               </button>
             </div>
           </motion.div>
@@ -366,21 +390,26 @@ export default function Onboarding({ onComplete }) {
             initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center', background: 'var(--bg)' }}
           >
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: 'linear' }} style={{ marginBottom: 40 }}>
-              <BrainCircuit size={64} color="var(--accent)" />
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.2, 1],
+                rotate: [0, 10, -10, 0]
+              }} 
+              transition={{ repeat: Infinity, duration: 3 }} 
+              style={{ marginBottom: 40 }}
+            >
+              <div style={{ 
+                width: 100, height: 100, borderRadius: 30, background: 'var(--accent)', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 20px 40px rgba(255,92,0,0.3)'
+              }}>
+                <Sparkles size={48} color="#fff" />
+              </div>
             </motion.div>
-            <div style={{ height: 160, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              {climaxStep === 0 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text)' }}>{t('ob.climax1')}</motion.h2>}
-              {climaxStep === 1 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)' }}>{t('ob.climax2')}</motion.h2>}
-              {climaxStep === 2 && <motion.h2 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)' }}>{t('ob.climax3')}</motion.h2>}
-              {climaxStep >= 3 && (
-                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>{t('ob.climax4')}</h2>
-                  <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399', padding: '8px 16px', borderRadius: 100, fontWeight: 800, fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Sparkles size={18} /> {t('ob.climaxMatch')}
-                  </div>
-                </motion.div>
-              )}
+            <div style={{ height: 100, display: 'flex', alignItems: 'center' }}>
+               <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                 {lang === 'en' ? 'Finding your matches...' : 'Hľadám tvoje ponuky...'}
+               </h2>
             </div>
           </motion.div>
         )}

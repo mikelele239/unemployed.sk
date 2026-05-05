@@ -1597,6 +1597,11 @@
       max-height: 2200px;
       opacity: 1;
     }
+
+    @media (max-width: 900px) {
+      .desktop-nav-item { display: none !important; }
+      .hamburger { display: block !important; }
+    }
   </style>
 </head>
 <body>
@@ -1979,7 +1984,7 @@
     <div class="demo-phone-wrap">
       <button class="demo-close-btn" id="demoCloseBtn" aria-label="Close demo">&times;</button>
       <div class="demo-phone-bezel">
-        <iframe src="/app?demo=true" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
+        <iframe src="/student-demo/" id="demoIframe" loading="lazy" title="Unemployed.sk student app demo"></iframe>
       </div>
     </div>
   </div>
@@ -1989,7 +1994,7 @@
     <div class="demo-laptop-wrap">
       <button class="demo-close-btn" id="empDemoCloseBtn" aria-label="Close demo">&times;</button>
       <div class="demo-laptop-bezel">
-        <iframe src="/employer?demo=true" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
+        <iframe src="/employer-demo/" id="empDemoIframe" loading="lazy" title="Unemployed.sk employer app demo"></iframe>
       </div>
     </div>
   </div>
@@ -2450,6 +2455,7 @@
         'nav.graduates': 'Absolventi',
         'nav.employers': 'Zamestnávatelia',
         'nav.signup': 'Registruj sa',
+        'nav.login': 'Prihlásiť sa',
         'hero.title': 'Nájdi svoju<br><span class="accent"><span class="rotating-word" id="rotatingWord">prvú</span> prácu.</span>',
         'hero.desc': 'Brigády, stáže a plné úväzky pre študentov a absolventov na Slovensku. Inteligentné párovanie, transparentný plat a overení zamestnávatelia — pomôžeme ti byť <span class="strikethrough-wrap"><span class="strike-un">un</span><span class="strike-line"></span></span>employed.',
         'hero.learnMore': 'Zisti viac',
@@ -2593,6 +2599,7 @@
         'nav.graduates': 'Graduates',
         'nav.employers': 'Employers',
         'nav.signup': 'Sign up',
+        'nav.login': 'Login',
         'hero.title': 'Find your<br><span class="accent"><span class="rotating-word" id="rotatingWord">first</span> job.</span>',
         'hero.desc': 'Part-time jobs, internships and full-time roles for students and graduates in Slovakia. Smart matching, transparent pay and verified employers — we\'ll help you be <span class="strikethrough-wrap"><span class="strike-un">un</span><span class="strike-line"></span></span>employed.',
         'hero.learnMore': 'Learn more',
@@ -3086,7 +3093,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('/app?demo=true', '_blank');
+          window.open('/student-demo/', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';
@@ -3136,7 +3143,7 @@
       trigger.addEventListener('click', function(e) {
         if (window.innerWidth <= 768) {
           e.preventDefault();
-          window.open('/employer?demo=true', '_blank');
+          window.open('/employer-demo/', '_blank');
         } else {
           overlay.classList.add('open');
           document.body.style.overflow = 'hidden';
