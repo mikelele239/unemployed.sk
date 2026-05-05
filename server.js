@@ -9,14 +9,31 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Supabase ───────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// ██████████████████████████████████████████████████████████████████████████████
+// ██                                                                        ██
+// ██  ⚠️  CRITICAL DISCLAIMER — DO NOT REMOVE SUPABASE FROM THIS FILE  ⚠️    ██
+// ██                                                                        ██
+// ██  This server.js is the BACKBONE of user acquisition for unemployed.sk.  ██
+// ██  The /api/submit route (in routes/auth.js) saves email + phone number   ██
+// ██  submissions from the landing page signup form DIRECTLY to Supabase.    ██
+// ██                                                                        ██
+// ██  ANY future code changes, refactors, or SQL migrations MUST preserve   ██
+// ██  the Supabase connection below AND the /api/submit endpoint.            ██
+// ██  DO NOT disconnect, remove, or bypass this Supabase integration.        ██
+// ██  Losing landing page signups = losing real users = losing the company.  ██
+// ██                                                                        ██
+// ██████████████████████████████████████████████████████████████████████████████
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Supabase (Server-Side — uses SERVICE ROLE KEY to bypass RLS) ────────────
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-if (!supabaseUrl || !supabaseKey) {
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing Supabase credentials in .env file');
   process.exit(1);
 }
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // ── Shared Helpers ─────────────────────────────────────────────────────────────
 function hashIp(ip) {

@@ -1,4 +1,26 @@
 'use strict';
+// ══════════════════════════════════════════════════════════════════════════════
+// ██████████████████████████████████████████████████████████████████████████████
+// ██                                                                        ██
+// ██  ⚠️  CRITICAL DISCLAIMER — DO NOT REMOVE /api/submit ENDPOINT  ⚠️      ██
+// ██                                                                        ██
+// ██  The /api/submit route below is the ONLY way the landing page signup   ██
+// ██  form (email + phone number) saves data to the Supabase "submissions"  ██
+// ██  table. This is CRUCIAL for user acquisition.                          ██
+// ██                                                                        ██
+// ██  ANY future code changes, refactors, or SQL migrations MUST:           ██
+// ██    1. Keep the POST /api/submit route functional                       ██
+// ██    2. Keep the "submissions" table in Supabase intact                  ██
+// ██    3. Keep the Supabase connection alive in server.js                  ██
+// ██    4. Preserve the RLS policies that allow INSERT + SELECT on          ██
+// ██       the "submissions" table                                          ██
+// ██                                                                        ██
+// ██  DO NOT disconnect, remove, comment out, or bypass this endpoint.      ██
+// ██  Losing signups = losing real users = losing the company.              ██
+// ██                                                                        ██
+// ██████████████████████████████████████████████████████████████████████████████
+// ══════════════════════════════════════════════════════════════════════════════
+
 // ── Auth & Profile Routes ────────────────────────────────────────────────────
 module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, rateLimit, VALID_TYPES, EMAIL_RE }) {
 
@@ -43,20 +65,27 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
     }
   });
 
-  // ── Landing Page Signup ──────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // ██  LANDING PAGE SIGNUP — DO NOT REMOVE (see disclaimer at top)        ██
+  // ══════════════════════════════════════════════════════════════════════════
 
   app.post('/api/submit', rateLimit, async (req, res) => {
     const { email, phonePrefix, phone, userType, consented, marketingConsent } = req.body;
+
+    // ── Validation ──
     if (!email || !EMAIL_RE.test(email.trim()))
       return res.status(400).json({ error: 'Platný e-mail je povinný.' });
     if (!userType || !VALID_TYPES.has(userType))
       return res.status(400).json({ error: 'Neplatný typ používateľa.' });
-    if (!consented)
+    // consented arrives as string '1' or '0' from URL-encoded form data
+    if (!consented || consented === '0' || consented === 'false')
       return res.status(400).json({ error: 'Súhlas so spracovaním údajov je povinný.' });
 
     try {
       const cleanEmail = email.toLowerCase().trim();
       const ipHash = hashIp(req.ip || '');
+
+      // Check for duplicate email or IP (requires SELECT policy on submissions)
       const { data: existing } = await supabase
         .from('submissions')
         .select('id')
@@ -64,12 +93,25 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
         .single();
       if (existing) return res.status(429).json({ error: 'Už ste registrovaný.' });
 
+      // ██ INSERT INTO SUPABASE — THE CORE OF USER ACQUISITION ██
       const { error } = await supabase.from('submissions').insert([{
-        email: cleanEmail, phone_prefix: phonePrefix, phone,
-        user_type: userType, consented: true,
-        marketing_consent: !!marketingConsent, ip_hash: ipHash
+        email: cleanEmail,
+        phone_prefix: phonePrefix || null,
+        phone: phone || null,
+        user_type: userType,
+        consented: true,
+        marketing_consent: !!marketingConsent,
+        ip_hash: ipHash
       }]);
-      if (error) throw error;
+      if (error) {
+        // Postgres 23505 = unique constraint violation (email already exists)
+        if (error.code === '23505') {
+          return res.status(429).json({ error: 'Už ste registrovaný.' });
+        }
+        throw error;
+      }
+
+      console.log(`✅ New signup: ${cleanEmail} (${userType})`);
       res.json({ success: true });
     } catch (err) {
       console.error('Submit error:', err);

@@ -1,4 +1,4 @@
-﻿    // Student tab toggle
+    // Student tab toggle
     document.querySelectorAll('.student-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.student-tab').forEach(t => t.classList.remove('active'));
@@ -898,10 +898,23 @@
         } else {
           var errData = null;
           try { errData = await res.json(); } catch(_) {}
-          toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.error'];
-          toast.classList.add('show');
-          setTimeout(function(){ toast.classList.remove('show'); }, 5000);
-        }
+          // If already registered (429), show the overlay so user knows
+          if (res.status === 429) {
+            markSubmitted();
+            toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.alreadySubmitted'];
+            toast.classList.add('show');
+            setTimeout(function(){
+              toast.classList.remove('show');
+              formOverlay.classList.add('animate');
+              requestAnimationFrame(function() {
+                formOverlay.classList.add('show');
+              });
+            }, 3000);
+          } else {
+            toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.error'];
+            toast.classList.add('show');
+            setTimeout(function(){ toast.classList.remove('show'); }, 5000);
+          }
       } catch(err) {
         toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.error'];
         toast.classList.add('show');
