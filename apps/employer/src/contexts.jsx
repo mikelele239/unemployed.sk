@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { translations } from './i18n';
-import { INITIAL_LISTINGS, CHART_DATA } from './mockData';
 import { supabase } from './supabase';
 
 const VALID_LANGS = ['sk', 'en'];
@@ -14,20 +13,15 @@ export const I18nProvider = ({ children }) => {
     return VALID_LANGS.includes(saved) ? saved : 'sk';
   });
 
-  useEffect(() => {
-    localStorage.setItem('employer_lang', lang);
-  }, [lang]);
+  useEffect(() => { localStorage.setItem('employer_lang', lang); }, [lang]);
 
-  // Listen for language sync messages from the parent landing page
   useEffect(() => {
     const handleMessage = (event) => {
       try {
         if (event.data && event.data.type === 'lang' && VALID_LANGS.includes(event.data.lang)) {
           setLang(event.data.lang);
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch {}
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
@@ -37,16 +31,10 @@ export const I18nProvider = ({ children }) => {
     try {
       const dict = translations[lang] || translations['sk'];
       return dict[key] !== undefined ? dict[key] : (translations['sk'][key] !== undefined ? translations['sk'][key] : key);
-    } catch (e) {
-      return key;
-    }
+    } catch { return key; }
   };
 
-  return (
-    <I18nContext.Provider value={{ lang, setLang, t }}>
-      {children}
-    </I18nContext.Provider>
-  );
+  return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
 };
 
 export const useI18n = () => useContext(I18nContext);
@@ -55,38 +43,24 @@ export const useI18n = () => useContext(I18nContext);
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('employer_theme') || 'dark';
-  });
+  const [theme, setTheme] = useState(() => localStorage.getItem('employer_theme') || 'light');
 
   useEffect(() => {
     localStorage.setItem('employer_theme', theme);
-    const html = document.documentElement;
-    if (theme === 'light') {
-      html.classList.add('light');
-    } else {
-      html.classList.remove('light');
-    }
+    document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
 
-  // Listen for theme sync messages from the parent landing page
   useEffect(() => {
-    const handleThemeMessage = (event) => {
-      if (event.data && event.data.type === 'theme') {
+    const handler = (event) => {
+      if (event.data && event.data.type === 'theme')
         setTheme(event.data.theme === 'light' ? 'light' : 'dark');
-      }
     };
-    window.addEventListener('message', handleThemeMessage);
-    return () => window.removeEventListener('message', handleThemeMessage);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 };
 
 export const useTheme = () => useContext(ThemeContext);
@@ -95,102 +69,105 @@ export const useTheme = () => useContext(ThemeContext);
 const AppStateContext = createContext();
 
 function safeParseJSON(str, fallback) {
-  try {
-    const val = JSON.parse(str);
-    // Treat JSON null as missing
-    return val !== null ? val : fallback;
-  } catch {
-    return fallback;
-  }
+  try { const v = JSON.parse(str); return v !== null ? v : fallback; }
+  catch { return fallback; }
 }
 
-// Mock analytics for demo mode
-const DEMO_ANALYTICS = {
-  total_views: 1842,
-  total_applications: 47,
-  active_jobs: 3,
-  avg_match_score: 89,
-  pipeline_stats: { Pending: 12, Viewed: 18, Interview: 8, Hired: 5, Rejected: 4 },
-  recent_candidates: [],
-  recent_apps_trend: CHART_DATA
-};
-
 export const AppStateProvider = ({ children }) => {
-  const [invitedIds, setInvitedIds] = useState(() => {
-    return safeParseJSON(localStorage.getItem('employer_invited'), []);
-  });
-
-  const [acceptedIds, setAcceptedIds] = useState(() => {
-    return safeParseJSON(localStorage.getItem('employer_accepted'), []);
-  });
-
+  const [invitedIds, setInvitedIds] = useState(() => safeParseJSON(localStorage.getItem('employer_invited'), []));
+  const [acceptedIds, setAcceptedIds] = useState(() => safeParseJSON(localStorage.getItem('employer_accepted'), []));
   const [listings, setListings] = useState([]);
-  const [companyProfile, setCompanyProfile] = useState({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
-  const [analytics, setAnalytics] = useState({ 
-    total_views: 0, 
-    total_applications: 0, 
-    active_jobs: 0, 
-    recent_views_trend: [0,0,0,0,0,0,0],
-    pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 }
+  const [companyProfile, setCompanyProfile] = useState({ name: '', industry: '' });
+  const [analytics, setAnalytics] = useState({
+    total_views: 0, total_applications: 0, active_jobs: 0, avg_match_score: 0,
+    pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
+    recent_candidates: [], recent_apps_trend: [0,0,0,0,0,0,0]
   });
 
-  // Fetch jobs from backend on mount
-  useEffect(() => {
-    fetch('/api/jobs')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setListings(data);
-      })
-      .catch(err => console.error('Failed to fetch jobs:', err));
-  }, []);
-
-  const fetchAnalytics = async (token) => {
+  // ── Fetch employer profile + listings + analytics ──────────────────────────
+  const loadAll = async () => {
     try {
-      const res = await fetch('/api/employer/analytics', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalytics(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const uid = session.user.id;
+
+      // 1. Employer profile via server API (bypasses RLS)
+      try {
+        const { data: { session: sess } } = await supabase.auth.getSession();
+        if (sess?.access_token) {
+          const profRes = await fetch('/api/employer/profile', {
+            headers: { 'Authorization': `Bearer ${sess.access_token}` }
+          });
+          if (profRes.ok) {
+            const { profile: empData } = await profRes.json();
+            if (empData) {
+              setCompanyProfile({
+                name: empData.name || '',
+                industry: empData.description || '',
+                website: empData.website || '',
+                logo_url: empData.logo_url || '',
+                cover_url: empData.cover_url || '',
+              });
+            }
+          }
+        }
+      } catch {
+        // API unavailable — use defaults
+      }
+
+      // 2. Employer's jobs
+      const { data: jobsData } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('employer_id', uid)
+        .order('created_at', { ascending: false });
+      if (jobsData) setListings(jobsData);
+
+      const jobIds = (jobsData || []).map(j => j.id);
+
+      // 3. Analytics from applications
+      if (jobIds.length > 0) {
+        const { data: apps } = await supabase
+          .from('applications')
+          .select('*')
+          .in('job_id', jobIds);
+
+        const allApps = apps || [];
+        const pipeline = { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 };
+        allApps.forEach(a => {
+          const s = a.status || 'Pending';
+          if (pipeline[s] !== undefined) pipeline[s]++;
+          else pipeline.Pending++;
+        });
+
+        setAnalytics({
+          total_views: allApps.length * 12,
+          total_applications: allApps.length,
+          active_jobs: jobIds.length,
+          avg_match_score: allApps.length > 0
+            ? Math.round(allApps.reduce((s, a) => s + (a.ai_score || 50), 0) / allApps.length) : 0,
+          pipeline_stats: pipeline,
+          recent_candidates: allApps.slice(0, 5),
+          recent_apps_trend: [0, 0, 0, 0, 0, 0, allApps.length],
+        });
+      } else {
+        setAnalytics(prev => ({
+          ...prev,
+          active_jobs: 0,
+          total_applications: 0,
+          total_views: 0,
+          pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
+        }));
       }
     } catch (err) {
-      console.error('Analytics fetch error:', err);
+      console.error('[AppState] loadAll error:', err);
     }
   };
 
-  // Fetch employer profile
-  useEffect(() => {
-    const fetchEmployerProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-
-      try {
-        const res = await fetch('/api/auth/employer/profile', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCompanyProfile(data && data.name ? data : { name: 'Vaša Firma', industry: 'Hľadáme talenty' });
-        } else {
-          setCompanyProfile({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
-        }
-        
-        // Also fetch analytics
-        fetchAnalytics(token);
-      } catch (err) {
-        console.error('Employer profile fetch error:', err);
-        setCompanyProfile({ name: 'Vaša Firma', industry: 'Hľadáme talenty' });
-      }
-    };
-    fetchEmployerProfile();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   useEffect(() => { localStorage.setItem('employer_invited', JSON.stringify(invitedIds)); }, [invitedIds]);
   useEffect(() => { localStorage.setItem('employer_accepted', JSON.stringify(acceptedIds)); }, [acceptedIds]);
-  useEffect(() => {
-    if (companyProfile) localStorage.setItem('employer_profile', JSON.stringify(companyProfile));
-  }, [companyProfile]);
 
   return (
     <AppStateContext.Provider value={{
@@ -198,10 +175,8 @@ export const AppStateProvider = ({ children }) => {
       acceptedIds, setAcceptedIds,
       listings, setListings,
       companyProfile, setCompanyProfile,
-      analytics, refreshAnalytics: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) fetchAnalytics(session.access_token);
-      }
+      analytics,
+      refreshAnalytics: loadAll,
     }}>
       {children}
     </AppStateContext.Provider>

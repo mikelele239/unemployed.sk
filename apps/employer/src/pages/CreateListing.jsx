@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
+import { supabase } from '../supabase';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -67,41 +68,58 @@ const CreateListing = () => {
 
   const handleSave = async () => {
     if (!formData.title || !formData.description) {
-      setError('Prosím vyplňte názov a popis pozície.');
+      setError(t('clFillFields'));
       return;
     }
-
-    const newItem = {
-      ...formData,
-      company: companyProfile?.name || 'Vaša Firma',
-      tags: [formData.type, formData.workModel, 'Nástup: ' + formData.startDate],
-      rate: formData.rate + '€',
-      logo: 'CX',
-      color: '#FF5C00'
-    };
-
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('employer_token');
-      const res = await fetch('/api/jobs', {
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setError(t('clNotLoggedIn')); return; }
+
+      const uid = session.user.id;
+
+      // Ensure employer row exists via server API (bypasses RLS)
+      await fetch('/api/employer/ensure-profile', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(newItem)
+        body: JSON.stringify({ name: companyProfile?.name || session.user.email?.split('@')[0] || 'Firma' })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setListings(prev => [{ ...newItem, id: data.id, match: 95 }, ...prev]);
-        navigate('/listings');
-      } else {
-        setError(data.error || 'Nepodarilo sa uložiť ponuku.');
-      }
-    } catch (err) { 
-      console.error(err); 
-      setError('Chyba spojenia so serverom.');
+
+      const payload = {
+        title: formData.title,
+        company: companyProfile?.name || 'Vaša Firma',
+        employer_id: uid,
+        location: formData.location,
+        rate: formData.rate + '€',
+        rate_unit: formData.rateUnit,
+        hours: formData.hours,
+        type: formData.type,
+        work_model: formData.workModel,
+        duration: formData.duration,
+        start_date: formData.startDate,
+        description: formData.description,
+        requirements: formData.requirements,
+        lat: formData.lat,
+        lng: formData.lng,
+        tags: [formData.type, formData.workModel, 'Nástup: ' + formData.startDate],
+        logo: 'CX',
+        color: '#FF5C00',
+        match_score: 95,
+      };
+
+      const { data, error: insertError } = await supabase.from('jobs').insert([payload]).select().single();
+      if (insertError) throw insertError;
+
+      setListings(prev => [{ ...payload, id: data.id }, ...prev]);
+      navigate('/listings');
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('clSaveError'));
     } finally {
       setLoading(false);
     }
@@ -111,7 +129,7 @@ const CreateListing = () => {
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800' }}>{t('newListing')}</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Vytvorte profesionálnu pracovnú ponuku pre študentov</p>
+        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('clSub')}</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '32px', alignItems: 'start' }}>
@@ -126,73 +144,73 @@ const CreateListing = () => {
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('aiType')}</label>
               <select className="text-input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                <option value="internship">Stáž</option>
-                <option value="part-time">Brigáda</option>
-                <option value="full-time">Plný úväzok</option>
+                <option value="internship">{t('clInternship')}</option>
+                <option value="part-time">{t('clPartTime')}</option>
+                <option value="full-time">{t('clFullTime')}</option>
               </select>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Pracovný model</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clWorkModel')}</label>
               <select className="text-input" value={formData.workModel} onChange={e => setFormData({...formData, workModel: e.target.value})}>
-                <option value="On-site">Na pracovisku</option>
-                <option value="Hybrid">Hybridne</option>
+                <option value="On-site">{t('clOnSite')}</option>
+                <option value="Hybrid">{t('clHybrid')}</option>
                 <option value="Remote">Remote</option>
               </select>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Trvanie</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clDuration')}</label>
               <select className="text-input" value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})}>
-                <option value="1 week">1 týždeň</option>
-                <option value="1 month">1 mesiac</option>
-                <option value="3 months">3 mesiace</option>
-                <option value="6 months">6 mesiacov</option>
-                <option value="Long-term">Dlhodobo</option>
+                <option value="1 week">{t('cl1w')}</option>
+                <option value="1 month">{t('cl1m')}</option>
+                <option value="3 months">{t('cl3m')}</option>
+                <option value="6 months">{t('cl6m')}</option>
+                <option value="Long-term">{t('clLongTerm')}</option>
               </select>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Dátum nástupu</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clStartDate')}</label>
               <input type="date" className="text-input" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Hodinová mzda (€)</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clRate')}</label>
               <input className="text-input" type="number" step="0.01" value={formData.rate} onChange={e => setFormData({...formData, rate: e.target.value})} />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Časový rozsah</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clHours')}</label>
               <select className="text-input" value={formData.hours} onChange={e => setFormData({...formData, hours: e.target.value})}>
-                <option value="10 hod/týždenne">10 hod/týždenne</option>
-                <option value="20 hod/týždenne">20 hod/týždenne</option>
-                <option value="30 hod/týždenne">30 hod/týždenne</option>
-                <option value="40 hod/týždenne">40 hod/týždenne</option>
-                <option value="Flexibilne / Dohodou">Flexibilne / Dohodou</option>
+                <option value="10 hod/týždenne">10h / {lang === 'sk' ? 'týždenne' : 'week'}</option>
+                <option value="20 hod/týždenne">20h / {lang === 'sk' ? 'týždenne' : 'week'}</option>
+                <option value="30 hod/týždenne">30h / {lang === 'sk' ? 'týždenne' : 'week'}</option>
+                <option value="40 hod/týždenne">40h / {lang === 'sk' ? 'týždenne' : 'week'}</option>
+                <option value="Flexibilne / Dohodou">{t('clFlexible')}</option>
               </select>
             </div>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Detailný popis pozície</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clDesc')}</label>
             <textarea 
               className="text-input" 
               style={{ minHeight: '120px', resize: 'vertical', lineHeight: '1.6' }} 
               value={formData.description} 
               onChange={e => setFormData({...formData, description: e.target.value})}
-              placeholder="Opíšte náplň práce a čo kandidát získa..."
+              placeholder={t('clDescPh')}
             />
           </div>
 
           <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Požiadavky na kandidáta</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>{t('clReqs')}</label>
             <textarea 
               className="text-input" 
               style={{ minHeight: '100px', resize: 'vertical', lineHeight: '1.6' }} 
               value={formData.requirements} 
               onChange={e => setFormData({...formData, requirements: e.target.value})}
-              placeholder="Skúsenosti, vlastnosti, zručnosti..."
+              placeholder={t('clReqsPh')}
             />
           </div>
 
@@ -212,7 +230,7 @@ const CreateListing = () => {
               cursor: loading ? 'not-allowed' : 'pointer' 
             }}
           >
-            {loading ? 'Publikujem...' : 'Publikovať ponuku'}
+            {loading ? t('clPublishing') : t('clPublish')}
           </button>
         </div>
 
@@ -231,7 +249,7 @@ const CreateListing = () => {
           </div>
           
           <div style={{ padding: '0 12px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-            <p>💡 Tip: Vyplnenie všetkých polí zvyšuje vaše AI skóre párovania a priláka relevantnejších kandidátov.</p>
+            <p>💡 {t('clTip')}</p>
           </div>
         </div>
       </div>

@@ -232,12 +232,29 @@ const translations = {
 const I18nContext = createContext();
 
 export const I18nProvider = ({ children }) => {
-  // Use localStorage or fall back to 'sk'
   const [lang, setLang] = useState(() => {
-    // Try to read parent's cookie or standard logic if we had access? 
-    // Usually iframe relies on postMessage. We can default to 'sk'.
-    return 'sk';
+    return localStorage.getItem('student_lang') || 'sk';
   });
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('student_theme') || 'light';
+  });
+
+  // Persist language changes
+  useEffect(() => {
+    localStorage.setItem('student_lang', lang);
+  }, [lang]);
+
+  // Apply and persist theme changes
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.setAttribute('data-theme', 'light');
+    } else {
+      root.removeAttribute('data-theme');
+    }
+    localStorage.setItem('student_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const handleMessage = (event) => {
@@ -245,12 +262,7 @@ export const I18nProvider = ({ children }) => {
         setLang(event.data.lang);
       }
       if (event.data && event.data.type === 'theme') {
-        const root = document.documentElement;
-        if (event.data.theme === 'light') {
-          root.setAttribute('data-theme', 'light');
-        } else {
-          root.removeAttribute('data-theme');
-        }
+        setTheme(event.data.theme === 'light' ? 'light' : 'dark');
       }
     };
 
@@ -263,7 +275,7 @@ export const I18nProvider = ({ children }) => {
   };
 
   return (
-    <I18nContext.Provider value={{ lang, t }}>
+    <I18nContext.Provider value={{ lang, setLang, theme, setTheme, t }}>
       {children}
     </I18nContext.Provider>
   );

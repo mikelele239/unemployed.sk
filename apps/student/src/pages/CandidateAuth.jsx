@@ -40,16 +40,23 @@ export default function CandidateAuth({ onLoginSuccess }) {
       setMessage('');
 
       if (mode === 'register') {
-        const res = await fetch('/api/auth/student/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, fullName })
+        // Register directly via Supabase Auth — no Express server needed
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { role: 'candidate', full_name: fullName }
+          }
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Registrácia zlyhala.');
-        
-        setMessage('Váš účet bol vytvorený! Overte si prosím e-mail.');
-        setMode('login');
+        if (signUpError) throw signUpError;
+
+        // If email confirmation is disabled in Supabase, session is returned immediately
+        if (data.session) {
+          if (onLoginSuccess) onLoginSuccess(data.session);
+        } else {
+          setMessage('Váš účet bol vytvorený! Skontrolujte si e-mail a potvrďte registráciu.');
+          setMode('login');
+        }
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
@@ -68,14 +75,24 @@ export default function CandidateAuth({ onLoginSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at top right, #ff5c0015, transparent), radial-gradient(circle at bottom left, #0070f310, transparent), #0a0a0a',
+      background: '#0a0a0a',
       padding: 20,
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Decorative Orbs */}
-      <div style={{ position: 'absolute', width: '40vw', height: '40vw', background: 'var(--accent)', filter: 'blur(150px)', opacity: 0.05, top: '-10%', right: '-10%', borderRadius: '50%' }} />
-      <div style={{ position: 'absolute', width: '30vw', height: '30vw', background: '#0070f3', filter: 'blur(120px)', opacity: 0.05, bottom: '-5%', left: '-5%', borderRadius: '50%' }} />
+      {/* Crosshatch Grid Background — matches landing page */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: '80px 80px',
+      }} />
+
+      {/* Subtle accent glow */}
+      <div style={{ position: 'absolute', width: '50vw', height: '50vw', background: 'var(--accent)', filter: 'blur(200px)', opacity: 0.04, top: '-20%', right: '-15%', borderRadius: '50%', zIndex: 0 }} />
+      <div style={{ position: 'absolute', width: '35vw', height: '35vw', background: '#0070f3', filter: 'blur(150px)', opacity: 0.03, bottom: '-10%', left: '-10%', borderRadius: '50%', zIndex: 0 }} />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}

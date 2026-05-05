@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
-import { CANDIDATES, AI_MATCHES } from '../mockData';
+import { supabase } from '../supabase';
 import CandidateCard from '../components/CandidateCard';
 import Toast from '../components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,26 +19,29 @@ const Candidates = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log('[DEBUG] Fetching candidates and matches...');
       try {
-        const token = localStorage.getItem('employer_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setLoading(false); return; }
 
-        // 1. Fetch Applications (Recent applicants)
-        const resApps = await fetch('/api/applications', { headers });
-        if (resApps.ok) {
-          const data = await resApps.json();
-          setCandidates(Array.isArray(data) ? data : []);
-        }
+        // Get employer's job IDs
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('employer_id', session.user.id);
+        const jobIds = (jobs || []).map(j => j.id);
 
-        // 2. Fetch AI Matches
-        const resMatches = await fetch('/api/employer/matches', { headers });
-        if (resMatches.ok) {
-          const data = await resMatches.json();
-          setMatches(Array.isArray(data) ? data : []);
-        }
+        if (jobIds.length === 0) { setLoading(false); return; }
+
+        // Fetch applications for those jobs
+        const { data: apps } = await supabase
+          .from('applications')
+          .select('*, job:job_id(title, company)')
+          .in('job_id', jobIds)
+          .order('created_at', { ascending: false });
+
+        setCandidates(Array.isArray(apps) ? apps : []);
       } catch (err) {
-        console.error('Big fetch error in Candidates page:', err);
+        console.error('Candidates fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -48,26 +51,23 @@ const Candidates = () => {
 
   const handleInvite = async (id, status = 'Interview', interviewDates = null) => {
     try {
-      const token = localStorage.getItem('employer_token');
-      const res = await fetch(`/api/applications/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status, interviewDates })
-      });
+      const updatePayload = { status };
+      if (interviewDates) updatePayload.interview_dates = interviewDates;
 
-      if (res.ok) {
+      const { error } = await supabase
+        .from('applications')
+        .update(updatePayload)
+        .eq('id', id);
+
+      if (!error) {
         if (status === 'Interview' && !invitedIds.includes(id)) {
           setInvitedIds([...invitedIds, id]);
         }
-        setCandidates(prev => prev.map(c => c.id === id ? { 
-          ...c, 
-          status, 
-          interviewInfo: interviewDates ? { offered_dates: interviewDates } : c.interviewInfo 
+        setCandidates(prev => prev.map(c => c.id === id ? {
+          ...c, status,
+          interview_dates: interviewDates || c.interview_dates
         } : c));
-        
+
         setToastMsg(status === 'Hired' ? 'Kandidát bol úspešne prijatý!' : t('toastInvite'));
         setShowToast(true);
         refreshAnalytics();

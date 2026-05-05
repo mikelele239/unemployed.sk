@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, Sparkles, CheckCircle2, ChevronRight, FileText, BrainCircuit } from 'lucide-react';
 import { useTranslation } from '../I18nContext';
 import { cvApi } from '../services/cvApi';
-import { getAccessToken } from '../supabase';
+import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 
 const SKILLS_POOL_SK = ['Komunikatívny', 'Tímový hráč', 'Spoľahlivý', 'Rýchlo sa učí', 'Kreatívny', 'Detailista', 'Líder', 'Riešiteľ', 'Organizovaný', 'Angličtina B2'];
@@ -80,27 +80,28 @@ export default function Onboarding({ onComplete }) {
   const finalizeMatching = async () => {
     setPhase('climax');
     try {
-      const token = getAccessToken();
-      const profilePayload = {
-        name: data.name,
-        bio: data.bio,
-        education: data.edu,
-        location: data.loc,
-        skills: data.skills,
-        job_preferences: data.jobType
-      };
-
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(profilePayload)
-      });
-      
-      if (!res.ok) {
-        console.error('Failed to save profile to Supabase:', await res.text());
-      } else {
-        console.log('Profile successfully saved to Supabase.');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const nameParts = (data.name || '').trim().split(' ');
+        const res = await fetch('/api/student/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            education: data.edu || '',
+            location: data.loc || '',
+            skills: data.skills || [],
+            job_preferences: data.jobType || [],
+          })
+        });
+        if (res.ok) console.log('Profile saved via server API.');
+        else console.error('Profile save error:', await res.text());
       }
+      // Also keep local copy as fallback
       localStorage.setItem('unemployed_profile', JSON.stringify(data));
     } catch (err) { console.error('Error during finalizeMatching:', err); }
 

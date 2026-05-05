@@ -1,9 +1,10 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useI18n } from '../contexts';
+import { supabase } from '../supabase';
 
 const SideNav = () => {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
 
   const navItems = [
@@ -49,7 +50,7 @@ const SideNav = () => {
                 right: '-1px', 
                 top: '50%', 
                 height: '2px', 
-                background: 'var(--border)', 
+                background: 'var(--accent)', 
                 borderRadius: '2px' 
               }} />
             </span>
@@ -66,12 +67,18 @@ const SideNav = () => {
             to={item.path}
             className={({ isActive }) => `sidebar-link mobile-sidebar-link ${isActive ? 'active' : ''}`}
           >
-            <div style={{ width: '20px', height: '20px', color: isActive ? 'var(--accent)' : 'inherit' }}>{item.icon}</div>
-            <span>{item.label}</span>
+            {({ isActive }) => (
+              <>
+                <div style={{ width: '22px', height: '22px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? 'var(--accent)' : 'inherit' }}>
+                  {item.icon}
+                </div>
+                <span style={{ textAlign: 'center', width: '100%' }}>{item.label}</span>
+              </>
+            )}
           </NavLink>
         ))}
 
-        {/* Create Button - Desktop Only (or floating on mobile if needed, but for now desktop only) */}
+        {/* Create Button - Desktop Only */}
         <div className="desktop-only" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
           <button 
             onClick={() => navigate('/create-listing')}
@@ -87,29 +94,36 @@ const SideNav = () => {
         </div>
       </nav>
 
-      {/* Bottom Context - Desktop Only */}
-      <div className="desktop-only" style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', border: '1px solid var(--border)' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: '600' }}>Executive Account</span>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Plan</span>
+      {/* Logout - Desktop Only */}
+      <div className="desktop-only" style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+        {/* Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', border: '1px solid var(--border)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+            <span style={{ fontSize: '13px', fontWeight: '600' }}>Centrála</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Plan</span>
+          </div>
+          <button 
+            onClick={async () => {
+              await supabase.auth.signOut();
+              localStorage.removeItem('employer_invited');
+              localStorage.removeItem('employer_accepted');
+              localStorage.removeItem('employer_profile');
+              window.location.href = '/employer';
+            }}
+            title="Odhlásiť sa"
+            style={{
+              background: 'none', border: 'none', color: '#ff4747',
+              padding: '8px', cursor: 'pointer', borderRadius: '6px',
+              display: 'flex', alignItems: 'center', transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 71, 71, 0.1)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </button>
         </div>
-        <button 
-          onClick={() => {
-            localStorage.clear();
-            window.location.href = '/employer';
-          }}
-          title="Odhlásiť sa"
-          style={{
-            background: 'none', border: 'none', color: '#ff4747',
-            padding: '8px', cursor: 'pointer', borderRadius: '6px',
-            display: 'flex', alignItems: 'center', transition: 'background 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 71, 71, 0.1)'}
-          onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        </button>
       </div>
     </aside>
   );

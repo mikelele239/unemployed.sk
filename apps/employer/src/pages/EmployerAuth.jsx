@@ -15,27 +15,36 @@ export default function EmployerAuth({ onLoginSuccess }) {
     try {
       setLoading(true);
       setError('');
-      
-      const res = await fetch('/api/auth/employer/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Nesprávne meno alebo heslo.');
+      // Direct Supabase auth — no Express needed
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
 
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
-      });
+      const session = data.session;
+      if (!session) throw new Error('Nepodarilo sa prihlásiť.');
 
-      if (sessionError) throw sessionError;
-      localStorage.setItem('employer_token', data.session.access_token);
-      
-      if (onLoginSuccess) onLoginSuccess(data.session);
+      // Check role — reject candidates
+      const role = session.user.user_metadata?.role || session.user.app_metadata?.role;
+      if (role === 'candidate') {
+        await supabase.auth.signOut();
+        throw new Error('Tento účet je registrovaný ako študent. Použite portál pre študentov.');
+      }
+
+      // Ensure employer row exists via server API (bypasses RLS)
+      try {
+        await fetch('/api/employer/ensure-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ name: email.split('@')[0] })
+        });
+      } catch { /* non-fatal */ }
+
+      if (onLoginSuccess) onLoginSuccess(session);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Nesprávne meno alebo heslo.');
     } finally {
       setLoading(false);
     }
@@ -47,29 +56,24 @@ export default function EmployerAuth({ onLoginSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at top left, #ff5c0010, transparent), radial-gradient(circle at bottom right, #0070f308, transparent), #050505',
+      background: '#050505',
       padding: 20,
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Dynamic Background Elements */}
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.03, 0.05, 0.03],
-          x: [0, 50, 0],
-          y: [0, -30, 0]
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        style={{ position: 'absolute', width: '50vw', height: '50vw', background: 'var(--accent)', filter: 'blur(150px)', top: '-10%', left: '-10%', borderRadius: '50%' }} 
-      />
-      
+      {/* Crosshatch Grid Background — matches landing page */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
-        backgroundSize: '32px 32px',
-        opacity: 0.3
+        position: 'absolute', inset: 0, zIndex: 0,
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: '80px 80px',
       }} />
+
+      {/* Subtle accent glow */}
+      <div style={{ position: 'absolute', width: '50vw', height: '50vw', background: 'var(--accent)', filter: 'blur(200px)', opacity: 0.04, top: '-15%', left: '-15%', borderRadius: '50%', zIndex: 0 }} />
+      <div style={{ position: 'absolute', width: '35vw', height: '35vw', background: '#0070f3', filter: 'blur(150px)', opacity: 0.03, bottom: '-10%', right: '-10%', borderRadius: '50%', zIndex: 0 }} />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}

@@ -876,46 +876,59 @@
       formData.set('consented', document.getElementById('consentTerms').checked ? '1' : '0');
       formData.set('marketingConsent', document.getElementById('consentMarketing').checked ? '1' : '0');
 
+      // Direct Supabase REST insert — anon key is public by design, no backend needed
+      var SUPA_URL = 'https://jofrxyimqhbgxwwbqyvs.supabase.co';
+      var SUPA_KEY = 'sb_publishable_x88V1MKZnvNi5YW1T6ozmA_j9XmzHXf';
+
       try {
-        var res = await fetch('/api/submit', {
+        var res = await fetch(SUPA_URL + '/rest/v1/submissions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData.toString(),
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPA_KEY,
+            'Authorization': 'Bearer ' + SUPA_KEY,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            email: (formData.get('email') || '').toLowerCase().trim(),
+            phone_prefix: formData.get('phonePrefix') || null,
+            phone: formData.get('phone') || null,
+            user_type: formData.get('userType'),
+            consented: true,
+            marketing_consent: formData.get('marketingConsent') === '1',
+          }),
         });
-        if (res.ok) {
+
+        if (res.ok || res.status === 201) {
           signupForm.reset();
           markSubmitted();
           clearTimeout(toastTimer);
+          toast.querySelector('.toast-text').textContent = translations[currentLang]['toast.success'] || 'Údaje odoslané — ozveme sa ti!';
           toast.classList.add('show');
           toastTimer = setTimeout(function() {
             toast.classList.remove('show');
-            // Fade in overlay only after toast disappears
             formOverlay.classList.add('animate');
-            requestAnimationFrame(function() {
-              formOverlay.classList.add('show');
-            });
+            requestAnimationFrame(function() { formOverlay.classList.add('show'); });
           }, 5000);
         } else {
           var errData = null;
           try { errData = await res.json(); } catch(_) {}
-          // If already registered (429), show the overlay so user knows
-          if (res.status === 429) {
+          // 23505 = unique_violation — email already registered
+          if (res.status === 409 || (errData && errData.code === '23505')) {
             markSubmitted();
-            toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.alreadySubmitted'];
+            toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.alreadySubmitted'];
             toast.classList.add('show');
             setTimeout(function(){
               toast.classList.remove('show');
               formOverlay.classList.add('animate');
-              requestAnimationFrame(function() {
-                formOverlay.classList.add('show');
-              });
+              requestAnimationFrame(function() { formOverlay.classList.add('show'); });
             }, 3000);
           } else {
-            toast.querySelector('.toast-text').textContent = (errData && errData.error) || translations[currentLang]['signup.error'];
+            toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.error'];
             toast.classList.add('show');
             setTimeout(function(){ toast.classList.remove('show'); }, 5000);
           }
-        } // end else (non-ok response)
+        }
       } catch(err) {
         toast.querySelector('.toast-text').textContent = translations[currentLang]['signup.error'];
         toast.classList.add('show');
@@ -929,13 +942,14 @@
     // ── Restore theme & language from cookies ──
     (function() {
       var savedTheme = getCookie('theme');
-      if (savedTheme === 'light' && !document.body.classList.contains('light-mode')) {
-        document.body.classList.add('light-mode');
+      // Default is light mode (set on <body> tag). Only switch to dark if explicitly saved.
+      if (savedTheme === 'dark' && document.body.classList.contains('light-mode')) {
+        document.body.classList.remove('light-mode');
         document.querySelectorAll('.theme-toggle').forEach(function(btn) {
           var m = btn.querySelector('.icon-moon');
           var s = btn.querySelector('.icon-sun');
-          if (m) m.style.display = 'block';
-          if (s) s.style.display = 'none';
+          if (m) m.style.display = 'none';
+          if (s) s.style.display = 'block';
         });
         updateNav();
       }

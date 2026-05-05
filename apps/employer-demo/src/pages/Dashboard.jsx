@@ -41,7 +41,7 @@ const Dashboard = () => {
         {/* Removed redundant white button as requested */}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+      <div className="stats-grid">
         <StatCard label={t('statViews')} value={stats.views} unit="" changeText={t('statViewsChange')} changeType="neutral" />
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={t('statAppsChange')} changeType="neutral" />
         <StatCard 
@@ -56,7 +56,7 @@ const Dashboard = () => {
         <StatCard label={t('statActive')} value={stats.active} unit="" changeText={t('statActiveChange')} changeType="neutral" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '32px' }}>
+      <div className="dashboard-grid">
         {/* Scalable Funnel Section */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '24px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: '24px' }}>

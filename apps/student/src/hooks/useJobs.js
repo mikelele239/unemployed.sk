@@ -1,25 +1,39 @@
 import { useState, useEffect } from 'react';
-import { getAccessToken } from '../supabase';
-
+import { supabase, getAccessToken } from '../supabase';
 
 export function useJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchJobs = async () => {
-    try {
-      const res = await fetch('/api/jobs');
-      const data = await res.json();
-      setJobs(data);
-    } catch (err) {
-      console.error('[DEBUG] Fetch jobs error:', err);
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const { data, error: sbError } = await supabase
+          .from('jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (sbError) throw sbError;
+
+        // Normalise field names to match what SwipeCard/JobDetail expect
+        const parsed = (data || []).map(j => ({
+          ...j,
+          match: j.match_score,
+          rateUnit: j.rate_unit,
+          startDate: j.start_date,
+          workModel: j.work_model,
+        }));
+
+        setJobs(parsed);
+      } catch (err) {
+        console.error('[useJobs] Supabase fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchJobs();
   }, []);
 

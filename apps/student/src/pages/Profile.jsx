@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Settings, LogOut, CheckCircle, Shield } from 'lucide-react';
-import { getAccessToken } from '../supabase';
+import { supabase } from '../supabase';
 import { useTranslation } from '../I18nContext';
 
 export default function Profile() {
-  const { lang, t } = useTranslation();
+  const { lang, setLang, theme, setTheme, t } = useTranslation();
   const [profile, setProfile] = useState({ name: '', edu: '', loc: '', bio: '', skills: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [cvs, setCvs] = useState([]);
@@ -14,68 +14,53 @@ export default function Profile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = getAccessToken();
-        const res = await fetch('/api/profile', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch('/api/student/profile', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (res.ok) {
-          const data = await res.json();
-          setProfile({
-            ...data,
-            name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-            edu: data.education || '',
-            loc: data.location || '',
-            bio: data.bio || '',
-            skills: data.skills || []
-          });
+          const { profile: data } = await res.json();
+          if (data) {
+            setProfile({
+              ...data,
+              name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+              edu: data.education || '',
+              loc: data.location || '',
+              bio: '',
+              skills: data.skills || [],
+            });
+          }
         }
       } catch (err) {
         console.error('Profile fetch error:', err);
       }
     };
-    
-    const fetchCvs = async () => {
-      if (isDemoMode()) return;
-      try {
-        const token = getAccessToken();
-        const res = await fetch('/api/cvs', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCvs(data);
-        }
-      } catch (err) { console.error('CV fetch error:', err); }
-    };
-
     fetchProfile();
-    fetchCvs();
   }, []);
 
   const handleSave = async () => {
-    if (isDemoMode()) {
-      localStorage.setItem('unemployed_profile', JSON.stringify(profile));
-      setIsEditing(false);
-      return;
-    }
     try {
       setSaving(true);
-      const token = getAccessToken();
-      const res = await fetch('/api/profile', {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const nameParts = (profile.name || '').trim().split(' ');
+      const res = await fetch('/api/student/profile', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          name: profile.name,
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
           education: profile.edu,
           location: profile.loc,
-          bio: profile.bio,
-          skills: profile.skills
+          skills: profile.skills,
         })
       });
       if (res.ok) setIsEditing(false);
+      else console.error('Profile save error:', await res.text());
     } catch (err) { console.error('Save error:', err); }
     finally { setSaving(false); }
   };
@@ -272,10 +257,83 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Settings */}
+        <div style={{ marginBottom: 24, padding: '0 20px' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>
+            {lang === 'en' ? 'Settings' : 'Nastavenia'}
+          </h3>
+
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            {/* Language Toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{lang === 'en' ? 'Language' : 'Jazyk'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{lang === 'en' ? 'Interface language' : 'Jazyk rozhrania'}</div>
+              </div>
+              <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <button
+                  onClick={() => setLang('sk')}
+                  style={{
+                    padding: '7px 14px', border: 'none', fontSize: 12, fontWeight: 700,
+                    background: lang === 'sk' ? 'var(--accent)' : 'transparent',
+                    color: lang === 'sk' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >SK</button>
+                <button
+                  onClick={() => setLang('en')}
+                  style={{
+                    padding: '7px 14px', border: 'none', fontSize: 12, fontWeight: 700,
+                    background: lang === 'en' ? 'var(--accent)' : 'transparent',
+                    color: lang === 'en' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >EN</button>
+              </div>
+            </div>
+
+            {/* Theme Toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{lang === 'en' ? 'Appearance' : 'Vzhľad'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{lang === 'en' ? 'Dark or light mode' : 'Tmavý alebo svetlý režim'}</div>
+              </div>
+              <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <button
+                  onClick={() => setTheme('dark')}
+                  style={{
+                    padding: '7px 12px', border: 'none', fontSize: 13, fontWeight: 600,
+                    background: theme === 'dark' ? 'var(--accent)' : 'transparent',
+                    color: theme === 'dark' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  {lang === 'en' ? 'Dark' : 'Tmavý'}
+                </button>
+                <button
+                  onClick={() => setTheme('light')}
+                  style={{
+                    padding: '7px 12px', border: 'none', fontSize: 13, fontWeight: 600,
+                    background: theme === 'light' ? 'var(--accent)' : 'transparent',
+                    color: theme === 'light' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                  {lang === 'en' ? 'Light' : 'Svetlý'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, paddingBottom: 24 }}>
           <button 
-            onClick={() => {
-              localStorage.clear();
+            onClick={async () => {
+              await supabase.auth.signOut();
+              localStorage.removeItem('unemployed_apps');
+              localStorage.removeItem('unemployed_profile');
               window.location.href = '/app';
             }}
             style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useI18n, useAppState } from '../contexts';
+import { supabase } from '../supabase';
 import QuizStep from '../components/QuizStep';
 import { useNavigate } from 'react-router-dom';
 
-const Onboarding = () => {
+const Onboarding = ({ onComplete }) => {
   const { t, lang } = useI18n();
   const { setCompanyProfile } = useAppState();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [obData, setObData] = useState({
     name: '',
     industry: '',
@@ -24,9 +26,25 @@ const Onboarding = () => {
     if (step > 0) setStep(step - 1);
   };
 
-  const finishOnboarding = () => {
-    setCompanyProfile(obData);
-    navigate('/dashboard');
+  const finishOnboarding = async () => {
+    try {
+      setSaving(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.from('employers').upsert({
+          id: session.user.id,
+          name: obData.name,
+          description: obData.industry,
+        }, { onConflict: 'id' });
+      }
+      setCompanyProfile({ name: obData.name, industry: obData.industry });
+    } catch (err) {
+      console.error('Onboarding save error:', err);
+    } finally {
+      setSaving(false);
+    }
+    if (onComplete) onComplete();
+    else navigate('/dashboard');
   };
 
   const industryOpts = ['IT', 'Financie', 'Obchod', 'Gastro', 'Marketing', 'Iné'];

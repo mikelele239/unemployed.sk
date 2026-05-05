@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
-import { INITIAL_LISTINGS } from '../mockData';
+import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -85,8 +85,8 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('applications')}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.views || 0}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('views')}</div>
+          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.match_score || '—'}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>AI skóre</div>
         </div>
       </div>
 
@@ -135,36 +135,17 @@ const Listings = () => {
   const [saveLoading, setSaveLoading] = useState(false);
 
   useEffect(() => {
-    const fetchMyJobs = async () => {
-      try {
-        const token = localStorage.getItem('employer_token');
-        const res = await fetch('/api/jobs/my', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setListings(Array.isArray(data) ? data : []);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMyJobs();
-  }, []);
+    // listings are loaded by AppStateProvider on mount — just clear loading
+    setLoading(false);
+  }, [listings]);
 
   const getStatusColor = (status) => status === 'Active' ? 'var(--green)' : 'var(--accent)';
   const translateStatus = (s) => t(`status${s}`);
 
   const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem('employer_token');
-      const res = await fetch(`/api/jobs/${id}`, { 
-        method: 'DELETE',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (res.ok) setListings(prev => prev.filter(l => l.id !== id));
+      const { error } = await supabase.from('jobs').delete().eq('id', id);
+      if (!error) setListings(prev => prev.filter(l => l.id !== id));
     } catch (err) { console.error(err); }
   };
 
@@ -172,18 +153,21 @@ const Listings = () => {
     if (!editingListing.title) return;
     try {
       setSaveLoading(true);
-      const token = localStorage.getItem('employer_token');
-      const res = await fetch(`/api/jobs/${editingListing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(editingListing)
-      });
-      if (res.ok) {
+      const { error } = await supabase
+        .from('jobs')
+        .update({
+          title: editingListing.title,
+          description: editingListing.description,
+          rate: editingListing.rate,
+          work_model: editingListing.work_model || editingListing.workModel,
+          location: editingListing.location,
+        })
+        .eq('id', editingListing.id);
+      if (!error) {
         setListings(prev => prev.map(l => l.id === editingListing.id ? { ...editingListing } : l));
         setEditingListing(null);
       } else {
-        const errData = await res.json();
-        alert(`Chyba: ${errData.error}`);
+        alert(`Chyba: ${error.message}`);
       }
     } catch (err) { console.error(err); } finally { setSaveLoading(false); }
   };

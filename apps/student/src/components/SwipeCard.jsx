@@ -89,7 +89,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       whileDrag={{ scale: 1.02 }}
     >
       {/* ── MAP HERO ── */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '65%', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '35%', pointerEvents: 'none' }}>
         {job.lat && job.lng ? (
           <MapContainer
             center={[Number(job.lat), Number(job.lng)]}
@@ -127,8 +127,8 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       {/* ── CONTENT (Only fully visible for top/active card to prevent overlap ghosting) ── */}
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          padding: '16px 20px 80px', background: 'var(--bg-card)',
-          borderTop: '1px solid var(--border)', top: '32%',
+          padding: '14px 18px 64px', background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border)', top: '35%',
           display: 'flex', flexDirection: 'column', gap: 8,
           visibility: index > 1 ? 'hidden' : 'visible' // Performance & anti-glitch
         }}
@@ -150,7 +150,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         </h3>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {job.tags.map((tag, i) => (
+          {(job.tags || []).map((tag, i) => (
             <span key={tag} style={{
               padding: '5px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700,
               background: i === 0 ? 'var(--accent)' : 'var(--bg-card-hover)',

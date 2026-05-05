@@ -112,6 +112,156 @@ app.use(express.static(path.join(__dirname, 'apps', 'landing')));
 require('./routes/jobs')(app, supabase);
 require('./routes/auth')(app, supabase, { hashIp, getUserFromToken, rateLimit, VALID_TYPES, EMAIL_RE });
 
+// ── Employer Profile API (server-side, bypasses RLS) ──────────────────────────
+app.post('/api/employer/ensure-profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { name, description, website } = req.body;
+    
+    // Upsert employer row — service key bypasses RLS
+    const { data, error } = await supabase.from('employers').upsert({
+      id: user.id,
+      name: name || user.email?.split('@')[0] || 'Firma',
+      description: description || null,
+      website: website || null,
+    }, { onConflict: 'id' }).select().single();
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ profile: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/employer/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { data, error } = await supabase.from('employers').select('*').eq('id', user.id).maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ profile: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// ── Student Profile API (server-side, bypasses RLS) ───────────────────────────
+app.post('/api/student/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { first_name, last_name, education, location, skills, job_preferences } = req.body;
+    const { data, error } = await supabase.from('profiles').upsert({
+      user_id: user.id,
+      first_name: first_name || '',
+      last_name: last_name || '',
+      education: education || '',
+      location: location || '',
+      skills: skills || [],
+      job_preferences: job_preferences || [],
+    }, { onConflict: 'user_id' }).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ profile: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/student/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ profile: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/applications', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { job_id, student_name, student_profile, ai_score, ai_reasoning } = req.body;
+    const { data, error } = await supabase.from('applications').insert([{
+      job_id,
+      student_name: student_name || user.email,
+      student_email: user.email,
+      student_profile: student_profile || {},
+      status: 'Pending',
+      ai_score: ai_score || 50,
+      ai_reasoning: ai_reasoning || 'Submitted via Unemployed.sk',
+      candidate_id: user.id,
+    }]).select().single();
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Already applied' });
+      return res.status(500).json({ error: error.message });
+    }
+    res.json({ application: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/applications', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*, job:job_id(*)')
+      .eq('student_email', user.email)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ applications: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/applications/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { status } = req.body;
+    const { error } = await supabase
+      .from('applications')
+      .update({ status })
+      .eq('id', req.params.id)
+      .eq('student_email', user.email);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SPA Fallbacks ──────────────────────────────────────────────────────────────
 const distBase = __dirname;
 app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));

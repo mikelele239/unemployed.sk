@@ -1,71 +1,59 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
-import { getAccessToken } from '../supabase';
+import { supabase } from '../supabase';
 import SwipeCard from '../components/SwipeCard';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
 export default function ForYou() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const { jobs, loading } = useJobs(true);
   const [cards, setCards] = useState([]);
   const [profile, setProfile] = useState({});
   const [selectedJob, setSelectedJob] = useState(null);
   const [toast, setToast] = useState(false);
   const { addApplication, hasApplied, applications } = useApplications();
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const logJobView = async (jobId) => {
-    if (!jobId) return; 
+    if (!jobId) return;
     try {
-      const token = getAccessToken();
-      console.log(`[SYNC] Triggering view for Job=${jobId}`);
-      const res = await fetch(`/api/jobs/${jobId}/view`, {
-        method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error(`[SYNC] View failed for Job=${jobId}:`, errorData);
-      }
-    } catch (e) { 
-      console.error(`[SYNC] Network error while logging view for Job=${jobId}:`, e);
+      await supabase.rpc('increment_job_views', { job_id_input: jobId });
+    } catch (e) {
+      console.warn('[ForYou] View tracking failed (non-fatal):', e);
     }
   };
 
   useEffect(() => {
     if (!loading) {
-      // Exclude jobs that have already been applied to
       const filtered = jobs.filter(j => !hasApplied(j.id));
-      console.log(`[DEBUG] Filtering cards: ${jobs.length} total -> ${filtered.length} remaining`);
       setCards([...filtered].reverse());
-      
-      // Log view for the top card if it exists
-      if (filtered.length > 0) {
-        logJobView(filtered[0]?.id);
-      }
+      if (filtered.length > 0) logJobView(filtered[0]?.id);
     }
   }, [loading, jobs, applications]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = getAccessToken();
-        const res = await fetch('/api/profile', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch('/api/student/profile', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (res.ok) {
-          const data = await res.json();
-          // Map backend names back to expected frontend state
-          setProfile({
-            ...data,
-            name: `${data.first_name} ${data.last_name || ''}`.trim()
-          });
-        } else {
-          // Fallback to local
-          const prof = JSON.parse(localStorage.getItem('unemployed_profile')) || {};
-          setProfile(prof);
+          const { profile: data } = await res.json();
+          if (data) {
+            setProfile({ name: `${data.first_name || ''} ${data.last_name || ''}`.trim() });
+          }
         }
       } catch (err) {
         console.error('Profile fetch error:', err);
@@ -82,7 +70,6 @@ export default function ForYou() {
     }
     const nextCards = cards.filter(c => c.id !== job.id);
     setCards(nextCards);
-    // Log view for the next card revealed
     if (nextCards.length > 0) {
       logJobView(nextCards[nextCards.length - 1].id);
     }
@@ -92,17 +79,280 @@ export default function ForYou() {
     addApplication(job);
     setToast(true);
     setTimeout(() => setToast(false), 2200);
-    // Optionally remove card from stack after applying if desired
   };
 
+  const currentJob = cards.length > 0 ? cards[cards.length - 1] : null;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DESKTOP LAYOUT — Full detail view with inline actions
+  // ═══════════════════════════════════════════════════════════════════════
+  if (isDesktop) {
+    return (
+      <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '24px 32px 16px', borderBottom: '1px solid var(--border)' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-0.5px' }}>
+            {t('foryou.title')}
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
+            {t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}
+            {cards.length > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>
+              {cards.length} {lang === 'sk' ? 'pozícií' : 'jobs left'}
+            </span>}
+          </p>
+        </div>
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text-muted)' }}>
+            <div className="typing-cursor" style={{ width: 30, height: 30, marginBottom: 12 }}></div>
+            <p style={{ fontSize: 14 }}>{t('foryou.loading')}</p>
+          </div>
+        ) : !currentJob ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 48, marginBottom: 16 }}>👍</span>
+            <h3 style={{ fontSize: 22, color: 'var(--text)', fontWeight: 700, marginBottom: 6 }}>{t('foryou.empty')}</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('foryou.emptyDesc')}</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentJob.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
+              style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 380px', gap: 0, overflow: 'hidden' }}
+            >
+              {/* ── LEFT COLUMN: Job Details ──────────────────── */}
+              <div style={{ overflowY: 'auto', padding: '32px', borderRight: '1px solid var(--border)' }}>
+                {/* Company + Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 16, background: currentJob.color || 'var(--accent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 850, color: '#fff', fontSize: 22, flexShrink: 0,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                  }}>{currentJob.logo || currentJob.company?.charAt(0)}</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{currentJob.company}</div>
+                    <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                      {t('card.verified')}
+                    </div>
+                  </div>
+                </div>
+
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.3px', marginBottom: 16 }}>
+                  {currentJob.title}
+                </h2>
+
+                {/* Tags */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                  {(currentJob.tags || []).map((tag, i) => (
+                    <span key={tag} style={{
+                      padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                      background: i === 0 ? 'var(--accent)' : 'var(--bg-card-hover)',
+                      color: i === 0 ? '#fff' : 'var(--text-muted)',
+                      border: i === 0 ? 'none' : '1px solid var(--border)'
+                    }}>{tag}</span>
+                  ))}
+                </div>
+
+                {/* Highlights Grid */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28,
+                  background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)'
+                }}>
+                  {[
+                    { icon: '💰', label: lang === 'sk' ? 'Odmena' : 'Pay', value: `${currentJob.rate || '—'} ${currentJob.rateUnit || ''}` },
+                    { icon: '🕐', label: lang === 'sk' ? 'Úväzok' : 'Hours', value: currentJob.hours || '—' },
+                    { icon: '📍', label: lang === 'sk' ? 'Model' : 'Model', value: currentJob.workModel || 'On-site' },
+                    { icon: '📅', label: lang === 'sk' ? 'Nástup' : 'Start', value: currentJob.startDate || (lang === 'sk' ? 'Dohodou' : 'Flexible') },
+                  ].map(item => (
+                    <div key={item.label} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 20, marginBottom: 6 }}>{item.icon}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Description */}
+                {currentJob.description && (
+                  <div style={{ marginBottom: 28 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 10 }}>
+                      {lang === 'sk' ? 'Popis pozície' : 'Job Description'}
+                    </h4>
+                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line' }}>
+                      {currentJob.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Requirements */}
+                {currentJob.requirements && (
+                  <div style={{ marginBottom: 28 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 10 }}>
+                      {t('detail.requirements')}
+                    </h4>
+                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line' }}>
+                      {currentJob.requirements}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── RIGHT COLUMN: Map + Actions ──────────────── */}
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', overflow: 'hidden' }}>
+                {/* Map */}
+                <div style={{ height: 240, flexShrink: 0, position: 'relative' }}>
+                  {currentJob.lat && currentJob.lng ? (
+                    <MapContainer
+                      key={`desk-${currentJob.id}`}
+                      center={[Number(currentJob.lat), Number(currentJob.lng)]}
+                      zoom={13}
+                      style={{ height: '100%', width: '100%' }}
+                      zoomControl={false}
+                      dragging={false}
+                      scrollWheelZoom={false}
+                      attributionControl={false}
+                    >
+                      <TileLayer url={document.documentElement.getAttribute('data-theme') === 'light'
+                        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'} />
+                      <Marker position={[Number(currentJob.lat), Number(currentJob.lng)]} />
+                    </MapContainer>
+                  ) : (
+                    <div style={{ height: '100%', background: 'var(--bg-card-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+                      {t('card.unknownLocation')}
+                    </div>
+                  )}
+                  {/* Location badge */}
+                  <div style={{
+                    position: 'absolute', bottom: 12, left: 12, zIndex: 10,
+                    background: 'var(--bg-card)', backdropFilter: 'blur(12px)',
+                    padding: '8px 14px', borderRadius: 12,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 13, fontWeight: 700, color: 'var(--text)',
+                    border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    {currentJob.location || 'Unknown'}
+                  </div>
+                </div>
+
+                {/* Rate Card */}
+                <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    {lang === 'sk' ? 'Odmena' : 'Compensation'}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 32, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
+                    {currentJob.rate || '—'}
+                    <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600, marginLeft: 6 }}>{currentJob.rateUnit || ''}</span>
+                  </div>
+                  {currentJob.hours && (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{currentJob.hours}</div>
+                  )}
+                </div>
+
+                {/* Job stats quick info */}
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {currentJob.duration && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Trvanie' : 'Duration'}</span>
+                      <span style={{ fontWeight: 600 }}>{currentJob.duration}</span>
+                    </div>
+                  )}
+                  {currentJob.type && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Typ' : 'Type'}</span>
+                      <span style={{ fontWeight: 600 }}>{currentJob.type}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</span>
+                    <span style={{ fontWeight: 600 }}>{currentJob.views ?? '—'}</span>
+                  </div>
+                </div>
+
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+
+                {/* Action Buttons */}
+                <div style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12 }}>
+                  <button
+                    onClick={() => handleSwipe('left', currentJob)}
+                    style={{
+                      flex: 1, padding: '16px', borderRadius: 16,
+                      border: '1px solid var(--border)', background: 'transparent',
+                      color: 'var(--text-muted)', fontSize: 15, fontWeight: 700,
+                      cursor: 'pointer', transition: 'all 0.2s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4747'; e.currentTarget.style.color = '#ff4747'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {lang === 'sk' ? 'Preskočiť' : 'Skip'}
+                  </button>
+                  <button
+                    onClick={() => handleSwipe('right', currentJob)}
+                    style={{
+                      flex: 2, padding: '16px', borderRadius: 16,
+                      border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)',
+                      color: '#fff', fontSize: 15, fontWeight: 700,
+                      cursor: 'pointer', transition: 'all 0.2s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 6px 24px rgba(255,92,0,0.35)'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    {lang === 'sk' ? 'Mám záujem' : "I'm interested"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* Toast */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              style={{
+                position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+                background: 'var(--green)', color: '#fff',
+                padding: '14px 28px', borderRadius: 14,
+                fontSize: 14, fontWeight: 700, textAlign: 'center',
+                zIndex: 60, boxShadow: '0 8px 32px rgba(34,197,94,0.35)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {t('foryou.toast')}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MOBILE LAYOUT — Swipe cards with tighter spacing
+  // ═══════════════════════════════════════════════════════════════════════
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '16px 20px 10px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('foryou.title')}</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}</p>
+      <div style={{ padding: '12px 16px 6px' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800 }}>{t('foryou.title')}</h1>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}</p>
       </div>
 
-      <div style={{ position: 'relative', flex: 1, margin: '16px 24px', perspective: 800 }}>
+      <div style={{ position: 'relative', flex: 1, margin: '8px 16px 12px', maxWidth: 420, width: 'calc(100% - 32px)', alignSelf: 'center', perspective: 800 }}>
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
             <div className="typing-cursor" style={{ width: 30, height: 30, marginBottom: 12 }}></div>
@@ -117,7 +367,7 @@ export default function ForYou() {
         ) : (
           <AnimatePresence>
             {cards.map((job, index) => {
-              const cardIndex = cards.length - 1 - index; // 0 is top
+              const cardIndex = cards.length - 1 - index;
               return (
                 <SwipeCard 
                   key={job.id} 
@@ -149,17 +399,12 @@ export default function ForYou() {
             exit={{ y: 80, opacity: 0 }}
             style={{
               position: 'fixed',
-              bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
-              left: 16, right: 16,
-              background: 'var(--green)',
-              color: '#fff',
-              padding: '12px 14px',
-              borderRadius: 12,
-              fontSize: 13,
-              fontWeight: 600,
-              textAlign: 'center',
-              zIndex: 60,
-              boxShadow: '0 4px 20px rgba(34,197,94,0.3)'
+              bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
+              left: 12, right: 12,
+              background: 'var(--green)', color: '#fff',
+              padding: '10px 14px', borderRadius: 12,
+              fontSize: 12, fontWeight: 600, textAlign: 'center',
+              zIndex: 60, boxShadow: '0 4px 20px rgba(34,197,94,0.3)'
             }}
           >
             {t('foryou.toast')}

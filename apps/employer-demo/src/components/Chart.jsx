@@ -87,7 +87,7 @@ const Chart = ({ data = [], title }) => {
 
           {/* The Smooth Line */}
           <path 
-            d={smoothPath} fill="none" stroke="url(#lineGradient)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+            d={smoothPath} fill="none" stroke="url(#lineGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
             filter="url(#glow)"
             style={{ 
               transition: 'stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1)', 
@@ -109,7 +109,7 @@ const Chart = ({ data = [], title }) => {
               />
               {p.val > 0 && (
                 <text 
-                  x={p.x} y={p.y - 14} textAnchor="middle" fontSize="11" fill="var(--text)" fontWeight="900"
+                  x={p.x} y={p.y - 14} textAnchor="middle" fontSize="9" fill="var(--text)" fontWeight="800"
                   style={{ opacity: active ? 1 : 0, transition: `opacity 0.5s ease ${i * 0.1}s` }}
                 >
                   {p.val}
