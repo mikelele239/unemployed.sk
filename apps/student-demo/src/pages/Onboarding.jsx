@@ -307,9 +307,9 @@ export default function Onboarding({ onComplete }) {
         {phase === 'manual' && (
           <motion.div key="manual"
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px' }}
           >
-            <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
                 style={{ width: 40, height: 40, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >←</button>
@@ -327,15 +327,15 @@ export default function Onboarding({ onComplete }) {
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.title}</h2>
-                      <p style={{ color: 'var(--text-muted)', fontSize: 16, marginBottom: 40, lineHeight: 1.5 }}>{s.sub}</p>
+                      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 900, marginBottom: 8, letterSpacing: '-0.5px', lineHeight: 1.1 }}>{s.title}</h2>
+                      <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.4 }}>{s.sub}</p>
 
                       {s.type === 'text' && (
                         <div style={{ position: 'relative' }}>
                           <input type="text" placeholder={s.placeholder} value={data[s.id]}
                             onChange={e => setData({ ...data, [s.id]: e.target.value })}
                             onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : finalizeMatching())}
-                            style={{ width: '100%', padding: '24px', borderRadius: 20, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, fontWeight: 700, outline: 'none', transition: 'border-color 0.2s' }}
+                            style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '2px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 16, fontWeight: 700, outline: 'none', transition: 'border-color 0.2s' }}
                             onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                             onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
                             autoFocus
@@ -350,7 +350,7 @@ export default function Onboarding({ onComplete }) {
                             return (
                               <button key={opt} onClick={() => handleManualAction(s.id, opt, s.type === 'multi')}
                                 style={{ 
-                                  padding: '20px 24px', borderRadius: 20, border: '1px solid', 
+                                  padding: '16px 20px', borderRadius: 16, border: '1px solid', 
                                   borderColor: isSelected ? 'var(--accent)' : 'var(--border)', 
                                   background: isSelected ? 'var(--accent-light)' : 'var(--bg-card)', 
                                   color: isSelected ? 'var(--accent)' : 'var(--text)', 

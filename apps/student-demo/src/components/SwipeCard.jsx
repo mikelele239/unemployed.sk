@@ -53,6 +53,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
 
   return (
     <motion.div
+      className="draggable-card"
       style={{
         x: isTop ? x : 0,
         rotate: isTop ? rotate : 0,
