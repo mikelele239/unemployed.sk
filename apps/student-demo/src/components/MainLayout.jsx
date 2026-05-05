@@ -49,44 +49,16 @@ export default function MainLayout() {
         flexShrink: 0
       }}>
         {isDesktop && (
-          <div style={{ 
-            padding: '32px 16px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ 
-              fontFamily: 'var(--font-display)', 
-              fontSize: '1.3rem', 
-              color: 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'default',
-              whiteSpace: 'nowrap'
-            }}>
-              <span style={{ position: 'relative' }}>
-                un
-                <span style={{ 
-                  position: 'absolute', 
-                  left: '-1px', 
-                  right: '-1px', 
-                  top: '50%', 
-                  height: '2px', 
-                  background: 'var(--accent)', 
-                  borderRadius: '2px' 
-                }} />
-              </span>
-              employed.sk
+          <div style={{ padding: '32px 16px', marginBottom: '20px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--text)', display: 'flex', alignItems: 'center', cursor: 'default', whiteSpace: 'nowrap' }}>
+              <span style={{ position: 'relative' }}>un<span style={{ position: 'absolute', left: '-1px', right: '-1px', top: '50%', height: '2px', background: 'var(--accent)', borderRadius: '2px' }} /></span>employed.sk
             </div>
           </div>
         )}
 
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: isDesktop ? 'column' : 'row', 
-          flex: 1,
-          gap: isDesktop ? '8px' : '0'
-        }}>
+        <div style={{ display: 'flex', flexDirection: isDesktop ? 'column' : 'row', flex: 1, gap: isDesktop ? '8px' : '0' }}>
           {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.path);
+            const pathMatch = location.pathname.startsWith(item.path);
             const Icon = item.icon;
             
             return (
@@ -94,66 +66,51 @@ export default function MainLayout() {
                 key={item.path}
                 to={item.path}
                 className="nav-tab"
-                style={{
-                  flex: isDesktop ? 'none' : 1,
-                  height: isDesktop ? '48px' : '100%',
-                  display: 'flex',
-                  flexDirection: isDesktop ? 'row' : 'column',
-                  alignItems: 'center',
-                  justifyContent: isDesktop ? 'flex-start' : 'center',
-                  gap: isDesktop ? '12px' : '3px',
-                  padding: isDesktop ? '0 16px' : '0',
-                  borderRadius: isDesktop ? '12px' : '0',
-                  background: isDesktop && isActive ? 'var(--accent-light)' : 'none',
-                  color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                  fontSize: isDesktop ? '15px' : '9px',
-                  fontWeight: isActive ? 600 : 500,
-                  textDecoration: 'none',
-                  position: 'relative',
-                  transition: 'all 0.2s ease'
+                style={({ isActive: routerActive }) => {
+                  const finalActive = pathMatch || routerActive;
+                  return {
+                    flex: isDesktop ? 'none' : 1,
+                    height: isDesktop ? '48px' : '100%',
+                    display: 'flex',
+                    flexDirection: isDesktop ? 'row' : 'column',
+                    alignItems: 'center',
+                    justifyContent: isDesktop ? 'flex-start' : 'center',
+                    gap: isDesktop ? '12px' : '3px',
+                    padding: isDesktop ? '0 16px' : '0',
+                    borderRadius: isDesktop ? '12px' : '0',
+                    background: isDesktop && finalActive ? 'var(--accent-light)' : 'none',
+                    color: finalActive ? 'var(--accent)' : 'var(--text-muted)',
+                    fontSize: isDesktop ? '15px' : '9px',
+                    fontWeight: finalActive ? 600 : 500,
+                    textDecoration: 'none',
+                    position: 'relative',
+                    transition: 'all 0.2s ease'
+                  };
                 }}
               >
-                <Icon size={isDesktop ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
-                <span>{item.label}</span>
-                
-                {!isDesktop && isActive && (
-                  <motion.div
-                    layoutId="bottomNavIndicator"
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      width: '60%',
-                      height: '3px',
-                      background: 'var(--accent)',
-                      borderRadius: '3px 3px 0 0'
-                    }}
-                  />
-                )}
-                {isDesktop && isActive && (
-                  <motion.div
-                    layoutId="sideNavIndicator"
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      width: '4px',
-                      height: '24px',
-                      background: 'var(--accent)',
-                      borderRadius: '0 4px 4px 0'
-                    }}
-                  />
-                )}
+                {({ isActive: routerActive }) => {
+                   const finalActive = pathMatch || routerActive;
+                   return (
+                    <>
+                      <Icon size={isDesktop ? 22 : 20} strokeWidth={finalActive ? 2.5 : 2} />
+                      <span>{item.label}</span>
+                      
+                      {!isDesktop && finalActive && (
+                        <motion.div layoutId="bottomNavIndicator" style={{ position: 'absolute', bottom: 0, width: '60%', height: '3px', background: 'var(--accent)', borderRadius: '3px 3px 0 0' }} />
+                      )}
+                      {isDesktop && finalActive && (
+                        <motion.div layoutId="sideNavIndicator" style={{ position: 'absolute', left: 0, width: '4px', height: '24px', background: 'var(--accent)', borderRadius: '0 4px 4px 0' }} />
+                      )}
+                    </>
+                   );
+                }}
               </NavLink>
             );
           })}
         </div>
       </nav>
 
-      <div style={{ 
-        flex: 1, 
-        overflowY: 'auto', 
-        paddingBottom: isDesktop ? '0' : 'calc(60px + env(safe-area-inset-bottom, 0px))',
-        position: 'relative'
-      }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: isDesktop ? '0' : 'calc(60px + env(safe-area-inset-bottom, 0px))', position: 'relative' }}>
         <Outlet />
       </div>
     </div>

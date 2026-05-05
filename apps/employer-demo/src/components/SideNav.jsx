@@ -31,6 +31,43 @@ const SideNav = () => {
       zIndex: 100,
       position: 'relative'
     }}>
+      {/* Mobile Top Bar */}
+      <div className="mobile-only" style={{ 
+        padding: '16px 20px', 
+        borderBottom: '1px solid var(--border)', 
+        background: 'var(--sidebar-bg)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '60px',
+        zIndex: 101
+      }}>
+        <span style={{ 
+          fontFamily: 'var(--font-display)', 
+          fontSize: '1.2rem', 
+          color: 'var(--text)', 
+          position: 'relative',
+          whiteSpace: 'nowrap'
+        }}>
+          <span style={{ position: 'relative' }}>
+            un
+            <span style={{ 
+              position: 'absolute', 
+              left: '-1px', 
+              right: '-1px', 
+              top: '50%', 
+              height: '2px', 
+              background: 'var(--accent)', 
+              borderRadius: '2px' 
+            }} />
+          </span>
+          employed.sk
+        </span>
+      </div>
       {/* Brand Section */}
       <div className="desktop-only" style={{ padding: '32px 24px', borderBottom: '1px solid var(--border)' }}>
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
@@ -43,15 +80,15 @@ const SideNav = () => {
           }}>
             <span style={{ position: 'relative' }}>
               un
-              <span style={{ 
-                position: 'absolute', 
-                left: '-1px', 
-                right: '-1px', 
-                top: '50%', 
-                height: '2px', 
-                background: 'var(--border)', 
-                borderRadius: '2px' 
-              }} />
+                <span style={{ 
+                  position: 'absolute', 
+                  left: '-1px', 
+                  right: '-1px', 
+                  top: '50%', 
+                  height: '2px', 
+                  background: 'var(--accent)', 
+                  borderRadius: '2px' 
+                }} />
             </span>
             employed.sk
           </span>
@@ -64,7 +101,7 @@ const SideNav = () => {
           <NavLink 
             key={item.id} 
             to={item.path}
-            className={({ isActive }) => `sidebar-link mobile-sidebar-link ${isActive ? 'active' : ''}`}
+            className={(navData) => `sidebar-link mobile-sidebar-link ${navData && navData.isActive ? 'active' : ''}`}
           >
             <div style={{ width: '20px', height: '20px' }}>{item.icon}</div>
             <span>{item.label}</span>

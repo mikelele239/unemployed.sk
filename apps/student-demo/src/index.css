@@ -3,15 +3,17 @@
 html, body, #root {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 #root {
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
-/* Hide scrollbar for clean app-like feel */
+/* Hide scrollbar for clean app-like feel but allow scrolling if needed */
 ::-webkit-scrollbar {
   display: none;
 }
