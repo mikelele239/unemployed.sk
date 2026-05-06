@@ -16,7 +16,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
+export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike, isLiked }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const x = useMotionValue(0);
@@ -177,7 +177,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
 
       {/* ── ACTION BUTTONS ── */}
       {isTop && (
-        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 32, zIndex: 100 }}>
+        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 20, zIndex: 100 }}>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('left', job); }}
             style={{ 
@@ -188,16 +188,36 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >✕</button>
+          {onLike && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onLike(job.id); }}
+              style={{ 
+                width: 48, height: 48, borderRadius: 24, 
+                border: isLiked ? '2px solid #ef4444' : '1px solid var(--border)',
+                background: isLiked ? 'rgba(239,68,68,0.1)' : 'var(--bg-card)', 
+                boxShadow: '0 8px 24px rgba(0,0,0,0.2)', 
+                color: isLiked ? '#ef4444' : 'var(--text-muted)', 
+                fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? '#ef4444' : 'none'} stroke="currentColor" strokeWidth="2.5">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('right', job); }}
             style={{ 
-              width: 48, height: 48, borderRadius: 24, 
+              width: 56, height: 56, borderRadius: 28, 
               border: 'none', background: 'var(--accent)', 
               boxShadow: '0 8px 24px rgba(255,92,0,0.4)', color: '#fff', 
               fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
-          >♥</button>
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          </button>
         </div>
       )}
     </motion.div>
