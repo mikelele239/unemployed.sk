@@ -27,7 +27,6 @@ const Dashboard = () => {
 
   const stats = { 
     views: analytics.total_views || 0, 
-    likes: analytics.total_likes || 0,
     apps: analytics.total_applications || 0, 
     active: analytics.active_jobs || 0 
   };
@@ -88,7 +87,6 @@ const Dashboard = () => {
 
       <div className="dashboard-grid">
         <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType="neutral" />
-        <StatCard label={lang === 'sk' ? 'Záujem' : 'Likes'} value={stats.likes} unit="" changeText={stats.likes > 0 ? (lang === 'sk' ? `${stats.likes} celkovo` : `${stats.likes} total`) : (lang === 'sk' ? 'Zatiaľ žiadne lajky' : 'No likes yet')} changeType="neutral" />
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType="neutral" />
         <StatCard 
           label={lang === 'sk' ? 'Stav náborového procesu' : 'Recruitment Process State'} 

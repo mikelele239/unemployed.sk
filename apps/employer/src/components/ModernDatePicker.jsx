@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const ModernDatePicker = ({ onSelect, onCancel }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [offeredDates, setOfferedDates] = useState([]);
+  const [sent, setSent] = useState(false);
 
-  // Generate current month days
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -33,6 +33,32 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
   const removeDate = (iso) => {
     setOfferedDates(offeredDates.filter(d => d !== iso));
   };
+
+  if (sent) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+        style={{
+          background: '#000', color: '#fff', padding: 32, borderRadius: 16,
+          border: '1px solid #333', boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+          width: 'min(calc(100vw - 32px), 360px)', textAlign: 'center',
+          fontFamily: 'var(--font-body)'
+        }}
+      >
+        <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>Pozvánka odoslaná!</div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>
+          {offeredDates.length} {offeredDates.length === 1 ? 'termín' : 'termíny'} boli odoslané kandidátovi.
+        </div>
+        <button 
+          onClick={onCancel}
+          style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          Zavrieť
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
@@ -62,36 +88,39 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', textAlign: 'center', marginBottom: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px' }}>
           {['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'].map(d => (
-            <div key={d} style={{ fontSize: '11px', color: '#555', fontWeight: '900' }}>{d}</div>
+            <div key={d} style={{ fontSize: '11px', color: '#555', fontWeight: '900', padding: '4px 0' }}>{d}</div>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
           {Array.from({ length: (firstDay + 6) % 7 }).map((_, i) => <div key={`empty-${i}`} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const isSelected = selectedDay === day;
             const isoCheck = new Date(year, month, day).toISOString().split('T')[0];
             const isActive = offeredDates.some(od => od.startsWith(isoCheck));
+            const isPast = new Date(year, month, day) < new Date(new Date().setHours(0,0,0,0));
 
             return (
               <div 
                 key={day}
-                onClick={() => setSelectedDay(day)}
+                onClick={() => !isPast && setSelectedDay(day)}
                 style={{
-                  height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '13px', fontWeight: '800', borderRadius: '8px', cursor: 'pointer',
-                  background: isSelected ? 'var(--accent)' : isActive ? '#333' : 'transparent',
-                  color: isSelected ? '#fff' : isActive ? '#fff' : '#aaa',
+                  height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '13px', fontWeight: isSelected ? '900' : '600', borderRadius: '10px', 
+                  cursor: isPast ? 'default' : 'pointer',
+                  background: isSelected ? 'var(--accent)' : isActive ? 'rgba(255,92,0,0.15)' : 'transparent',
+                  color: isPast ? '#333' : isSelected ? '#fff' : isActive ? 'var(--accent)' : '#999',
                   border: 'none',
-                  outline: isSelected ? '2px solid var(--accent)' : 'none',
-                  outlineOffset: '-2px',
-                  transition: 'background 0.15s, color 0.15s'
+                  boxShadow: isSelected ? '0 0 0 2px var(--accent), inset 0 0 0 2px rgba(0,0,0,0.2)' : 'none',
+                  position: 'relative',
+                  zIndex: isSelected ? 2 : 1,
+                  transition: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
                 }}
-                onMouseEnter={e => { if (!isSelected && !isActive) e.currentTarget.style.background = '#1a1a1a'; }}
-                onMouseLeave={e => { if (!isSelected && !isActive) e.currentTarget.style.background = 'transparent'; }}
               >
                 {day}
               </div>
@@ -108,18 +137,18 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
         >
           <div style={{ fontSize: '11px', fontWeight: '900', color: '#666', marginBottom: '12px', textTransform: 'uppercase' }}>Vybrať Čas</div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <select value={hour} onChange={(e) => setHour(e.target.value)} style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #333', padding: '8px', borderRadius: '6px', fontSize: '14px', fontWeight: '700' }}>
+            <select value={hour} onChange={(e) => setHour(e.target.value)} style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #333', padding: '8px', borderRadius: '6px', fontSize: '14px', fontWeight: '700', fontFamily: 'var(--font-body)' }}>
               {Array.from({ length: 24 }).map((_, i) => <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}:00</option>)}
             </select>
             <span style={{ fontWeight: '900' }}>:</span>
-            <select value={minute} onChange={(e) => setMinute(e.target.value)} style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #333', padding: '8px', borderRadius: '6px', fontSize: '14px', fontWeight: '700' }}>
+            <select value={minute} onChange={(e) => setMinute(e.target.value)} style={{ flex: 1, background: '#222', color: '#fff', border: '1px solid #333', padding: '8px', borderRadius: '6px', fontSize: '14px', fontWeight: '700', fontFamily: 'var(--font-body)' }}>
               {['00', '15', '30', '45'].map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <button 
               onClick={addDate}
-              style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: '6px', color: '#fff', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+              style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: '6px', color: '#fff', fontWeight: '800', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
             >
-              PRIDAŤ
+              Pridať
             </button>
           </div>
         </motion.div>
@@ -128,7 +157,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
       <div style={{ marginBottom: '24px' }}>
         <div style={{ fontSize: '10px', fontWeight: '900', color: '#555', marginBottom: '10px', textTransform: 'uppercase' }}>Ponúkané termíny</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {offeredDates.length === 0 && <span style={{ fontSize: '12px', color: '#333', fontStyle: 'italic' }}>Kliknite na deň a pridajte čas...</span>}
+          {offeredDates.length === 0 && <span style={{ fontSize: '12px', color: '#444', fontStyle: 'italic' }}>Kliknite na deň a pridajte čas...</span>}
           {offeredDates.map(iso => (
             <div key={iso} style={{ background: '#111', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #222' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -143,16 +172,20 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
 
       <button
         disabled={offeredDates.length === 0}
-        onClick={() => onSelect(offeredDates)}
+        onClick={() => {
+          onSelect(offeredDates);
+          setSent(true);
+        }}
         style={{
-          width: '100%', padding: '12px', borderRadius: '8px', border: 'none',
-          background: offeredDates.length === 0 ? '#222' : 'var(--accent)',
+          width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
+          background: offeredDates.length === 0 ? '#222' : 'linear-gradient(135deg, #FF8C32, #FF5C00)',
           color: offeredDates.length === 0 ? '#444' : '#fff',
-          fontSize: '12px', fontWeight: '900', cursor: 'pointer',
-          transition: 'all 0.2s'
+          fontSize: '13px', fontWeight: '800', cursor: offeredDates.length === 0 ? 'default' : 'pointer',
+          transition: 'all 0.2s', fontFamily: 'var(--font-body)',
+          boxShadow: offeredDates.length > 0 ? '0 6px 20px rgba(255,92,0,0.3)' : 'none'
         }}
       >
-        POTVRDIŤ A ODOSLAŤ
+        📨 Potvrdiť a odoslať
       </button>
     </motion.div>
   );

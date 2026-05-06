@@ -93,10 +93,6 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
             <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{l.total_views || 0}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-body)', color: '#ef4444' }}>{l.total_likes || 0}</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Záujem' : 'Likes'}</div>
-          </div>
           {liveViewerCount > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', marginLeft: 'auto' }}>
               <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', animation: 'blink 1.5s infinite', boxShadow: '0 0 8px rgba(34,197,94,0.5)' }}></span>
