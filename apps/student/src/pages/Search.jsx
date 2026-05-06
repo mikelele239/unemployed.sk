@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
+import { supabase } from '../supabase';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
 
@@ -27,6 +28,34 @@ export default function Search() {
   const [minRate, setMinRate] = useState(null);
   const [selectedFocus, setSelectedFocus] = useState([]);
   
+  // Fetch registered employers from Supabase
+  const [employers, setEmployers] = useState([]);
+  useEffect(() => {
+    const fetchEmployers = async () => {
+      try {
+        const { data } = await supabase.from('employers').select('id, name, description, color, logo_url');
+        if (data) {
+          // Count jobs per employer
+          const jobCounts = {};
+          jobs.forEach(j => {
+            if (j.employer_id) jobCounts[j.employer_id] = (jobCounts[j.employer_id] || 0) + 1;
+            if (j.company) jobCounts[j.company] = (jobCounts[j.company] || 0) + 1;
+          });
+          setEmployers(data.map(emp => ({
+            name: emp.name,
+            logo: emp.logo_url || emp.name.charAt(0).toUpperCase(),
+            color: emp.color || '#FF5C00',
+            jobCount: jobCounts[emp.id] || jobCounts[emp.name] || 0,
+            description: emp.description || '',
+          })));
+        }
+      } catch (err) {
+        console.error('[Search] Failed to fetch employers:', err);
+      }
+    };
+    fetchEmployers();
+  }, [jobs]);
+
   const tabs = [t('search.all') || 'Všetky', t('search.parttime') || 'Brigády', t('search.internships') || 'Stáže', t('search.gigs') || 'Jednorázovky'];
 
   const activeFilterCount = (minRate ? 1 : 0) + selectedFocus.length;
@@ -37,24 +66,11 @@ export default function Search() {
     return match ? parseFloat(match[0]) : 0;
   };
 
-  // Extract unique companies from jobs
-  const companies = useMemo(() => {
-    const map = {};
-    jobs.forEach(job => {
-      if (!job.company) return;
-      if (!map[job.company]) {
-        map[job.company] = { name: job.company, logo: job.logo || job.company.charAt(0), color: job.color || '#FF5C00', jobCount: 0, location: job.location };
-      }
-      map[job.company].jobCount++;
-    });
-    return Object.values(map);
-  }, [jobs]);
-
   // Filter companies by query
   const filteredCompanies = useMemo(() => {
     if (!filterQuery || filterQuery.length < 2) return [];
-    return companies.filter(c => c.name.toLowerCase().includes(filterQuery.toLowerCase()));
-  }, [companies, filterQuery]);
+    return employers.filter(c => c.name.toLowerCase().includes(filterQuery.toLowerCase()));
+  }, [employers, filterQuery]);
 
   const filteredJobs = jobs.filter(job => {
     if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'Brigáda') return false;

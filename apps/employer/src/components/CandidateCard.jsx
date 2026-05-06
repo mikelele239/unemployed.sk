@@ -205,7 +205,31 @@ const CandidateCard = ({ candidate, onInvite }) => {
 
                 {/* Executive Actions Panel */}
                 <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {status === 'interview' ? (
+
+                  {/* Date Picker Overlay - always available */}
+                  <AnimatePresence>
+                    {showPicker && (
+                      <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        style={{ 
+                          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                          zIndex: 10000, padding: '20px', backdropFilter: 'blur(8px)'
+                        }}
+                        onClick={() => setShowPicker(false)}>
+                        <div onClick={e => e.stopPropagation()}>
+                          <ModernDatePicker 
+                            onSelect={(dates) => {
+                              onInvite(candidate.id, 'Interview', dates);
+                            }}
+                            onCancel={() => setShowPicker(false)}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {['interview', 'interview-confirmed', 'counter-offer'].includes(status) ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <div style={{
@@ -291,30 +315,9 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   ) : (
                     <>
                       {/* Date Selection Panel (Shown before inviting) */}
-                      {status !== 'hired' && status !== 'rejected' && (
+                      {status !== 'hired' && status !== 'rejected' && status !== 'declined' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
                           <div style={{ fontSize: '11px', fontWeight: '900', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ponúknuť termíny pohovoru</div>
-                          
-                          <AnimatePresence>
-                            {showPicker && (
-                              <div style={{ 
-                                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                                zIndex: 10000, padding: '20px', backdropFilter: 'blur(5px)'
-                              }}
-                              onClick={() => setShowPicker(false)}>
-                                <div onClick={e => e.stopPropagation()}>
-                                  <ModernDatePicker 
-                                    onSelect={(dates) => {
-                                      onInvite(candidate.id, 'Interview', dates);
-                                      setShowPicker(false);
-                                    }}
-                                    onCancel={() => setShowPicker(false)}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </AnimatePresence>
 
                           {!showPicker && (
                             <motion.button 
