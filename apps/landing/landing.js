@@ -275,6 +275,7 @@
       const GRID = 80;
       const flashes = [];
       const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
       function resize() {
         canvas.width = window.innerWidth;
@@ -329,8 +330,10 @@
           ctx.save();
           ctx.strokeStyle = `rgba(255,92,0,${f.alpha * 0.25})`;
           ctx.lineWidth = 1.5;
-          ctx.shadowColor = `rgba(255,92,0,${f.alpha * 0.4})`;
-          ctx.shadowBlur = 10;
+          if (!isTouchDevice) {
+            ctx.shadowColor = `rgba(255,92,0,${f.alpha * 0.4})`;
+            ctx.shadowBlur = 10;
+          }
           ctx.beginPath();
           if (f.isV) {
             const x = f.idx * GRID;
@@ -353,6 +356,7 @@
         setInterval(addFlash, 2000);
         animate();
       } else {
+        draw();
         new MutationObserver(draw).observe(document.body, { attributes: true, attributeFilter: ['class'] });
       }
     })();
