@@ -909,7 +909,7 @@
       formData.set('consented', document.getElementById('consentTerms').checked ? '1' : '0');
       formData.set('marketingConsent', document.getElementById('consentMarketing').checked ? '1' : '0');
 
-      // Direct Supabase REST insert — anon key is public by design, no backend needed
+      // TODO: Move to environment-injected config — anon key is publishable but should not be hardcoded
       var SUPA_URL = 'https://jofrxyimqhbgxwwbqyvs.supabase.co';
       var SUPA_KEY = 'sb_publishable_x88V1MKZnvNi5YW1T6ozmA_j9XmzHXf';
 

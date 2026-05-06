@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import CandidateCard from '../components/CandidateCard';

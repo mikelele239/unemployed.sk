@@ -2,8 +2,9 @@
 // Uses only the PUBLIC Supabase anon key — no secrets needed.
 // Duplicate detection is handled by Supabase's UNIQUE constraint on email.
 
+// TODO: Remove hardcoded fallbacks once Netlify env vars are confirmed set
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://jofrxyimqhbgxwwbqyvs.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_x88V1MKZnvNi5YW1T6ozmA_j9XmzHXf';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 const VALID_TYPES = new Set(['Stredoškolák', 'Vysokoškolák', 'Absolvent', 'Zamestnávateľ']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +24,11 @@ function isRateLimited(ip) {
 }
 
 exports.handler = async (event) => {
+  if (!SUPABASE_ANON_KEY) {
+    console.error('Missing SUPABASE_ANON_KEY env var');
+    return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Server misconfiguration' }) };
+  }
+
   const headers = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
   if (event.httpMethod !== 'POST')

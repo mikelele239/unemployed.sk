@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import StatCard from '../components/StatCard';

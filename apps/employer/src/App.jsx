@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAppState } from './contexts';
 import SideNav from './components/SideNav';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';

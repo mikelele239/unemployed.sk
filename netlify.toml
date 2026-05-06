@@ -7,6 +7,5 @@
   node_bundler = "esbuild"
 
 # Required env vars in Netlify dashboard (Site → Environment variables):
-# VITE_SUPABASE_URL      = https://jofrxyimqhbgxwwbqyvs.supabase.co
-# VITE_SUPABASE_ANON_KEY = sb_publishable_...  (public key, safe to expose)
-# Note: NO secret keys needed — form submissions use the public anon key only
+# VITE_SUPABASE_URL      — Supabase project URL
+# VITE_SUPABASE_ANON_KEY — Supabase publishable anon key

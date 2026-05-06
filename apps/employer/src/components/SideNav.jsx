@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';

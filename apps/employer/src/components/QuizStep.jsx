@@ -1,4 +1,3 @@
-import React from 'react';
 
 const QuizStep = ({ step, total, label, subtitle, pFill, children, onNext, onBack }) => {
   return (

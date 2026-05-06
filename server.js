@@ -9,24 +9,7 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ██████████████████████████████████████████████████████████████████████████████
-// ██                                                                        ██
-// ██  ⚠️  CRITICAL DISCLAIMER — DO NOT REMOVE SUPABASE FROM THIS FILE  ⚠️    ██
-// ██                                                                        ██
-// ██  This server.js is the BACKBONE of user acquisition for unemployed.sk.  ██
-// ██  The /api/submit route (in routes/auth.js) saves email + phone number   ██
-// ██  submissions from the landing page signup form DIRECTLY to Supabase.    ██
-// ██                                                                        ██
-// ██  ANY future code changes, refactors, or SQL migrations MUST preserve   ██
-// ██  the Supabase connection below AND the /api/submit endpoint.            ██
-// ██  DO NOT disconnect, remove, or bypass this Supabase integration.        ██
-// ██  Losing landing page signups = losing real users = losing the company.  ██
-// ██                                                                        ██
-// ██████████████████████████████████████████████████████████████████████████████
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ── Supabase (Server-Side — uses SERVICE ROLE KEY to bypass RLS) ────────────
+// ── Supabase (service role key — bypasses RLS for server-side operations) ────
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -35,7 +18,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// ── Shared Helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function hashIp(ip) {
   return createHash('sha256').update(ip || '').digest('hex');
 }
@@ -91,20 +74,34 @@ app.use((req, res, next) => {
   next();
 });
 
-// Content Security Policy + CORS headers
+// Security headers
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https://*.supabase.co; " +
     "frame-src 'self' https://*.supabase.co blob: data:; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " +
+    // TODO: Replace unsafe-inline with nonces once the landing page is migrated to a build step
+    "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: blob: https: https://*.supabase.co;"
   );
-  res.setHeader('X-Frame-Options', 'ALLOWALL');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    `http://localhost:${PORT}`,
+    'https://unemployed.sk',
+    'https://www.unemployed.sk',
+  ];
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   next();
 });
 
@@ -116,22 +113,16 @@ app.use('/employer-demo',express.static(path.join(__dirname, 'apps', 'employer-d
 app.use(express.static(path.join(__dirname, 'apps', 'landing')));
 
 // ── Route Modules ──────────────────────────────────────────────────────────────
-require('./routes/jobs')(app, supabase);
+require('./routes/jobs')(app, supabase, { getUserFromToken });
 require('./routes/auth')(app, supabase, { hashIp, getUserFromToken, rateLimit, VALID_TYPES, EMAIL_RE });
 
-// ── Employer Profile API (server-side, bypasses RLS) ──────────────────────────
+// ── Employer Profile API ──────────────────────────────────────────────────────
 app.post('/api/employer/ensure-profile', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
     const { name, description, website, location } = req.body;
-    
-    // Upsert employer row — service key bypasses RLS
     const { data, error } = await supabase.from('employers').upsert({
       id: user.id,
       name: name || user.email?.split('@')[0] || 'Firma',
@@ -139,7 +130,7 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
       website: website || null,
       location: location || null,
     }, { onConflict: 'id' }).select().single();
-    
+
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
   } catch (err) {
@@ -149,13 +140,9 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
 
 app.get('/api/employer/profile', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
     const { data, error } = await supabase.from('employers').select('*').eq('id', user.id).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
@@ -163,14 +150,13 @@ app.get('/api/employer/profile', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// ── Student Profile API (server-side, bypasses RLS) ───────────────────────────
+
+// ── Student Profile API ──────────────────────────────────────────────────────
 app.post('/api/student/profile', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
     const { first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename, avatar_url } = req.body;
     const upsertData = {
       user_id: user.id,
@@ -195,11 +181,9 @@ app.post('/api/student/profile', async (req, res) => {
 
 app.get('/api/student/profile', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
     const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
@@ -280,11 +264,28 @@ app.get('/api/employer/candidates', async (req, res) => {
   }
 });
 
-// ── Employer Update Application Status (server-side, bypasses RLS) ──────────
+// ── Employer Update Application Status ──────────────────────────────────────
 app.patch('/api/employer/candidates/:id', async (req, res) => {
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Verify this application belongs to one of the employer's jobs
+    const { data: application } = await supabase
+      .from('applications')
+      .select('job_id')
+      .eq('id', req.params.id)
+      .single();
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', application.job_id)
+      .eq('employer_id', user.id)
+      .single();
+    if (!job) return res.status(403).json({ error: 'Forbidden' });
+
     const { status, interview_dates } = req.body;
     const updatePayload = {};
     if (status) updatePayload.status = status;
@@ -300,25 +301,18 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
   }
 });
 
-// ── Employer Job Update (server-side, bypasses RLS) ─────────────────────────
+// ── Employer Job Update ─────────────────────────────────────────────────────
+const JOB_UPDATABLE_FIELDS = ['title', 'description', 'requirements', 'rate', 'rate_unit', 'work_model', 'location', 'hours', 'type', 'duration', 'start_date', 'tags'];
+
 app.patch('/api/employer/jobs/:id', async (req, res) => {
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
-    const { title, description, requirements, rate, rate_unit, work_model, location, hours, type, duration, start_date, tags } = req.body;
+
     const updateData = {};
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (requirements !== undefined) updateData.requirements = requirements;
-    if (rate !== undefined) updateData.rate = rate;
-    if (rate_unit !== undefined) updateData.rate_unit = rate_unit;
-    if (work_model !== undefined) updateData.work_model = work_model;
-    if (location !== undefined) updateData.location = location;
-    if (hours !== undefined) updateData.hours = hours;
-    if (type !== undefined) updateData.type = type;
-    if (duration !== undefined) updateData.duration = duration;
-    if (start_date !== undefined) updateData.start_date = start_date;
-    if (tags !== undefined) updateData.tags = tags;
+    for (const field of JOB_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    }
     const { error } = await supabase
       .from('jobs')
       .update(updateData)
@@ -337,7 +331,7 @@ app.post('/api/cvs/upload', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Read raw body for file upload
+    // TODO: Replace manual multipart parsing with multer (already in package.json)
     const chunks = [];
     req.on('data', chunk => chunks.push(chunk));
     req.on('end', async () => {
@@ -517,27 +511,10 @@ app.get('/api/company/:name', async (req, res) => {
   }
 });
 
-// ── Job View Tracking (server-side) ─────────────────────────────────────────
-app.post('/api/job-view', async (req, res) => {
-  try {
-    const { job_id } = req.body;
-    if (!job_id) return res.status(400).json({ error: 'job_id required' });
-    // Try to increment views column directly
-    const { data: job } = await supabase.from('jobs').select('views').eq('id', job_id).single();
-    await supabase.from('jobs').update({ views: (job?.views || 0) + 1 }).eq('id', job_id);
-    res.json({ ok: true });
-  } catch {
-    res.json({ ok: true }); // Non-fatal, don't break the UI
-  }
-});
-
 app.post('/api/applications', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
     const { job_id } = req.body;
 
     if (!job_id) return res.status(400).json({ error: 'job_id is required' });
@@ -561,7 +538,6 @@ app.post('/api/applications', async (req, res) => {
       bio: profile.bio || '',
     } : {};
 
-    // 3. Insert application with full data
     const insertData = {
       job_id,
       candidate_id: user.id,
@@ -573,14 +549,11 @@ app.post('/api/applications', async (req, res) => {
       ai_reasoning: req.body.ai_reasoning || 'Submitted via Unemployed.sk',
     };
 
-    // Add employer_id if available (enables employer-side RLS)
     if (job?.employer_id) insertData.employer_id = job.employer_id;
 
     let { data, error } = await supabase.from('applications').insert([insertData]).select().single();
 
-    // If full insert fails (missing columns), try minimal insert
     if (error) {
-      console.warn('[POST /api/applications] Full insert failed:', error.message, '— trying minimal insert');
       const minResult = await supabase.from('applications').insert([{
         job_id,
         candidate_id: user.id,
@@ -608,11 +581,8 @@ app.post('/api/applications', async (req, res) => {
 
 app.get('/api/applications', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
     const { data, error } = await supabase
       .from('applications')
       .select('*, job:job_id(*)')
@@ -627,11 +597,8 @@ app.get('/api/applications', async (req, res) => {
 
 app.patch('/api/applications/:id', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'No auth token' });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
     const { status } = req.body;
     const { error } = await supabase
       .from('applications')

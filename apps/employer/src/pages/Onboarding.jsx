@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import QuizStep from '../components/QuizStep';

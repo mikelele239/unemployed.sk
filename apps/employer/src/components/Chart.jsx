@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../contexts';
 
 const Chart = ({ data = [], title }) => {

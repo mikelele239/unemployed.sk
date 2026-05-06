@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
@@ -41,7 +41,7 @@ export default function ForYou() {
   }, []);
 
   // Track which jobs we've already logged a view for in this session
-  const viewedJobsRef = React.useRef(new Set());
+  const viewedJobsRef = useRef(new Set());
 
   const logJobView = async (jobId) => {
     if (!jobId || viewedJobsRef.current.has(jobId)) return;
@@ -58,7 +58,7 @@ export default function ForYou() {
   };
 
   // ── Presence: track student viewing a specific job ──
-  const presenceChannelRef = React.useRef(null);
+  const presenceChannelRef = useRef(null);
   const trackPresence = (jobId) => {
     // Clean up previous channel
     if (presenceChannelRef.current) {
@@ -76,7 +76,7 @@ export default function ForYou() {
   };
 
   // Cleanup presence on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (presenceChannelRef.current) {
         supabase.removeChannel(presenceChannelRef.current);

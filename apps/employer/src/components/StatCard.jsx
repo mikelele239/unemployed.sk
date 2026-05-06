@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const StatCard = ({ label, value, unit = '', changeText, changeType = 'neutral' }) => {
   const [displayValue, setDisplayValue] = useState(0);

@@ -1,8 +1,7 @@
 'use strict';
 // ── Jobs Routes ──────────────────────────────────────────────────────────────
-module.exports = function jobsRouter(app, supabase) {
+module.exports = function jobsRouter(app, supabase, { getUserFromToken }) {
 
-  // GET /api/jobs — list all jobs
   app.get('/api/jobs', async (req, res) => {
     try {
       const { data, error } = await supabase
@@ -27,12 +26,14 @@ module.exports = function jobsRouter(app, supabase) {
     }
   });
 
-  // POST /api/jobs — create a job
   app.post('/api/jobs', async (req, res) => {
-    const { 
-      title, company, logo, color, location, rate, rateUnit, hours, type, 
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const {
+      title, company, logo, color, location, rate, rateUnit, hours, type,
       tags, schedule, description, requirements, lat, lng,
-      duration, startDate, workModel 
+      duration, startDate, workModel
     } = req.body;
 
     if (!title || !company) {
@@ -42,13 +43,14 @@ module.exports = function jobsRouter(app, supabase) {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .insert([{ 
-          title, company, logo, color, location, 
-          rate, rate_unit: rateUnit, hours, type, 
-          tags: tags || [], schedule, match_score: 95, 
+        .insert([{
+          title, company, logo, color, location,
+          rate, rate_unit: rateUnit, hours, type,
+          tags: tags || [], schedule, match_score: 95,
           reason: 'Pridané online.', description, requirements,
           lat, lng,
-          duration, start_date: startDate, work_model: workModel
+          duration, start_date: startDate, work_model: workModel,
+          employer_id: user.id
         }])
         .select();
 
@@ -60,11 +62,16 @@ module.exports = function jobsRouter(app, supabase) {
     }
   });
 
-  // DELETE /api/jobs/:id
   app.delete('/api/jobs/:id', async (req, res) => {
-    const { id } = req.params;
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
     try {
-      const { error } = await supabase.from('jobs').delete().eq('id', id);
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', req.params.id)
+        .eq('employer_id', user.id);
       if (error) throw error;
       res.json({ success: true });
     } catch (err) {
@@ -73,19 +80,14 @@ module.exports = function jobsRouter(app, supabase) {
     }
   });
 
-  // POST /api/jobs/:id/view — increment view count (non-fatal)
   app.post('/api/jobs/:id/view', async (req, res) => {
-    const { id } = req.params;
     try {
-      const { error } = await supabase.rpc('increment_job_views', { job_id_input: id });
+      const { error } = await supabase.rpc('increment_job_views', { job_id_input: req.params.id });
       if (error) console.warn('View tracking RPC error (non-fatal):', error.message);
       res.json({ success: true });
-    } catch (err) {
-      console.error('View tracking error:', err);
-      res.json({ success: true }); // Non-fatal
+    } catch {
+      res.json({ success: true });
     }
   });
 
-  // NOTE: POST/GET/PATCH /api/applications routes are defined in server.js
-  // with proper auth token handling. Do NOT add them here.
 };

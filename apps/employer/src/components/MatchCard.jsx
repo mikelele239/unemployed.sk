@@ -1,4 +1,3 @@
-import React from 'react';
 import { useI18n } from '../contexts';
 
 const MatchCard = ({ match, isAccepted, onAccept, onSkip }) => {

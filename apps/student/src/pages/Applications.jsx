@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApplications } from '../hooks/useApplications';
@@ -78,7 +78,7 @@ export default function Applications() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filteredApps.map(app => (
-              <React.Fragment key={app.id}>
+              <Fragment key={app.id}>
                 <motion.div 
                   whileHover={{ scale: 1.01, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
                   onClick={() => setSelectedJob(app)}
@@ -367,7 +367,7 @@ export default function Applications() {
                   </AnimatePresence>
                 </div>
               )}
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         )}
