@@ -15,7 +15,7 @@ export default function ReviewPhase({ data, setData, onConfirm }) {
   return (
     <motion.div key="review"
       initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', overflowY: 'auto' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '40px 20px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

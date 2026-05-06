@@ -270,16 +270,32 @@
     // Background grid
     (function() {
       const canvas = document.getElementById('bgGrid');
+      if (!canvas) return;
+      const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      if (isTouchDevice) {
+        canvas.remove();
+        return;
+      }
+
       const ctx = canvas.getContext('2d');
       const GRID = 80;
       const flashes = [];
+      const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let canvasWidth = 0;
+      let canvasHeight = 0;
 
       function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const nextWidth = window.innerWidth;
+        const nextHeight = window.innerHeight;
+        if (nextWidth === canvasWidth && nextHeight === canvasHeight) return;
+        canvasWidth = nextWidth;
+        canvasHeight = nextHeight;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        if (!shouldAnimate) draw();
       }
       resize();
-      window.addEventListener('resize', resize);
+      window.addEventListener('resize', resize, { passive: true });
 
       function addFlash() {
         const isDark = !document.body.classList.contains('light-mode');
@@ -326,8 +342,10 @@
           ctx.save();
           ctx.strokeStyle = `rgba(255,92,0,${f.alpha * 0.25})`;
           ctx.lineWidth = 1.5;
-          ctx.shadowColor = `rgba(255,92,0,${f.alpha * 0.4})`;
-          ctx.shadowBlur = 10;
+          if (!isTouchDevice) {
+            ctx.shadowColor = `rgba(255,92,0,${f.alpha * 0.4})`;
+            ctx.shadowBlur = 10;
+          }
           ctx.beginPath();
           if (f.isV) {
             const x = f.idx * GRID;
@@ -339,11 +357,20 @@
           ctx.stroke();
           ctx.restore();
         }
-        requestAnimationFrame(draw);
       }
 
-      setInterval(addFlash, 2000);
-      draw();
+      function animate() {
+        draw();
+        requestAnimationFrame(animate);
+      }
+
+      if (shouldAnimate) {
+        setInterval(addFlash, 2000);
+        animate();
+      } else {
+        draw();
+        new MutationObserver(draw).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
     })();
 
     // ── i18n ──
@@ -964,6 +991,8 @@
 
     // ── Custom cursor glow ──
     (function() {
+      if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+
       var glow = document.createElement('div');
       glow.className = 'cursor-glow';
       document.body.appendChild(glow);

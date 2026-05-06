@@ -19,7 +19,7 @@ export default function ManualPhase({ data, setData, manualStep, setManualStep, 
   return (
     <motion.div key="manual"
       initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
     >
       {/* Progress bar */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>

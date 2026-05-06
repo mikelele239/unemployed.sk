@@ -111,7 +111,7 @@ export default function Onboarding({ onComplete }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', minHeight: 0, background: 'var(--bg)', overflow: 'hidden' }}>
       <AnimatePresence mode="wait">
         {phase === 'welcome' && <WelcomePhase />}
         {phase === 'upload'  && <UploadPhase onFile={handleFile} onSkip={() => setPhase('manual')} />}
