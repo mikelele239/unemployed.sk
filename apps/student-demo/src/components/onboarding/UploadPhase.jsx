@@ -17,7 +17,7 @@ export default function UploadPhase({ onFile, onSkip }) {
   return (
     <motion.div key="upload"
       initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', alignItems: 'center' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '40px 20px', alignItems: 'center', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
     >
       <div style={{ alignSelf: 'flex-start', marginBottom: 40 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 8, lineHeight: 1.1 }}>

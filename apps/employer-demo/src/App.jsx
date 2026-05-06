@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAppState } from './contexts';
 
 import SideNav from './components/SideNav';
-import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Listings from './pages/Listings';
 import CreateListing from './pages/CreateListing';
@@ -39,7 +37,6 @@ const AppLayout = () => {
 
 function App() {
   const demo = isDemoMode();
-  const { companyProfile } = useAppState();
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(!demo);
 

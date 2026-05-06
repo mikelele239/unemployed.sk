@@ -28,7 +28,8 @@ export default function MainLayout() {
       flexDirection: isDesktop ? 'row' : 'column', 
       height: '100dvh', 
       background: 'var(--bg)',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      minHeight: 0
     }}>
       {/* Sidebar Navigation (Desktop) / Bottom Nav (Mobile) */}
       <nav style={{
@@ -114,7 +115,10 @@ export default function MainLayout() {
         flex: 1, 
         overflowY: 'auto', 
         paddingBottom: isDesktop ? '0' : 'calc(64px + env(safe-area-inset-bottom, 0px))',
-        position: 'relative'
+        position: 'relative',
+        minHeight: 0,
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain'
       }}>
         <Outlet />
       </div>

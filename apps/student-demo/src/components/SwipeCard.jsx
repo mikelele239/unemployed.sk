@@ -67,7 +67,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         overflow: 'hidden',
         boxShadow: isTop ? '0 20px 60px rgba(0,0,0,0.6)' : 'none',
         cursor: isTop ? 'grab' : 'default',
-        touchAction: 'none',
+        touchAction: 'pan-y',
         willChange: 'transform, opacity'
       }}
       initial={{ scale: 0.9, opacity: 0, y: 20 }}
