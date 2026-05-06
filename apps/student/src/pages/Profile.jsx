@@ -32,6 +32,7 @@ export default function Profile() {
             loc: data.location || '',
             bio: '',
             skills: data.skills || [],
+            avatar_url: data.avatar_url || '',
           });
         }
       } catch (err) {
@@ -146,50 +147,61 @@ export default function Profile() {
     setProfile(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
   };
 
-  const completionPercent = profile.name && profile.skills?.length > 0 ? 85 : 40;
+  // Profile strength: name, location, profile pic, CV, 3+ skills
+  const strengthItems = [
+    { key: 'name', label: lang === 'sk' ? 'Meno' : 'Name', done: !!profile.name?.trim() },
+    { key: 'loc', label: lang === 'sk' ? 'Lokalita' : 'Location', done: !!profile.loc?.trim() },
+    { key: 'avatar', label: lang === 'sk' ? 'Profilová fotka' : 'Profile picture', done: !!profile.avatar_url },
+    { key: 'cv', label: lang === 'sk' ? 'Životopis' : 'CV', done: cvs.length > 0 },
+    { key: 'skills', label: lang === 'sk' ? '3+ zručnosti' : '3+ skills', done: (profile.skills || []).length >= 3 },
+  ];
+  const completionPercent = Math.round((strengthItems.filter(i => i.done).length / strengthItems.length) * 100);
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const ext = file.name.split('.').pop();
+      const path = `${session.user.id}/avatar.${ext}`;
+      const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
+      if (!error) {
+        const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path);
+        const avatarUrl = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : '';
+        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', session.user.id);
+        setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+      }
+    } catch (err) { console.error('Avatar upload error:', err); }
+  };
 
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
       <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('nav.profile')}</h1>
         <button 
-          onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-          disabled={saving}
-          style={{ background: 'var(--accent)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          onClick={() => setIsEditing(true)}
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 18px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)'; }}
         >
-          {saving ? '...' : (isEditing ? t('profile.save') : (lang === 'en' ? 'Edit' : 'Upraviť'))}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          {lang === 'sk' ? 'Upraviť profil' : 'Edit Profile'}
         </button>
       </div>
 
       <div style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>
-            {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
-            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <CheckCircle size={12} />
-            </div>
+          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
           <div>
-            {isEditing ? (
-              <input 
-                value={profile.name} 
-                onChange={e => setProfile({...profile, name: e.target.value})}
-                style={{ fontSize: 18, fontWeight: 800, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text)', width: '100%' }}
-              />
-            ) : (
-              <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{profile.name || (lang === 'en' ? 'User' : 'Užívateľ')}</h2>
-            )}
+            <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{profile.name || (lang === 'en' ? 'User' : 'Užívateľ')}</h2>
             <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-              {isEditing ? (
-                <input 
-                  value={profile.loc} 
-                  onChange={e => setProfile({...profile, loc: e.target.value})}
-                  placeholder="Lokalita"
-                  style={{ fontSize: 13, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text)', width: '100%', marginTop: 4 }}
-                />
-              ) : (
-                <>{profile.loc || (lang === 'en' ? 'Location not set' : 'Lokalita nenastavená')} · {profile.edu}</>
-              )}
+              {profile.loc || (lang === 'en' ? 'Location not set' : 'Lokalita nenastavená')} {profile.edu ? `· ${profile.edu}` : ''}
             </div>
           </div>
         </div>
@@ -202,7 +214,23 @@ export default function Profile() {
           <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginBottom: 12 }}>
             <div style={{ width: `${completionPercent}%`, height: '100%', background: 'var(--accent)' }} />
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{lang === 'en' ? 'Add work experience for a 100% match with offers.' : 'Pridaj si pracovné skúsenosti pre 100% zhodu s ponukami.'}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+            {completionPercent === 100 
+              ? (lang === 'sk' ? 'Tvoj profil je kompletný! 🎉' : 'Your profile is complete! 🎉')
+              : (lang === 'sk' ? 'Doplň chýbajúce položky:' : 'Complete missing items:')}
+          </p>
+          {completionPercent < 100 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {strengthItems.map(item => (
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                  <span style={{ width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, background: item.done ? 'var(--green)' : 'var(--bg)', border: item.done ? 'none' : '1.5px solid var(--border)', color: '#fff' }}>
+                    {item.done ? '✓' : ''}
+                  </span>
+                  <span style={{ color: item.done ? 'var(--text-muted)' : 'var(--text)', fontWeight: item.done ? 500 : 700, textDecoration: item.done ? 'line-through' : 'none' }}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: 24 }}>
@@ -240,47 +268,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {lang === 'en' ? 'Your badges' : 'Tvoje odznaky'}
-          </h3>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-            {/* Verified Student Badge */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--green)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--green)', opacity: 0.1, borderRadius: '50%' }} />
-              <Shield size={20} color="var(--green)" style={{ marginBottom: '8px' }} />
-              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>{lang === 'en' ? 'Verified student' : 'Overený študent'}</div>
-              <div style={{ fontSize: '10px', color: 'var(--green)' }}>{lang === 'en' ? 'ISIC verified' : 'ISIC overený'}</div>
-            </div>
 
-            {/* Top Match Badge */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--accent)', opacity: 0.1, borderRadius: '50%' }} />
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)" stroke="none" style={{ marginBottom: '8px' }}>
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>{lang === 'en' ? 'Top 10% Match' : 'Top 10% Zhoda'}</div>
-              <div style={{ fontSize: '10px', color: 'var(--accent)' }}>{lang === 'en' ? 'High activity' : 'Vysoká aktivita'}</div>
-            </div>
-
-            {/* Responsive Badge */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--blue)', borderRadius: '12px', padding: '12px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '40px', height: '40px', background: 'var(--blue)', opacity: 0.1, borderRadius: '50%' }} />
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" style={{ marginBottom: '8px' }}>
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>{lang === 'en' ? 'Quick response' : 'Rýchla odozva'}</div>
-              <div style={{ fontSize: '10px', color: 'var(--blue)' }}>{lang === 'en' ? 'Within 2 hours' : 'Do 2 hodín'}</div>
-            </div>
-            
-            {/* Locked Badge */}
-            <div style={{ background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>
-              <div style={{ fontSize: '20px', marginBottom: '4px' }}>🔒</div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)' }}>{lang === 'en' ? 'Next level' : 'Ďalší level'}</div>
-            </div>
-          </div>
-        </div>
 
         <div style={{ marginBottom: 24, padding: '0 20px 24px' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
@@ -407,8 +395,105 @@ export default function Profile() {
           </button>
         </div>
       </div>
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setIsEditing(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800 }}>{lang === 'sk' ? 'Upraviť profil' : 'Edit Profile'}</h2>
+              <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+            </div>
 
+            {/* Avatar Upload */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+              <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}>
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
+                )}
+                <label style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 12, fontWeight: 700 }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
+                  <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+                  📷
+                </label>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Klikni pre zmenu fotky' : 'Click to change photo'}</span>
+            </div>
 
+            {/* Name */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Meno a priezvisko' : 'Full Name'}</label>
+              <input value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* Location */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Lokalita' : 'Location'}</label>
+              <input value={profile.loc || ''} onChange={e => setProfile({...profile, loc: e.target.value})} placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* Education */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Vzdelanie' : 'Education'}</label>
+              <input value={profile.edu || ''} onChange={e => setProfile({...profile, edu: e.target.value})} placeholder={lang === 'sk' ? 'napr. STU Bratislava' : 'e.g. STU Bratislava'}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* CV Upload */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Životopis' : 'CV'}</label>
+              {cvs.length > 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--green)' }}>✓</span> {cvs[0].original_filename}
+                </div>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, border: '2px dashed var(--border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
+                {uploading ? '...' : (lang === 'sk' ? '📎 Nahrať nový životopis' : '📎 Upload new CV')}
+              </label>
+            </div>
+
+            {/* Skills */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Zručnosti' : 'Skills'}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {(profile.skills || []).map(skill => (
+                  <span key={skill} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {skill}
+                    <span onClick={() => handleRemoveSkill(skill)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1, opacity: 0.7 }}>×</span>
+                  </span>
+                ))}
+              </div>
+              {addingSkill ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input ref={skillInputRef} type="text" value={newSkill} onChange={e => setNewSkill(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddSkill(); if (e.key === 'Escape') { setAddingSkill(false); setNewSkill(''); } }}
+                    placeholder={lang === 'sk' ? 'Názov...' : 'Skill name...'} autoFocus
+                    style={{ flex: 1, padding: '6px 12px', borderRadius: 100, fontSize: 12, border: '1px solid var(--accent)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} />
+                  <button onClick={handleAddSkill} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>✓</button>
+                </div>
+              ) : (
+                <button onClick={() => setAddingSkill(true)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>+ {lang === 'sk' ? 'Pridať' : 'Add'}</button>
+              )}
+            </div>
+
+            {/* Save button */}
+            <button onClick={handleSave} disabled={saving}
+              style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+              {saving ? '...' : (lang === 'sk' ? 'Uložiť zmeny' : 'Save Changes')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
