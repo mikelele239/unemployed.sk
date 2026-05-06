@@ -162,7 +162,12 @@ const Listings = () => {
   const handleDelete = async (id) => {
     try {
       const { error } = await supabase.from('jobs').delete().eq('id', id);
-      if (!error) setListings(prev => prev.filter(l => l.id !== id));
+      if (error) {
+        console.error(error);
+        alert(`Chyba pri odstraňovaní: ${error.message || 'Nepovolené (Skontrolujte RLS politiky)'}`);
+      } else {
+        setListings(prev => prev.filter(l => l.id !== id));
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -186,15 +191,24 @@ const Listings = () => {
         start_date: editingListing.start_date || editingListing.startDate || '',
         tags: editingListing.tags || [],
       };
-      const { error } = await supabase.from('jobs').update(payload).eq('id', editingListing.id);
-      
-      if (!error) {
+      const { error } = await supabase
+        .from('jobs')
+        .update(payload)
+        .eq('id', editingListing.id);
+
+      if (error) {
+        console.error(error);
+        alert(`Chyba pri aktualizácii: ${error.message || 'Nepovolené (Skontrolujte RLS politiky)'}`);
+      } else {
         setListings(prev => prev.map(l => l.id === editingListing.id ? { ...l, ...payload } : l));
         setEditingListing(null);
-      } else {
-        alert(`Chyba: ${error.message}`);
       }
-    } catch (err) { console.error(err); } finally { setSaveLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+      alert(`Chyba: ${err.message}`);
+    } finally { 
+      setSaveLoading(false); 
+    }
   };
 
   return (
