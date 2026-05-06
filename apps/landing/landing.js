@@ -141,6 +141,12 @@
           ? '0 16px 50px rgba(255,92,0,0.25)'
           : '0 8px 30px rgba(0,0,0,0.25)';
         card.style.cursor = offset === 0 ? 'default' : 'pointer';
+        // Mark active card for CSS touch-device pointer-events
+        if (offset === 0) {
+          card.setAttribute('data-active', 'true');
+        } else {
+          card.removeAttribute('data-active');
+        }
       });
     }
 
