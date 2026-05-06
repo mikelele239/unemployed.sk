@@ -75,16 +75,18 @@ const CandidateCard = ({ candidate, onInvite }) => {
               )}
             </h4>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div style={{ 
               fontSize: '10px', fontWeight: '900', padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', 
               borderRadius: '4px', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
             }}>
-              {candidate.job?.title || candidate.job_title || '—'}
+              {candidate.job_title || candidate.jobs?.title || '—'}
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600' }}>
-              <span style={{ opacity: 0.3, margin: '0 4px' }}>•</span> {candidate.student_email || profile.school || '—'}
-            </div>
+            {(candidate.student_email || profile.education || profile.school) && (
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600' }}>
+                <span style={{ opacity: 0.3, margin: '0 4px' }}>•</span> {candidate.student_email || profile.education || profile.school}
+              </div>
+            )}
           </div>
         </div>
         

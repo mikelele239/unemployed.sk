@@ -25,7 +25,7 @@ const Candidates = () => {
 
         const { data: apps, error: appsErr } = await supabase
           .from('applications')
-          .select('*, jobs!inner(employer_id)')
+          .select('*, jobs!inner(id, employer_id, title, title_en, location)')
           .eq('jobs.employer_id', session.user.id)
           .order('created_at', { ascending: false });
 
@@ -49,6 +49,8 @@ const Candidates = () => {
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
               : app.student_name,
             student_profile: { ...(app.student_profile || {}), ...profile },
+            job_title: app.jobs?.title || app.jobs?.title_en || '—',
+            job_location: app.jobs?.location || '',
           };
         });
 
