@@ -79,10 +79,11 @@ export const AppStateProvider = ({ children }) => {
   const [listings, setListings] = useState([]);
   const [companyProfile, setCompanyProfile] = useState({ name: '', industry: '' });
   const [analytics, setAnalytics] = useState({
-    total_views: 0, total_applications: 0, active_jobs: 0, avg_match_score: 0,
+    total_views: 0, total_likes: 0, total_applications: 0, active_jobs: 0,
     pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
     recent_candidates: [], recent_apps_trend: [0,0,0,0,0,0,0]
   });
+  const [liveViewers, setLiveViewers] = useState({});  // { jobId: count }
 
   // ── Fetch employer profile + listings + analytics ──────────────────────────
   const loadAll = async () => {
@@ -91,28 +92,25 @@ export const AppStateProvider = ({ children }) => {
       if (!session) return;
       const uid = session.user.id;
 
-      // 1. Employer profile via server API (bypasses RLS)
+      // 1. Employer profile via direct Supabase query
       try {
-        const { data: { session: sess } } = await supabase.auth.getSession();
-        if (sess?.access_token) {
-          const profRes = await fetch('/api/employer/profile', {
-            headers: { 'Authorization': `Bearer ${sess.access_token}` }
+        const { data: empData, error: profErr } = await supabase
+          .from('employers')
+          .select('*')
+          .eq('id', uid)
+          .maybeSingle();
+
+        if (empData) {
+          setCompanyProfile({
+            name: empData.name || '',
+            industry: empData.description || '',
+            website: empData.website || '',
+            logo_url: empData.logo_url || '',
+            cover_url: empData.cover_url || '',
           });
-          if (profRes.ok) {
-            const { profile: empData } = await profRes.json();
-            if (empData) {
-              setCompanyProfile({
-                name: empData.name || '',
-                industry: empData.description || '',
-                website: empData.website || '',
-                logo_url: empData.logo_url || '',
-                cover_url: empData.cover_url || '',
-              });
-            }
-          }
         }
-      } catch {
-        // API unavailable — use defaults
+      } catch (err) {
+        console.error('[AppState] Error fetching profile:', err);
       }
 
       // 2. Employer's jobs
@@ -126,12 +124,10 @@ export const AppStateProvider = ({ children }) => {
       const jobIds = (jobsData || []).map(j => j.id);
 
       // 3. Real analytics from jobs + applications
-      // Total views — sum actual views column from jobs
-      const totalViews = (jobsData || []).reduce((sum, j) => sum + (j.views || 0), 0);
-      // Average match score — from jobs
-      const avgMatch = (jobsData || []).length > 0
-        ? Math.round((jobsData || []).reduce((sum, j) => sum + (j.match_score || 0), 0) / (jobsData || []).length)
-        : 0;
+      // Total views — sum total_views column (maintained by Postgres trigger)
+      const totalViews = (jobsData || []).reduce((sum, j) => sum + (j.total_views || 0), 0);
+      // Total likes — sum total_likes column (maintained by Postgres trigger)
+      const totalLikes = (jobsData || []).reduce((sum, j) => sum + (j.total_likes || 0), 0);
 
       if (jobIds.length > 0) {
         const { data: apps } = await supabase
@@ -162,9 +158,9 @@ export const AppStateProvider = ({ children }) => {
 
         setAnalytics({
           total_views: totalViews,
+          total_likes: totalLikes,
           total_applications: allApps.length,
           active_jobs: jobIds.length,
-          avg_match_score: avgMatch,
           pipeline_stats: pipeline,
           recent_candidates: allApps.slice(0, 5),
           recent_apps_trend: trend,
@@ -172,9 +168,9 @@ export const AppStateProvider = ({ children }) => {
       } else {
         setAnalytics({
           total_views: 0,
+          total_likes: 0,
           total_applications: 0,
           active_jobs: 0,
-          avg_match_score: 0,
           pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
           recent_candidates: [],
           recent_apps_trend: [0, 0, 0, 0, 0, 0, 0],
@@ -185,7 +181,66 @@ export const AppStateProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    // Initial load
+    loadAll();
+
+    // Listen for auth state changes so we fetch immediately after login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        loadAll();
+      }
+    });
+
+    // ── Realtime: listen for changes to the jobs table ──
+    // When total_views or total_likes change via triggers, update listings in place
+    const realtimeChannel = supabase
+      .channel('employer-jobs-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'jobs' },
+        (payload) => {
+          const updated = payload.new;
+          if (!updated) return;
+          // Update the specific listing in state
+          setListings(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+          // Re-derive analytics from current listings with the update applied
+          setAnalytics(prev => {
+            // We recalculate totals inline for speed
+            return prev; // loadAll will pick it up on next refresh
+          });
+          // Trigger a full refresh to recalculate analytics correctly
+          loadAll();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+      supabase.removeChannel(realtimeChannel);
+    };
+  }, []);
+
+  // ── Presence: subscribe to job rooms for live viewer counts ──
+  useEffect(() => {
+    if (!listings || listings.length === 0) return;
+
+    const channels = [];
+    listings.forEach(job => {
+      const channel = supabase.channel(`job_room:${job.id}`);
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const count = Object.keys(state).length;
+        setLiveViewers(prev => ({ ...prev, [job.id]: count }));
+      });
+      channel.subscribe();
+      channels.push(channel);
+    });
+
+    return () => {
+      channels.forEach(ch => supabase.removeChannel(ch));
+    };
+  }, [listings.length]); // Re-subscribe when listing count changes
 
   useEffect(() => { localStorage.setItem('employer_invited', JSON.stringify(invitedIds)); }, [invitedIds]);
   useEffect(() => { localStorage.setItem('employer_accepted', JSON.stringify(acceptedIds)); }, [acceptedIds]);
@@ -197,6 +252,7 @@ export const AppStateProvider = ({ children }) => {
       listings, setListings,
       companyProfile, setCompanyProfile,
       analytics,
+      liveViewers,
       refreshAnalytics: loadAll,
     }}>
       {children}

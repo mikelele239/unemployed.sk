@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabase';
+
 
 export default function Inquiry() {
   const [companyName, setCompanyName] = useState('');
@@ -18,14 +20,18 @@ export default function Inquiry() {
       setLoading(true);
       setError('');
       
-      const res = await fetch('/api/auth/employer/inquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, companyName })
-      });
+      const { error: sbError } = await supabase.from('submissions').insert([{
+        email,
+        company_name: companyName,
+        user_type: 'Zamestnávateľ',
+        consented: true
+      }]);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Nepodarilo sa odoslať záujem.');
+      if (sbError) {
+        if (sbError.code === '23505') throw new Error('Tento e-mail už je zaregistrovaný.');
+        throw new Error(sbError.message || 'Nepodarilo sa odoslať záujem.');
+      }
+
       setSuccess(true);
 
     } catch (err) {

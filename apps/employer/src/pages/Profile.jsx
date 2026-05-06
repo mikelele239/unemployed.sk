@@ -33,20 +33,14 @@ const Profile = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch('/api/employer/ensure-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description,
-          website: form.website,
-        })
-      });
+      const { error } = await supabase.from('employers').upsert({
+        id: session.user.id,
+        name: form.name,
+        description: form.description,
+        website: form.website,
+      }, { onConflict: 'id' });
 
-      if (res.ok) {
+      if (!error) {
         setCompanyProfile({
           name: form.name,
           industry: form.description,
@@ -60,6 +54,7 @@ const Profile = () => {
       } else {
         alert(lang === 'sk' ? 'Nepodarilo sa uložiť zmeny.' : 'Failed to save changes.');
       }
+
     } catch (err) {
       console.error(err);
     } finally {

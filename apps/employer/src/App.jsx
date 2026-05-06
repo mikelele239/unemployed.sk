@@ -65,17 +65,15 @@ function App() {
           setSession(sess);
           setIsEmployer(true);
 
-          // Ensure employer profile exists via server API (bypasses RLS)
+          // Ensure employer profile exists via direct query
           try {
-            await fetch('/api/employer/ensure-profile', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sess.access_token}`
-              },
-              body: JSON.stringify({ name: sess.user.email?.split('@')[0] || 'Firma' })
-            });
-          } catch { /* non-fatal */ }
+            await supabase.from('employers').upsert({
+              id: sess.user.id,
+              name: sess.user.email?.split('@')[0] || 'Firma',
+            }, { onConflict: 'id', ignoreDuplicates: true });
+          } catch (e) {
+            console.warn('Profile ensure non-fatal error:', e);
+          }
           // Skip onboarding — profile is always ensured on login
           setNeedsOnboarding(false);
         }

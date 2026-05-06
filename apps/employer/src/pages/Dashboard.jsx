@@ -6,7 +6,7 @@ import Chart from '../components/Chart';
 
 const Dashboard = () => {
   const { t, lang } = useI18n();
-  const { companyProfile, analytics, refreshAnalytics } = useAppState();
+  const { companyProfile, analytics, liveViewers, refreshAnalytics } = useAppState();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,10 +27,12 @@ const Dashboard = () => {
 
   const stats = { 
     views: analytics.total_views || 0, 
+    likes: analytics.total_likes || 0,
     apps: analytics.total_applications || 0, 
-    match: analytics.avg_match_score || 0, 
     active: analytics.active_jobs || 0 
   };
+
+  const totalLiveViewers = Object.values(liveViewers || {}).reduce((a, b) => a + b, 0);
 
   const pipeline = analytics.pipeline_stats || {};
   const chartData = analytics.recent_apps_trend || [0,0,0,0,0,0,0];
@@ -70,10 +72,23 @@ const Dashboard = () => {
             {lang === 'sk' ? 'Správa pre spoločnosť' : 'Management for'} <span style={{ color: 'var(--text)', fontWeight: 600 }}>{companyProfile?.name}</span>
           </p>
         </div>
+        {totalLiveViewers > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 16px', borderRadius: '20px',
+            background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
+          }}>
+            <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#22c55e', animation: 'blink 1.5s infinite', boxShadow: '0 0 10px rgba(34,197,94,0.5)' }}></span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#22c55e' }}>
+              {totalLiveViewers} {lang === 'sk' ? 'živý' : 'live'} {lang === 'sk' ? (totalLiveViewers === 1 ? 'návštevník' : 'návštevníci') : (totalLiveViewers === 1 ? 'viewer' : 'viewers')}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="dashboard-grid">
         <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType={stats.views > 0 ? 'neutral' : 'neutral'} />
+        <StatCard label={lang === 'sk' ? 'Záujem' : 'Likes'} value={stats.likes} unit="" changeText={stats.likes > 0 ? (lang === 'sk' ? `${stats.likes} celkovo` : `${stats.likes} total`) : (lang === 'sk' ? 'Zatiaľ žiadne lajky' : 'No likes yet')} changeType={stats.likes > 0 ? 'up' : 'neutral'} />
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType={todayApps > 0 ? 'up' : 'neutral'} />
         <StatCard 
           label={lang === 'sk' ? 'Stav náborového procesu' : 'Recruitment Process State'} 

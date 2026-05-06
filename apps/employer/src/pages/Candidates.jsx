@@ -23,13 +23,36 @@ const Candidates = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { setLoading(false); return; }
 
-        const res = await fetch('/api/employer/candidates', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const { candidates } = await res.json();
-          setCandidates(Array.isArray(candidates) ? candidates : []);
+        const { data: apps, error: appsErr } = await supabase
+          .from('applications')
+          .select('*, jobs!inner(employer_id)')
+          .eq('jobs.employer_id', session.user.id)
+          .order('created_at', { ascending: false });
+
+        if (appsErr) throw appsErr;
+
+        const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
+        let profilesMap = {};
+        if (candidateIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('user_id', candidateIds);
+          (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
         }
+
+        const enrichedCandidates = (apps || []).map(app => {
+          const profile = profilesMap[app.candidate_id] || {};
+          return {
+            ...app,
+            student_name: (profile.first_name || profile.last_name)
+              ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+              : app.student_name,
+            student_profile: { ...(app.student_profile || {}), ...profile },
+          };
+        });
+
+        setCandidates(enrichedCandidates);
       } catch (err) {
         console.error('Candidates fetch error:', err);
       } finally {
@@ -47,16 +70,12 @@ const Candidates = () => {
       const body = { status };
       if (interviewDates) body.interview_dates = interviewDates;
 
-      const res = await fetch(`/api/employer/candidates/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(body)
-      });
+      const { error } = await supabase
+        .from('applications')
+        .update(body)
+        .eq('id', id);
 
-      if (res.ok) {
+      if (!error) {
         if (status === 'Interview' && !invitedIds.includes(id)) {
           setInvitedIds([...invitedIds, id]);
         }

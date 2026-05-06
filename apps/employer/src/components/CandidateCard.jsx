@@ -21,13 +21,10 @@ const CandidateCard = ({ candidate, onInvite }) => {
     if (expanded && cvId && !cvUrl) {
       const fetchCvUrl = async () => {
         try {
-          const token = localStorage.getItem('employer_token');
-          const res = await fetch(`/api/employer/cv/${cvId}/signed-url`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setCvUrl(data.url);
+          const { data, error } = await supabase.storage.from('cvs').createSignedUrl(cvId, 3600);
+          if (error) throw error;
+          if (data?.signedUrl) {
+            setCvUrl(data.signedUrl);
           }
         } catch (err) {
           console.error("Failed to fetch CV preview URL:", err);

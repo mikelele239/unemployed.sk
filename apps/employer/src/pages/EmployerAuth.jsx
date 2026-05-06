@@ -30,17 +30,15 @@ export default function EmployerAuth({ onLoginSuccess }) {
         throw new Error('Tento účet je registrovaný ako študent. Použite portál pre študentov.');
       }
 
-      // Ensure employer row exists via server API (bypasses RLS)
+      // Ensure employer row exists via direct query
       try {
-        await fetch('/api/employer/ensure-profile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ name: email.split('@')[0] })
-        });
-      } catch { /* non-fatal */ }
+        await supabase.from('employers').upsert({
+          id: session.user.id,
+          name: email.split('@')[0],
+        }, { onConflict: 'id', ignoreDuplicates: true });
+      } catch (e) {
+        console.warn('Profile ensure non-fatal error:', e);
+      }
 
       if (onLoginSuccess) onLoginSuccess(session);
     } catch (err) {

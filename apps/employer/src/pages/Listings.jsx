@@ -4,7 +4,7 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus }) => {
+const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus, liveViewerCount }) => {
   const [isConfirming, setIsConfirming] = useState(false);
   const title = lang === 'sk' ? (l.title || l.title_en) : (l.title_en || l.title);
   const status = l.status || 'Active';
@@ -79,15 +79,32 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: window.innerWidth <= 900 ? '20px' : '40px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+      <div style={{ display: 'flex', gap: window.innerWidth <= 900 ? '16px' : '32px', borderTop: '1px solid var(--border)', paddingTop: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{l.applications || 0}</div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('applications')}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.match_score || '—'}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>AI skóre</div>
+          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.total_views || 0}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</div>
         </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: '#ef4444' }}>{l.total_likes || 0}</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Záujem' : 'Likes'}</div>
+        </div>
+        {liveViewerCount > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '6px 12px', borderRadius: '20px',
+            background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
+            marginLeft: 'auto'
+          }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', animation: 'blink 1.5s infinite', boxShadow: '0 0 8px rgba(34,197,94,0.5)' }}></span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#22c55e' }}>
+              {liveViewerCount} {lang === 'sk' ? 'pozerá teraz' : 'viewing now'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Confirmation Overlay */}
@@ -128,7 +145,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
 
 const Listings = () => {
   const { t, lang } = useI18n();
-  const { listings, setListings } = useAppState();
+  const { listings, setListings, liveViewers } = useAppState();
 
   const [loading, setLoading] = useState(true);
   const [editingListing, setEditingListing] = useState(null);
@@ -169,17 +186,13 @@ const Listings = () => {
         start_date: editingListing.start_date || editingListing.startDate || '',
         tags: editingListing.tags || [],
       };
-      const res = await fetch(`/api/employer/jobs/${editingListing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
+      const { error } = await supabase.from('jobs').update(payload).eq('id', editingListing.id);
+      
+      if (!error) {
         setListings(prev => prev.map(l => l.id === editingListing.id ? { ...l, ...payload } : l));
         setEditingListing(null);
       } else {
-        const err = await res.json();
-        alert(`Chyba: ${err.error}`);
+        alert(`Chyba: ${error.message}`);
       }
     } catch (err) { console.error(err); } finally { setSaveLoading(false); }
   };
@@ -201,6 +214,7 @@ const Listings = () => {
               key={l.id} l={l} t={t} lang={lang}
               onDelete={handleDelete} onEdit={setEditingListing}
               getStatusColor={getStatusColor} translateStatus={translateStatus}
+              liveViewerCount={liveViewers?.[l.id] || 0}
             />
           ))}
         </AnimatePresence>

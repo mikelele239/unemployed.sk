@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
@@ -40,25 +40,58 @@ export default function ForYou() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Track which jobs we've already logged a view for in this session
+  const viewedJobsRef = React.useRef(new Set());
+
   const logJobView = async (jobId) => {
-    if (!jobId) return;
+    if (!jobId || viewedJobsRef.current.has(jobId)) return;
+    viewedJobsRef.current.add(jobId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        await fetch('/api/job-view', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-          body: JSON.stringify({ job_id: jobId })
+        await supabase.from('job_views').insert({
+          job_id: jobId,
+          viewer_id: session.user.id,
         });
       }
     } catch {}
   };
 
+  // ── Presence: track student viewing a specific job ──
+  const presenceChannelRef = React.useRef(null);
+  const trackPresence = (jobId) => {
+    // Clean up previous channel
+    if (presenceChannelRef.current) {
+      supabase.removeChannel(presenceChannelRef.current);
+      presenceChannelRef.current = null;
+    }
+    if (!jobId) return;
+    const channel = supabase.channel(`job_room:${jobId}`);
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ online_at: new Date().toISOString() });
+      }
+    });
+    presenceChannelRef.current = channel;
+  };
+
+  // Cleanup presence on unmount
+  React.useEffect(() => {
+    return () => {
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!loading) {
       const filtered = jobs.filter(j => !dismissedIds.includes(j.id) && !hasApplied(j.id));
       setCards([...filtered].reverse());
-      if (filtered.length > 0) logJobView(filtered[0]?.id);
+      if (filtered.length > 0) {
+        logJobView(filtered[0]?.id);
+        trackPresence(filtered[0]?.id);
+      }
     }
   }, [loading, jobs, applications]);
 
@@ -67,14 +100,13 @@ export default function ForYou() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch('/api/student/profile', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const { profile: data } = await res.json();
-          if (data) {
-            setProfile({ name: `${data.first_name || ''} ${data.last_name || ''}`.trim() });
-          }
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (data) {
+          setProfile({ name: `${data.first_name || ''} ${data.last_name || ''}`.trim() });
         }
       } catch (err) {
         console.error('Profile fetch error:', err);
@@ -96,6 +128,9 @@ export default function ForYou() {
     setCards(nextCards);
     if (nextCards.length > 0) {
       logJobView(nextCards[nextCards.length - 1].id);
+      trackPresence(nextCards[nextCards.length - 1].id);
+    } else {
+      trackPresence(null); // no more cards, leave presence
     }
   };
 
@@ -301,7 +336,7 @@ export default function ForYou() {
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</span>
-                    <span style={{ fontWeight: 600 }}>{currentJob.views ?? '—'}</span>
+                    <span style={{ fontWeight: 600 }}>{currentJob.total_views ?? '—'}</span>
                   </div>
                 </div>
 

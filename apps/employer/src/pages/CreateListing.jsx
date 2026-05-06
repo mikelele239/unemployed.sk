@@ -80,15 +80,15 @@ const CreateListing = () => {
 
       const uid = session.user.id;
 
-      // Ensure employer row exists via server API (bypasses RLS)
-      await fetch('/api/employer/ensure-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ name: companyProfile?.name || session.user.email?.split('@')[0] || 'Firma' })
-      });
+      // Ensure employer row exists via direct query
+      try {
+        await supabase.from('employers').upsert({
+          id: uid,
+          name: companyProfile?.name || session.user.email?.split('@')[0] || 'Firma',
+        }, { onConflict: 'id', ignoreDuplicates: true });
+      } catch (e) {
+        console.warn('Profile ensure non-fatal error:', e);
+      }
 
       const payload = {
         title: formData.title,
@@ -109,7 +109,6 @@ const CreateListing = () => {
         tags: [formData.type, formData.workModel, 'Nástup: ' + formData.startDate],
         logo: 'CX',
         color: '#FF5C00',
-        match_score: 95,
       };
 
       const { data, error: insertError } = await supabase.from('jobs').insert([payload]).select().single();
