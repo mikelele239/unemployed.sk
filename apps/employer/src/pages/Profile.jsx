@@ -110,9 +110,35 @@ const Profile = () => {
               background: 'linear-gradient(135deg, #FF8C32, #FF5C00)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '26px', fontWeight: 900, color: '#fff',
-              boxShadow: '0 6px 20px rgba(255, 92, 0, 0.2)'
+              boxShadow: '0 6px 20px rgba(255, 92, 0, 0.2)',
+              overflow: 'hidden', position: 'relative', cursor: editing ? 'pointer' : 'default'
             }}>
-              {(form.name || 'C').charAt(0).toUpperCase()}
+              {companyProfile?.logo_url ? (
+                <img src={companyProfile.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (form.name || 'C').charAt(0).toUpperCase()
+              )}
+              {editing && (
+                <label style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 14, fontWeight: 700 }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
+                  <input type="file" accept="image/*" hidden onChange={async (ev) => {
+                    const file = ev.target.files?.[0];
+                    if (!file) return;
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) return;
+                    const path = `${session.user.id}/logo.${file.name.split('.').pop()}`;
+                    const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
+                    if (!error) {
+                      const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path);
+                      const logoUrl = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : '';
+                      await supabase.from('employers').update({ logo_url: logoUrl }).eq('id', session.user.id);
+                      setCompanyProfile(prev => ({ ...prev, logo_url: logoUrl }));
+                    }
+                  }} />
+                  📷
+                </label>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '18px', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.name || (lang === 'sk' ? 'Vaša firma' : 'Your company')}</div>

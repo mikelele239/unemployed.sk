@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { useI18n } from '../contexts';
+import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 
 const SideNav = () => {
   const { t, lang, setLang } = useI18n();
+  const { companyProfile } = useAppState();
   const navigate = useNavigate();
 
   const navItems = [
@@ -99,10 +100,12 @@ const SideNav = () => {
 
         {/* Logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', border: '1px solid var(--border)' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: '600' }}>Centrála</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Plan</span>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #FF8C32)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 800 }}>
+            {(companyProfile?.name || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{companyProfile?.name || 'Employer'}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{companyProfile?.email || ''}</span>
           </div>
           <button 
             onClick={async () => {

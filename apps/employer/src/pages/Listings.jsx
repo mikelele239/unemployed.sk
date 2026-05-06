@@ -238,11 +238,53 @@ const Listings = () => {
     }
   };
 
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+
+  const filters = [
+    { key: 'all', label: lang === 'sk' ? 'Všetky' : 'All' },
+    { key: 'Full-time', label: 'Full-time' },
+    { key: 'Part-time', label: 'Part-time' },
+    { key: 'Internship', label: lang === 'sk' ? 'Stáž' : 'Internship' },
+  ];
+
+  const filteredListings = listings
+    .filter(l => activeFilter === 'all' || (l.type || '').toLowerCase() === activeFilter.toLowerCase())
+    .sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      if (sortBy === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      if (sortBy === 'apps') return (b.applications || 0) - (a.applications || 0);
+      return 0;
+    });
+
   return (
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
-      <div style={{ marginBottom: '32px' }}>
+      <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800' }}>{t('listingsTitle')}</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('listingsSub')}</p>
+      </div>
+
+      {/* Filters & Sort */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+          {filters.map(f => (
+            <button key={f.key} onClick={() => setActiveFilter(f.key)}
+              style={{
+                padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                border: activeFilter === f.key ? '2px solid var(--accent)' : '1px solid var(--border)',
+                background: activeFilter === f.key ? 'var(--accent)' : 'var(--bg-card)',
+                color: activeFilter === f.key ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+              }}
+            >{f.label}</button>
+          ))}
+        </div>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', outline: 'none' }}>
+          <option value="newest">{lang === 'sk' ? 'Najnovšie' : 'Newest first'}</option>
+          <option value="oldest">{lang === 'sk' ? 'Najstaršie' : 'Oldest first'}</option>
+          <option value="apps">{lang === 'sk' ? 'Podľa prihlášok' : 'Most applications'}</option>
+        </select>
       </div>
 
       <motion.div 
@@ -250,7 +292,7 @@ const Listings = () => {
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '24px' }}
       >
         <AnimatePresence mode="popLayout">
-          {listings.map(l => (
+          {filteredListings.map(l => (
             <ListingCard 
               key={l.id} l={l} t={t} lang={lang}
               onDelete={handleDelete} onEdit={setEditingListing}
@@ -259,9 +301,9 @@ const Listings = () => {
             />
           ))}
         </AnimatePresence>
-        {!loading && listings.length === 0 && (
+        {!loading && filteredListings.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
-            {t('noResults')}
+            {activeFilter !== 'all' ? (lang === 'sk' ? 'Žiadne ponuky v tejto kategórii' : 'No listings in this category') : t('noResults')}
           </div>
         )}
       </motion.div>
