@@ -271,14 +271,27 @@
     (function() {
       const canvas = document.getElementById('bgGrid');
       if (!canvas) return;
+      const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      if (isTouchDevice) {
+        canvas.remove();
+        return;
+      }
+
       const ctx = canvas.getContext('2d');
       const GRID = 80;
       const flashes = [];
       const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let canvasWidth = 0;
+      let canvasHeight = 0;
 
       function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const nextWidth = window.innerWidth;
+        const nextHeight = window.innerHeight;
+        if (nextWidth === canvasWidth && nextHeight === canvasHeight) return;
+        canvasWidth = nextWidth;
+        canvasHeight = nextHeight;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
         if (!shouldAnimate) draw();
       }
       resize();

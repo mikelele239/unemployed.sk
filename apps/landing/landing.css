@@ -65,6 +65,23 @@
       overflow-x: hidden;
     }
 
+    @media (hover: none) and (pointer: coarse) {
+      body {
+        background-color: var(--bg);
+        background-image:
+          linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+        background-size: 80px 80px;
+        background-attachment: scroll;
+      }
+
+      body.light-mode {
+        background-image:
+          linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+      }
+    }
+
     /* ── NAV ── */
     nav {
       position: fixed;
