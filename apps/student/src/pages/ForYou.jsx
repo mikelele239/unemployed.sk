@@ -181,7 +181,7 @@ export default function ForYou() {
     return (
       <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '24px 32px 16px', borderBottom: '1px solid var(--border)' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 400, letterSpacing: '-0.5px' }}>
             {t('foryou.title')}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -236,7 +236,7 @@ export default function ForYou() {
                   </div>
                 </div>
 
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.3px', marginBottom: 16 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, lineHeight: 1.15, letterSpacing: '-0.3px', marginBottom: 16 }}>
                   {currentJob.title}
                 </h2>
 
@@ -442,7 +442,7 @@ export default function ForYou() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '12px 16px 6px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800 }}>{t('foryou.title')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400 }}>{t('foryou.title')}</h1>
         <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}</p>
       </div>
 

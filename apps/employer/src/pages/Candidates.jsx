@@ -40,7 +40,10 @@ const Candidates = () => {
           .from('applications')
           .select('*')
           .in('job_id', jobIds)
-          .order('created_at', { ascending: false });        if (appsErr) throw appsErr;
+          .order('created_at', { ascending: false });
+
+        console.log('[Candidates] Jobs found:', jobIds.length, 'Applications found:', (apps || []).length, 'Error:', appsErr);
+        if (appsErr) throw appsErr;
 
         const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
         let profilesMap = {};

@@ -152,7 +152,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
           </div>
         </div>
 
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.1, margin: 0, letterSpacing: '-0.3px', marginBottom: 6 }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 400, lineHeight: 1.1, margin: 0, letterSpacing: '-0.3px', marginBottom: 6 }}>
           {job.title}
         </h3>
 
@@ -184,10 +184,12 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
               width: 48, height: 48, borderRadius: 24, 
               border: '1px solid var(--border)', background: 'var(--bg-card)', 
               boxShadow: '0 8px 24px rgba(0,0,0,0.2)', color: 'var(--text-muted)', 
-              fontSize: 16, cursor: 'pointer', transition: 'all 0.2s',
+              cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
-          >✕</button>
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
 
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('right', job); }}
@@ -195,10 +197,12 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
               width: 56, height: 56, borderRadius: 28, 
               border: 'none', background: 'var(--accent)', 
               boxShadow: '0 8px 24px rgba(255,92,0,0.4)', color: '#fff', 
-              fontSize: 22, cursor: 'pointer', transition: 'all 0.2s',
+              cursor: 'pointer', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
-          >✓</button>
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
         </div>
       )}
     </motion.div>

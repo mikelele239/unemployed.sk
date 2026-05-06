@@ -206,8 +206,20 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{lang === 'sk' ? 'Životopis' : 'CV'}</div>
                 {selectedApplicant.cv_id ? (
                   <button onClick={async () => {
-                    const { data } = await supabase.storage.from('cvs').createSignedUrl(selectedApplicant.cv_id, 3600);
-                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                    console.log('[Popup] Opening CV:', selectedApplicant.cv_id);
+                    const { data, error: cvErr } = await supabase.storage.from('cvs').createSignedUrl(selectedApplicant.cv_id, 3600);
+                    console.log('[Popup] CV signed URL result:', data, cvErr);
+                    if (data?.signedUrl) {
+                      window.open(data.signedUrl, '_blank');
+                    } else {
+                      // Fallback: try public URL
+                      const { data: pub } = supabase.storage.from('cvs').getPublicUrl(selectedApplicant.cv_id);
+                      if (pub?.publicUrl) {
+                        window.open(pub.publicUrl, '_blank');
+                      } else {
+                        alert(lang === 'sk' ? 'Nepodarilo sa otvoriť CV' : 'Failed to open CV');
+                      }
+                    }
                   }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', width: '100%' }}
                     onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                     onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
@@ -235,9 +247,12 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 {(selectedApplicant.status || '').toLowerCase() !== 'interview' && (
                   <button onClick={async () => {
                     const { error } = await supabase.from('applications').update({ status: 'Interview' }).eq('id', selectedApplicant.id);
+                    console.log('[Popup] Interview update:', error || 'OK');
                     if (!error) {
-                      setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
-                      setSelectedApplicant(prev => ({ ...prev, status: 'Interview' }));
+                      setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
+                      setSelectedApplicant({ ...selectedApplicant, status: 'Interview' });
+                    } else {
+                      alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                     }
                   }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     📅 {lang === 'sk' ? 'Pohovor' : 'Interview'}
@@ -246,9 +261,12 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 {(selectedApplicant.status || '').toLowerCase() !== 'hired' && (
                   <button onClick={async () => {
                     const { error } = await supabase.from('applications').update({ status: 'Hired' }).eq('id', selectedApplicant.id);
+                    console.log('[Popup] Hire update:', error || 'OK');
                     if (!error) {
-                      setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Hired' } : a));
-                      setSelectedApplicant(prev => ({ ...prev, status: 'Hired' }));
+                      setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Hired' } : a));
+                      setSelectedApplicant({ ...selectedApplicant, status: 'Hired' });
+                    } else {
+                      alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                     }
                   }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#22c55e', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     ✓ {lang === 'sk' ? 'Prijať' : 'Hire'}
@@ -256,9 +274,12 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 )}
                 <button onClick={async () => {
                   const { error } = await supabase.from('applications').update({ status: 'Rejected' }).eq('id', selectedApplicant.id);
+                  console.log('[Popup] Reject update:', error || 'OK');
                   if (!error) {
-                    setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Rejected' } : a));
+                    setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Rejected' } : a));
                     setSelectedApplicant(null);
+                  } else {
+                    alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                   }
                 }} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   ✕ {lang === 'sk' ? 'Odmietnuť' : 'Reject'}

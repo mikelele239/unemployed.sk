@@ -39,7 +39,7 @@ export default function Applications() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '16px 20px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('apps.title') || 'Prihlášky'}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400 }}>{t('apps.title') || 'Prihlášky'}</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('apps.subtitle') || 'Sleduj stav svojich žiadostí.'}</p>
         {/* Filter chips */}
         <div style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', paddingBottom: 4 }}>

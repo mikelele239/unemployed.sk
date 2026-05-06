@@ -159,7 +159,7 @@ export default function CompanyProfile() {
             {company.logo || company.name.charAt(0).toUpperCase()}
           </motion.div>
 
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 6, position: 'relative', zIndex: 1 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, letterSpacing: '-0.5px', marginBottom: 6, position: 'relative', zIndex: 1 }}>
             {company.name}
           </h1>
 
@@ -188,7 +188,7 @@ export default function CompanyProfile() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent)' }}>
                 <Briefcase size={14} />
-                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.activeJobs || 0}</span>
+                <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{stats?.activeJobs || 0}</span>
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                 {lang === 'en' ? 'Jobs' : 'Ponuky'}
@@ -201,7 +201,7 @@ export default function CompanyProfile() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, #3b82f6)' }}>
                 <Users size={14} />
-                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.totalViews || 0}</span>
+                <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{stats?.totalViews || 0}</span>
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                 {lang === 'en' ? 'Views' : 'Zobrazenia'}
@@ -214,7 +214,7 @@ export default function CompanyProfile() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444' }}>
                 <Heart size={14} />
-                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.totalLikes || 0}</span>
+                <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{stats?.totalLikes || 0}</span>
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                 {lang === 'en' ? 'Likes' : 'Záujem'}

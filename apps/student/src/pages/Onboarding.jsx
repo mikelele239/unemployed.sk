@@ -127,7 +127,7 @@ export default function Onboarding({ onComplete }) {
             style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}
           >
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: 16 }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, letterSpacing: '-1px', marginBottom: 16 }}>
                 {t('ob.hook')}
               </h1>
               <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('ob.hookSub')}</p>
@@ -159,7 +159,7 @@ export default function Onboarding({ onComplete }) {
                 </span>
                 employed.sk
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '3.5rem', fontWeight: 900, letterSpacing: '-1.5px', lineHeight: 0.9, color: '#fff' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '3.5rem', fontWeight: 400, letterSpacing: '-1.5px', lineHeight: 0.9, color: '#fff' }}>
                 Vytvor si profil.
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 17, marginTop: 20, maxWidth: 420, margin: '20px auto 0', lineHeight: 1.6 }}>
@@ -245,7 +245,7 @@ export default function Onboarding({ onComplete }) {
                 style={{ position: 'absolute', left: -10, right: -10, height: 2, background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}
               />
             </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 900, marginBottom: 12 }}>{t('ob.parsing')}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 400, marginBottom: 12 }}>{t('ob.parsing')}</h2>
             <div style={{ width: '100%', maxWidth: 240, height: 6, background: 'var(--bg-card)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
               <motion.div style={{ width: `${parsingProgress}%`, height: '100%', background: 'var(--accent)' }} />
             </div>
@@ -263,7 +263,7 @@ export default function Onboarding({ onComplete }) {
               <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CheckCircle2 size={24} />
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 400, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 32 }}>{t('ob.reviewSub')}</p>
 
@@ -347,7 +347,7 @@ export default function Onboarding({ onComplete }) {
                     const s = MANUAL_STEPS[manualStep];
                     return (
                       <motion.div key={manualStep} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 900, marginBottom: 8, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{s.title}</h2>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, marginBottom: 8, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{s.title}</h2>
                         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16, marginBottom: 32 }}>{s.sub}</p>
 
                         {s.type === 'text' && (
