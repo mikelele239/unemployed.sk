@@ -30,32 +30,37 @@ CREATE POLICY "Students can update own apps"
   USING (auth.uid() = candidate_id);
 
 -- ─── Job Views: anyone authenticated can insert ─────────────────────────────
-ALTER TABLE public.job_views ENABLE ROW LEVEL SECURITY;
-
+-- (Drop old policies from 003 migration first)
+DROP POLICY IF EXISTS "Users can insert views" ON public.job_views;
+DROP POLICY IF EXISTS "Employers can read views" ON public.job_views;
 DROP POLICY IF EXISTS "Anyone can insert views" ON public.job_views;
+DROP POLICY IF EXISTS "Anyone can read views" ON public.job_views;
+
 CREATE POLICY "Anyone can insert views"
   ON public.job_views FOR INSERT
-  WITH CHECK (auth.uid() = viewer_id);
+  WITH CHECK (auth.uid() IS NOT NULL);
 
-DROP POLICY IF EXISTS "Anyone can read views" ON public.job_views;
 CREATE POLICY "Anyone can read views"
   ON public.job_views FOR SELECT
   USING (true);
 
 -- ─── Job Likes: authenticated users can like/unlike ─────────────────────────
-ALTER TABLE public.job_likes ENABLE ROW LEVEL SECURITY;
-
+-- (Drop old policies from 003 migration first)
+DROP POLICY IF EXISTS "Users can insert likes" ON public.job_likes;
+DROP POLICY IF EXISTS "Users can delete likes" ON public.job_likes;
+DROP POLICY IF EXISTS "Employers can read likes" ON public.job_likes;
 DROP POLICY IF EXISTS "Users can insert own likes" ON public.job_likes;
+DROP POLICY IF EXISTS "Users can delete own likes" ON public.job_likes;
+DROP POLICY IF EXISTS "Anyone can read likes" ON public.job_likes;
+
 CREATE POLICY "Users can insert own likes"
   ON public.job_likes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can delete own likes" ON public.job_likes;
 CREATE POLICY "Users can delete own likes"
   ON public.job_likes FOR DELETE
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Anyone can read likes" ON public.job_likes;
 CREATE POLICY "Anyone can read likes"
   ON public.job_likes FOR SELECT
   USING (true);
