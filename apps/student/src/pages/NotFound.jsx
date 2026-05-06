@@ -18,7 +18,7 @@ export default function NotFound() {
         <div style={{ fontSize: 80, marginBottom: 24, lineHeight: 1 }}>🔍</div>
         <h1 style={{
           fontFamily: 'var(--font-display)', fontSize: 'clamp(3rem, 8vw, 6rem)',
-          fontWeight: 900, color: 'var(--text)', margin: '0 0 16px',
+          fontWeight: 400, color: 'var(--text)', margin: '0 0 16px',
           letterSpacing: '-2px', lineHeight: 1
         }}>
           404

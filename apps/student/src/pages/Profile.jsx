@@ -177,7 +177,7 @@ export default function Profile() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
       <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('nav.profile')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400 }}>{t('nav.profile')}</h1>
         <button 
           onClick={() => setIsEditing(true)}
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 18px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}

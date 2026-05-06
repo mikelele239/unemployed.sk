@@ -26,7 +26,7 @@ const Candidates = () => {
         // Step 1: Get employer's job IDs
         const { data: jobs } = await supabase
           .from('jobs')
-          .select('id, title, title_en, location')
+          .select('id, title, location')
           .eq('employer_id', session.user.id);
 
         const jobIds = (jobs || []).map(j => j.id);
@@ -64,7 +64,7 @@ const Candidates = () => {
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
               : app.student_name,
             student_profile: { ...(app.student_profile || {}), ...profile },
-            job_title: job.title || job.title_en || '—',
+            job_title: job.title || '—',
             job_location: job.location || '',
           };
         });
@@ -136,7 +136,7 @@ const Candidates = () => {
     <div style={{ animation: 'tabSlideIn 0.3s cubic-bezier(0.4, 0, 0.15, 1)' }}>
       {/* Candidates Header */}
       <div style={{ padding: '16px 18px 10px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700' }}>{t('candTitle')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '400' }}>{t('candTitle')}</h1>
         <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('candSub')}</p>
       </div>
 

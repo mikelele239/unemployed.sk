@@ -16,7 +16,7 @@ const QuizStep = ({ step, total, label, subtitle, pFill, children, onNext, onBac
       </div>
 
       <div style={{ padding: '6px 20px 90px', flex: 1 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', marginBottom: '4px', letterSpacing: '-0.3px' }}>{label}</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '400', marginBottom: '4px', letterSpacing: '-0.3px' }}>{label}</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '20px', lineHeight: 1.5 }}>{subtitle}</p>
         
         {children}

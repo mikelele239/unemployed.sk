@@ -10,7 +10,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   const [applicants, setApplicants] = useState(null);
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
-  const title = lang === 'sk' ? (l.title || l.title_en) : (l.title_en || l.title);
+  const title = l.title || '—';
   const status = l.status || 'Active';
   const workModel = l.work_model || l.workModel || 'On-site';
 
@@ -84,15 +84,15 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
         </div>
         <div style={{ display: 'flex', gap: window.innerWidth <= 900 ? '16px' : '32px', borderTop: '1px solid var(--border)', paddingTop: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--accent)' }}>{l.applications || 0}</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-body)', color: 'var(--accent)' }}>{l.applications || 0}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{t('applications')}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{l.total_views || 0}</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{l.total_views || 0}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-display)', color: '#ef4444' }}>{l.total_likes || 0}</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-body)', color: '#ef4444' }}>{l.total_likes || 0}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{lang === 'sk' ? 'Záujem' : 'Likes'}</div>
           </div>
           {liveViewerCount > 0 && (
@@ -399,7 +399,7 @@ const Listings = () => {
   return (
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800' }}>{t('listingsTitle')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '400' }}>{t('listingsTitle')}</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('listingsSub')}</p>
       </div>
 

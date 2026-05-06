@@ -97,11 +97,11 @@ app.use((req, res, next) => {
     'Content-Security-Policy',
     "default-src 'self' https://*.supabase.co; " +
     "frame-src 'self' https://*.supabase.co blob: data:; " +
-    "connect-src 'self' https://*.supabase.co; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: https: https://*.supabase.co;"
+    "img-src 'self' data: blob: https: https://*.supabase.co;"
   );
   res.setHeader('X-Frame-Options', 'ALLOWALL');
   res.setHeader('Access-Control-Allow-Origin', '*');

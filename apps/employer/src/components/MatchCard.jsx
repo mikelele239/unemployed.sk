@@ -44,7 +44,7 @@ const MatchCard = ({ match, isAccepted, onAccept, onSkip }) => {
             </div>
           )}
         </div>
-        <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: isAccepted ? 'var(--green)' : 'var(--accent)' }}>
+        <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-body)', fontSize: '20px', fontWeight: '700', color: isAccepted ? 'var(--green)' : 'var(--accent)' }}>
           {match.score}<span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>%</span>
         </div>
       </div>

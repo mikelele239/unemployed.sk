@@ -127,7 +127,7 @@ const CreateListing = () => {
   return (
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
       <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '800' }}>{t('newListing')}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '400' }}>{t('newListing')}</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('clSub')}</p>
       </div>
 

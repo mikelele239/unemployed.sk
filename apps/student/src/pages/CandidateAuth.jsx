@@ -122,7 +122,7 @@ export default function CandidateAuth({ onLoginSuccess }) {
             }}>
             🎓
           </motion.div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, margin: 0, letterSpacing: '-0.03em', color: '#fff' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, margin: 0, letterSpacing: '-0.03em', color: '#fff' }}>
             {mode === 'login' ? 'Vitaj späť' : 'Začni svoju cestu'}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, marginTop: 10, lineHeight: 1.5 }}>

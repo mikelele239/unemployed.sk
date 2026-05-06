@@ -102,7 +102,7 @@ export default function EmployerAuth({ onLoginSuccess }) {
             }}>
             🏢
           </motion.div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.6rem', fontWeight: 600, margin: 0, color: '#fff', letterSpacing: '-0.03em' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.6rem', fontWeight: 400, margin: 0, color: '#fff', letterSpacing: '-0.03em' }}>
             Portál Zamestnávateľa
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 12, fontSize: 16, fontWeight: 400, lineHeight: 1.5 }}>

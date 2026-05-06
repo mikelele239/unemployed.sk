@@ -78,7 +78,7 @@ const Profile = () => {
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '400', letterSpacing: '-0.5px' }}>
           {lang === 'sk' ? 'Profil & Nastavenia' : 'Profile & Settings'}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>

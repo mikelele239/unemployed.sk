@@ -68,7 +68,7 @@ export default function Search() {
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '16px 20px', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 16 }}>{t('search.title') || 'Hľadať práce'}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, marginBottom: 16 }}>{t('search.title') || 'Hľadať práce'}</h1>
         
         <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
           <div style={{ flex: 1, position: 'relative' }}>

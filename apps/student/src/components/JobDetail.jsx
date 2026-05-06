@@ -53,11 +53,11 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
             <button onClick={onClose} style={{ width: 36, height: 36, background: 'var(--bg-card)', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↓</button>
-            <span style={{ fontWeight: 600, fontSize: 16, fontFamily: 'var(--font-display)' }}>{t('detail.title') || 'Detail pozície'}</span>
+            <span style={{ fontWeight: 400, fontSize: 16, fontFamily: 'var(--font-display)' }}>{t('detail.title') || 'Detail pozície'}</span>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 4 }}>{job.title}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, marginBottom: 4 }}>{job.title}</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
               <span 
                 onClick={() => { onClose(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
