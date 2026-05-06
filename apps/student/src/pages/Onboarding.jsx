@@ -97,6 +97,7 @@ export default function Onboarding({ onComplete }) {
             location: data.loc || '',
             skills: data.skills || [],
             job_preferences: data.jobType || [],
+            ...(data.cv_id && !data.cv_id.startsWith('mock-') ? { cv_id: data.cv_id } : {}),
           })
         });
         if (res.ok) console.log('Profile saved via server API.');

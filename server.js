@@ -73,8 +73,15 @@ const VALID_TYPES = new Set(['Stredoškolák', 'Vysokoškolák', 'Absolvent', 'Z
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '16kb' }));
-app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+// JSON body parser — skip for multipart file upload routes
+app.use((req, res, next) => {
+  if (req.path === '/api/cvs/upload') return next();
+  express.json({ limit: '16kb' })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === '/api/cvs/upload') return next();
+  express.urlencoded({ extended: false, limit: '16kb' })(req, res, next);
+});
 app.set('trust proxy', 1);
 
 // Block sensitive file access
@@ -237,7 +244,35 @@ app.get('/api/employer/candidates', async (req, res) => {
       .order('created_at', { ascending: false });
     if (appsErr) return res.status(500).json({ error: appsErr.message });
 
-    res.json({ candidates: apps || [] });
+    // Enrich with profile data for each candidate
+    const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
+    let profilesMap = {};
+    if (candidateIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, bio')
+        .in('user_id', candidateIds);
+      (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
+    }
+
+    // Merge profile data into each application
+    const enrichedCandidates = (apps || []).map(app => {
+      const profile = profilesMap[app.candidate_id] || {};
+      return {
+        ...app,
+        // Override student_name with real profile name if available
+        student_name: (profile.first_name || profile.last_name)
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+          : app.student_name,
+        // Attach full profile for employer UI
+        student_profile: {
+          ...(app.student_profile || {}),
+          ...profile,
+        },
+      };
+    });
+
+    res.json({ candidates: enrichedCandidates });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -501,34 +536,56 @@ app.post('/api/applications', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    const { job_id, student_name, student_profile, ai_score, ai_reasoning } = req.body;
+    const { job_id } = req.body;
 
     if (!job_id) return res.status(400).json({ error: 'job_id is required' });
 
-    // Try full insert first
+    // 1. Get job info (for employer_id + title)
+    const { data: job } = await supabase.from('jobs').select('employer_id, title, company').eq('id', job_id).maybeSingle();
+
+    // 2. Get student profile from DB (authoritative source)
+    const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+    const studentName = profile 
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
+      : (user.user_metadata?.full_name || user.email);
+    const studentProfile = profile ? {
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      education: profile.education || '',
+      location: profile.location || '',
+      skills: profile.skills || [],
+      cv_id: profile.cv_id || null,
+      original_filename: profile.original_filename || null,
+      bio: profile.bio || '',
+    } : {};
+
+    // 3. Insert application with full data
     const insertData = {
       job_id,
-      student_name: student_name || user.email,
-      student_email: user.email,
-      status: 'Pending',
-    };
-
-    // Optionally add columns that may or may not exist
-    // We try with all columns, then fall back to minimal if it fails
-    const fullInsert = {
-      ...insertData,
-      student_profile: student_profile || {},
-      ai_score: ai_score || 50,
-      ai_reasoning: ai_reasoning || 'Submitted via Unemployed.sk',
       candidate_id: user.id,
+      student_name: studentName || user.email,
+      student_email: user.email,
+      student_profile: studentProfile,
+      status: 'Pending',
+      ai_score: req.body.ai_score || 50,
+      ai_reasoning: req.body.ai_reasoning || 'Submitted via Unemployed.sk',
     };
 
-    let { data, error } = await supabase.from('applications').insert([fullInsert]).select().single();
+    // Add employer_id if available (enables employer-side RLS)
+    if (job?.employer_id) insertData.employer_id = job.employer_id;
+
+    let { data, error } = await supabase.from('applications').insert([insertData]).select().single();
 
     // If full insert fails (missing columns), try minimal insert
     if (error) {
       console.warn('[POST /api/applications] Full insert failed:', error.message, '— trying minimal insert');
-      const minResult = await supabase.from('applications').insert([insertData]).select().single();
+      const minResult = await supabase.from('applications').insert([{
+        job_id,
+        candidate_id: user.id,
+        student_name: studentName || user.email,
+        student_email: user.email,
+        status: 'Pending',
+      }]).select().single();
       data = minResult.data;
       error = minResult.error;
     }
@@ -539,7 +596,7 @@ app.post('/api/applications', async (req, res) => {
       return res.status(400).json({ error: error.message, details: error.details, hint: error.hint });
     }
 
-    console.log('[POST /api/applications] Success:', data?.id, 'for job', job_id);
+    console.log('[POST /api/applications] Success:', data?.id, 'for job', job_id, '| Student:', studentName);
     res.json({ application: data });
   } catch (err) {
     console.error('[POST /api/applications] Exception:', err);

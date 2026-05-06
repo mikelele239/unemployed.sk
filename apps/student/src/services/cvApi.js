@@ -1,19 +1,12 @@
-import { getAccessToken } from '../supabase';
-
-// Assuming you store the user's session token securely, 
-// e.g., in localStorage or context state after login.
-const getAuthToken = () => {
-    return getAccessToken();
-};
-
+import { getAccessTokenAsync } from '../supabase';
 
 export const cvApi = {
     async uploadCV(file) {
-        const token = getAuthToken();
+        const token = await getAccessTokenAsync();
         if (!token) throw new Error('Not authenticated');
 
         const formData = new FormData();
-        formData.append('cv', file); // 'cv' matches the multer .single('cv')
+        formData.append('cv', file);
 
         const res = await fetch('/api/cvs/upload', {
             method: 'POST',
@@ -30,7 +23,7 @@ export const cvApi = {
     },
 
     async fetchMyCVs() {
-        const token = getAuthToken();
+        const token = await getAccessTokenAsync();
         if (!token) throw new Error('Not authenticated');
 
         const res = await fetch('/api/cvs', {
@@ -43,7 +36,7 @@ export const cvApi = {
     },
 
     async downloadCV(id) {
-        const token = getAuthToken();
+        const token = await getAccessTokenAsync();
         if (!token) throw new Error('Not authenticated');
 
         const res = await fetch(`/api/cvs/download/${id}`, {
@@ -56,7 +49,7 @@ export const cvApi = {
     },
 
     async deleteCV(id) {
-        const token = getAuthToken();
+        const token = await getAccessTokenAsync();
         if (!token) throw new Error('Not authenticated');
 
         const res = await fetch(`/api/cvs/${id}`, {
