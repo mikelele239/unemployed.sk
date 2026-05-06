@@ -105,6 +105,7 @@ export const AppStateProvider = ({ children }) => {
             name: empData.name || '',
             industry: empData.description || '',
             website: empData.website || '',
+            location: empData.location || '',
             logo_url: empData.logo_url || '',
             cover_url: empData.cover_url || '',
           });

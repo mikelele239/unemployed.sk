@@ -1,17 +1,19 @@
-# CONTEXT_VIEWS.md: Data Synchronization & Visibility Debugging
+# CONTEXT_VIEWS.md: Data Synchronization & Visibility
 
-This document provides a comprehensive overview of the current system architecture, database schema, and known issues regarding the data synchronization failure between the Student and Employer portals.
+> **Last Updated**: 2026-05-06 (v2.4.0)
+
+This document provides an overview of the data synchronization architecture between the Student and Employer portals, including the database schema, known resolved issues, and debugging tools.
 
 ---
 
 ## 🏗️ System Architecture
 
-- **Backend**: Node.js Express server (`server.js`) acting as a secure proxy for Supabase.
+- **Backend**: Node.js Express server (`server.js`) acting as a secure proxy for Supabase (service role key bypasses RLS).
 - **Portals**:
-  - **Student Portal**: Tinder-style job swiping interface.
-  - **Employer Portal**: Dashboard for job management and candidate screening.
+  - **Student Portal** (`/app`): Tinder-style job swiping interface.
+  - **Employer Portal** (`/employer`): Dashboard for job management and candidate screening.
 - **Database**: Supabase (PostgreSQL) with Row Level Security (RLS).
-- **Authentication**: Supabase Auth (JWT based).
+- **Authentication**: Supabase Auth (JWT based), portal-isolated storage keys.
 
 ---
 
@@ -23,6 +25,8 @@ This document provides a comprehensive overview of the current system architectu
 | `id` | `BIGINT` | Primary Key |
 | `employer_id` | `UUID` | References `public.employers.id` |
 | `title` | `TEXT` | Job title |
+| `rate` | `TEXT` | Hourly/monthly rate |
+| `work_model` | `TEXT` | Remote/On-site/Hybrid |
 
 ### `public.applications`
 | Column | Type | Notes |
@@ -30,8 +34,32 @@ This document provides a comprehensive overview of the current system architectu
 | `id` | `UUID` | Primary Key |
 | `job_id` | `BIGINT` | References `public.jobs.id` |
 | `candidate_id` | `UUID` | References `auth.users.id` |
-| `employer_id` | `UUID` | **CRITICAL**: Reseach indicates this must be populated for employer visibility. |
-| `status` | `TEXT` | Default: 'Pending' |
+| `employer_id` | `UUID` | Populated server-side for employer visibility |
+| `status` | `TEXT` | Default: 'Pending'. Values: Pending, Interview, Interview-Confirmed, Counter-Offer, Hired, Rejected, Declined |
+| `interview_dates` | `JSONB` | Array of offered interview date/times |
+| `selected_date` | `TIMESTAMPTZ` | Candidate-selected or confirmed date |
+
+### `public.profiles`
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `user_id` | `UUID` | Primary Key, references `auth.users.id` |
+| `first_name` | `TEXT` | Student first name |
+| `last_name` | `TEXT` | Student last name |
+| `skills` | `TEXT[]` | Array of skill strings |
+| `education` | `TEXT` | Education info |
+| `location` | `TEXT` | City/region |
+| `avatar_url` | `TEXT` | Signed URL to avatar in storage |
+| `cv_id` | `TEXT` | Storage path to current CV |
+
+### `public.employers`
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `id` | `UUID` | Primary Key |
+| `name` | `TEXT` | Company name |
+| `description` | `TEXT` | Company description |
+| `website` | `TEXT` | Company website |
+| `location` | `TEXT` | Company headquarters location |
+| `logo_url` | `TEXT` | Signed URL to logo in storage |
 
 ### `public.job_views`
 | Column | Type | Notes |
@@ -39,72 +67,67 @@ This document provides a comprehensive overview of the current system architectu
 | `id` | `UUID` | Primary Key |
 | `job_id` | `BIGINT` | References `public.jobs.id` |
 | `user_id` | `UUID` | References `auth.users.id` (Optional) |
-| `employer_id` | `UUID` | **FIXED**: Added to enable direct RLS and dashboard visibility. |
-
-### `public.employer_members`
-| Column | Type | Notes |
-| :--- | :--- | :--- |
-| `employer_id` | `UUID` | |
-| `user_id` | `UUID` | |
-| `role` | `TEXT` | **RESOLVED**: Unified naming (was member_role). |
+| `employer_id` | `UUID` | For direct RLS and dashboard visibility |
 
 ---
 
 ## 🔄 Data Synchronization Flow
 
-1.  **Swipe Event**: Student swipes right (Like) in the Student Portal.
-2.  **API Call**: `POST /api/applications` is called with `{ jobId }`.
-3.  **Backend Processing** (`server.js`):
-    - Resolves `candidate_id` from the JWT.
-    - **Crucial Step**: Fetches the `employer_id` from the `jobs` table using the provided `job_id`.
-    - Inserts a record into `public.applications` containing both `job_id` and the resolved `employer_id`.
-4.  **Employer Portal**:
-    - Calls `GET /api/applications`.
-    - Server filters applications by the `employer_id` associated with the logged-in employer's user account.
-    - **RLS Policy**: Row-level security on Supabase should also enforce that employers can only see applications where `employer_id` matches their own.
+### Application Flow
+1. **Swipe Event**: Student swipes right in the Student Portal.
+2. **API Call**: `POST /api/applications` with `{ jobId }`.
+3. **Backend** (`server.js`):
+   - Resolves `candidate_id` from JWT.
+   - Fetches `employer_id` from `jobs` table.
+   - Inserts into `applications` with both IDs.
+4. **Employer Portal**: Queries applications filtered by `employer_id`.
+
+### Candidate Data Enrichment
+1. **Employer** calls `GET /api/employer/candidates`.
+2. **Server** fetches applications → enriches with profile data (avatar_url, skills, CV).
+3. **CandidateCard** resolves avatar from storage with fresh signed URL on mount.
+
+### Avatar/File Sync
+1. **Upload**: Student uploads avatar → stored at `{uid}/avatar.{ext}` in `cvs` bucket.
+2. **Signed URL**: `createSignedUrl()` generates a 1-year URL saved to `profiles.avatar_url`.
+3. **Display**: Components resolve fresh signed URLs from storage on mount (not relying on DB value).
 
 ---
 
-## 🔍 Known Issues & Blockers
+## ✅ Resolved Issues
 
-### 1. The "Blank Dashboard" Problem (RESOLVED)
-Issue was caused by missing `employer_id` in `job_views`. 
-- **Fix**: Added column and automated backfill via `09_unified_sync_fix.sql`.
-- **Harden**: `server.js` now has multi-stage fallback (Job ID -> Company Name Match -> Master Admin).
-
-### 2. ID Type Mismatch (RESOLVED)
-- **Standard**: `applications.id` is standardized as **UUID** in sync with `employers.id`.
-
-### 3. Column naming (RESOLVED)
-- **Standard**: `employer_members` table now uses `role` globally (renamed from `member_role`).
+| Issue | Resolution |
+|-------|-----------|
+| Blank Dashboard | Added `employer_id` to `job_views`, backfilled via `09_unified_sync_fix.sql` |
+| ID Type Mismatch | Standardized `applications.id` as UUID |
+| Column Naming | `employer_members.role` unified (was `member_role`) |
+| Avatar Broken Images | Switched from `getPublicUrl()` to `createSignedUrl()` (bucket is private) |
+| CV Spam (avatars in CV list) | Filter out files starting with `avatar.` or `logo.` from CV listing |
+| Profile Save 400 Error | Routed saves through server proxy (bypasses RLS) |
+| Employer Location Missing | Added `location` column via `10_add_employer_location.sql` |
 
 ---
 
 ## 🛠️ Debugging Toolkit
 
 ### Server Logs
-Look for `[SYNC]` tags in the console output. These indicate:
+Look for `[SYNC]` tags in the console output for:
 - Resolution of `employer_id` during applications.
 - Detection of `employer_id` for job views.
 - Fallback events when direct links are missing.
 
 ### Recommended SQL Verification
-Run this to see if applications are correctly linked to employers:
 ```sql
+-- Check applications are correctly linked to employers
 SELECT a.id, a.job_id, a.employer_id, j.title, e.name as employer_name
 FROM public.applications a
 JOIN public.jobs j ON a.job_id = j.id
 JOIN public.employers e ON a.employer_id = e.id;
+
+-- Check profiles have avatar_url
+SELECT user_id, first_name, last_name, avatar_url, cv_id
+FROM public.profiles;
+
+-- Check employers have location
+SELECT id, name, location, logo_url FROM public.employers;
 ```
-
----
-
-## 📝 Recent Actions Taken
-- **Employer Access Protection**: Decommissioned public self-registration. Replaced the "Register" flow with a dedicated "Request Access" portal at `/employer/inquiry`.
-- **Lead Capture Backend**: Implemented `POST /api/auth/employer/inquiry` and added `company_name` to the `submissions` table.
-- **Enhanced Sync Logging**: Added comprehensive `[SYNC]` tags across `ForYou.jsx`, `useApplications.js`, and `server.js` to track Job Views and Application creation in real-time.
-- **Production Build Sync**: Standardized on full rebuilds (`npm run build:all`) to ensure all `src` changes are reflected in the `dist` folders served by Node.
-- Unified `employer_members` column naming to `role`.
-- Implemented robust `employer_id` fallbacks in `server.js` for both applications and views.
-- Verified that `get_employer_analytics` RPC handles the new schema correctly.
-

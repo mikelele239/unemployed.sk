@@ -129,7 +129,7 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
     
-    const { name, description, website } = req.body;
+    const { name, description, website, location } = req.body;
     
     // Upsert employer row — service key bypasses RLS
     const { data, error } = await supabase.from('employers').upsert({
@@ -137,6 +137,7 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
       name: name || user.email?.split('@')[0] || 'Firma',
       description: description || null,
       website: website || null,
+      location: location || null,
     }, { onConflict: 'id' }).select().single();
     
     if (error) return res.status(500).json({ error: error.message });
@@ -170,7 +171,7 @@ app.post('/api/student/profile', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    const { first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename } = req.body;
+    const { first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename, avatar_url } = req.body;
     const upsertData = {
       user_id: user.id,
       email: user.email,
@@ -183,6 +184,7 @@ app.post('/api/student/profile', async (req, res) => {
     };
     if (cv_id !== undefined) upsertData.cv_id = cv_id;
     if (original_filename !== undefined) upsertData.original_filename = original_filename;
+    if (avatar_url !== undefined) upsertData.avatar_url = avatar_url;
     const { data, error } = await supabase.from('profiles').upsert(upsertData, { onConflict: 'user_id' }).select().single();
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
@@ -250,7 +252,7 @@ app.get('/api/employer/candidates', async (req, res) => {
     if (candidateIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, bio')
+        .select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, bio, avatar_url')
         .in('user_id', candidateIds);
       (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
     }

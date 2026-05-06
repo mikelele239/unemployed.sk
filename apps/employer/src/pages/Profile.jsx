@@ -17,6 +17,7 @@ const Profile = () => {
     name: '',
     description: '',
     website: '',
+    location: '',
   });
 
   useEffect(() => {
@@ -24,6 +25,7 @@ const Profile = () => {
       name: companyProfile?.name || '',
       description: companyProfile?.industry || '',
       website: companyProfile?.website || '',
+      location: companyProfile?.location || '',
     });
   }, [companyProfile]);
 
@@ -33,18 +35,28 @@ const Profile = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { error } = await supabase.from('employers').upsert({
-        id: session.user.id,
-        name: form.name,
-        description: form.description,
-        website: form.website,
-      }, { onConflict: 'id' });
+      const res = await fetch('/api/employer/ensure-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          website: form.website,
+          location: form.location,
+        }),
+      });
 
-      if (!error) {
+      const result = await res.json();
+
+      if (res.ok) {
         setCompanyProfile({
           name: form.name,
           industry: form.description,
           website: form.website,
+          location: form.location,
           logo_url: companyProfile?.logo_url || '',
           cover_url: companyProfile?.cover_url || '',
         });
@@ -52,7 +64,7 @@ const Profile = () => {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {
-        alert(lang === 'sk' ? 'Nepodarilo sa uložiť zmeny.' : 'Failed to save changes.');
+        alert(result.error || (lang === 'sk' ? 'Nepodarilo sa uložiť zmeny.' : 'Failed to save changes.'));
       }
 
     } catch (err) {
@@ -126,12 +138,38 @@ const Profile = () => {
                   if (!file) return;
                   const { data: { session } } = await supabase.auth.getSession();
                   if (!session) return;
-                  const path = `${session.user.id}/logo.${file.name.split('.').pop()}`;
+                  const uid = session.user.id;
+
+                  // Remove old logo files
+                  const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
+                  const oldLogos = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('logo.'));
+                  if (oldLogos.length > 0) {
+                    await supabase.storage.from('cvs').remove(oldLogos.map(f => `${uid}/${f.name}`));
+                  }
+
+                  const path = `${uid}/logo.${file.name.split('.').pop()}`;
                   const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
                   if (!error) {
-                    const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path);
-                    const logoUrl = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : '';
-                    await supabase.from('employers').update({ logo_url: logoUrl }).eq('id', session.user.id);
+                    // Use signed URL since bucket is private
+                    const { data: signedData } = await supabase.storage.from('cvs').createSignedUrl(path, 60 * 60 * 24 * 365);
+                    const logoUrl = signedData?.signedUrl || '';
+
+                    // Update via server proxy
+                    await fetch('/api/employer/ensure-profile', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                      },
+                      body: JSON.stringify({
+                        name: form.name,
+                        description: form.description,
+                        website: form.website,
+                        location: form.location,
+                      }),
+                    });
+                    // Also update logo_url directly
+                    await supabase.from('employers').update({ logo_url: logoUrl }).eq('id', uid);
                     setCompanyProfile(prev => ({ ...prev, logo_url: logoUrl }));
                   }
                 }} />
@@ -200,6 +238,29 @@ const Profile = () => {
                 </div>
               )}
             </div>
+            <div>
+              <label style={labelStyle}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {lang === 'sk' ? 'Lokalita' : 'Location'}
+                </span>
+              </label>
+              {editing ? (
+                <input style={inputStyle} value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+                  placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'} />
+              ) : (
+                <div style={readOnlyStyle}>
+                  {form.location ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {form.location}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons — only visible when editing */}
@@ -218,7 +279,7 @@ const Profile = () => {
                 {saving ? (lang === 'sk' ? 'Ukladám...' : 'Saving...') : (lang === 'sk' ? 'Uložiť zmeny' : 'Save Changes')}
               </button>
               <button
-                onClick={() => { setEditing(false); setForm({ name: companyProfile?.name || '', description: companyProfile?.industry || '', website: companyProfile?.website || '' }); }}
+                onClick={() => { setEditing(false); setForm({ name: companyProfile?.name || '', description: companyProfile?.industry || '', website: companyProfile?.website || '', location: companyProfile?.location || '' }); }}
                 style={{
                   padding: '12px 20px', borderRadius: '12px',
                   border: '1px solid var(--border)', background: 'transparent',

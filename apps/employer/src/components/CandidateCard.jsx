@@ -14,9 +14,38 @@ const CandidateCard = ({ candidate, onInvite }) => {
   const [localSuccess, setLocalSuccess] = useState(null);
   const [cvUrl, setCvUrl] = useState(null);
   const [fullscreenCV, setFullscreenCV] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const profile = candidate.student_profile || {};
   const cvId = profile.cv_id;
+
+  // Resolve avatar: try to get a fresh signed URL from storage
+  useEffect(() => {
+    const resolveAvatar = async () => {
+      const uid = candidate.candidate_id;
+      if (!uid) return;
+      try {
+        // List files in the user's storage folder to find their avatar
+        const { data: files } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
+        const avatarFile = (files || []).find(f => f.name.toLowerCase().startsWith('avatar.'));
+        if (avatarFile) {
+          const { data } = await supabase.storage.from('cvs').createSignedUrl(`${uid}/${avatarFile.name}`, 3600);
+          if (data?.signedUrl) {
+            setAvatarUrl(data.signedUrl);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Avatar resolve error:', err);
+      }
+      // If storage lookup fails, try the stored avatar_url as-is
+      if (profile.avatar_url) {
+        setAvatarUrl(profile.avatar_url);
+      }
+    };
+    resolveAvatar();
+  }, [candidate.candidate_id, profile.avatar_url]);
 
   useEffect(() => {
     if (expanded && cvId && !cvUrl) {
@@ -61,10 +90,19 @@ const CandidateCard = ({ candidate, onInvite }) => {
       <div className="flex-responsive" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '18px 20px' }}>
         <div style={{
           width: '46px', height: '46px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: '700', fontSize: '16px', color: '#fff', flexShrink: 0, 
+          fontWeight: '700', fontSize: '16px', color: '#fff', flexShrink: 0, position: 'relative', overflow: 'hidden',
           background: 'linear-gradient(135deg, #1a1a1a, #000)', border: '1px solid rgba(255,255,255,0.05)'
         }}>
-          {initials}
+          {avatarUrl && !avatarFailed ? (
+            <img 
+              src={avatarUrl} 
+              alt="" 
+              onError={() => setAvatarFailed(true)}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '50%' }} 
+            />
+          ) : (
+            initials
+          )}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>

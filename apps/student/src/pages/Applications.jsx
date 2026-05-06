@@ -20,9 +20,12 @@ export default function Applications() {
   const getStatusColor = (status) => {
     switch(status) {
       case 'Pending': return 'var(--text-muted)';
-      case 'Viewed': return 'var(--blue)';
-      case 'Interview': return 'var(--accent)';
+      case 'Viewed': return 'var(--blue, #3b82f6)';
+      case 'Interview': return '#6366f1';
+      case 'Interview-Confirmed': return '#22c55e';
+      case 'Counter-Offer': return 'var(--accent)';
       case 'Hired': return 'var(--green)';
+      case 'Rejected': case 'Declined': return '#ef4444';
       default: return 'var(--text-muted)';
     }
   };
@@ -109,6 +112,19 @@ export default function Applications() {
                         onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
                       >{app.company}</span>
                     </div>
+                    {/* Inline confirmed/counter-offer date badge */}
+                    {app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date && (
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#22c55e' }}>
+                        <span>✅</span>
+                        <span>{new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
+                    {app.status === 'Counter-Offer' && app.interviewInfo?.selected_date && (
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
+                        <span>📅</span>
+                        <span>Protinávrh: {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: getStatusColor(app.status), display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
@@ -116,12 +132,12 @@ export default function Applications() {
                       {app.status === 'Pending' ? (t('apps.pending') || 'Čaká sa') : (t(`apps.${app.status.toLowerCase()}`) || app.status)}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>
-                      {new Date(app.timestamp).toLocaleDateString('sk-SK')}
+                      {new Date(app.created_at || app.timestamp).toLocaleDateString('sk-SK')}
                     </div>
                   </div>
                 </motion.div>
 
-              {/* Interview Scheduler Notice */}
+              {/* Interview Scheduler Notice — only when action is needed */}
               {app.status?.toLowerCase() === 'interview' && (
                 <div style={{
                   margin: '-10px 20px 22px', padding: '20px', background: 'var(--accent-light)', 
@@ -185,13 +201,37 @@ export default function Applications() {
                         </div>
                         <div style={{ fontSize: '13px', fontWeight: '800' }}>Pozvanie na pohovor si odmietol/la.</div>
                       </div>
+                    ) : app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                          ✅
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Potvrdený termín</div>
+                          <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+                            {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </div>
+                        </div>
+                      </div>
+                    ) : app.status === 'Counter-Offer' && app.interviewInfo?.selected_date ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,92,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                          📅
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tvoj protinávrh — čaká sa na odpoveď</div>
+                          <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+                            {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </div>
+                        </div>
+                      </div>
                     ) : app.interviewInfo?.selected_date ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           🗓️
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Potvrdený termín</div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vybraný termín</div>
                           <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
                             {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                           </div>

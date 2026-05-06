@@ -47,7 +47,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   const appStatusColor = (s) => { switch ((s||'').toLowerCase()) { case 'hired': return '#22c55e'; case 'interview': return '#6366f1'; case 'interview-confirmed': return '#22c55e'; case 'counter-offer': return 'var(--accent)'; case 'rejected': case 'declined': return '#ef4444'; default: return 'var(--text-muted)'; } };
 
   return (
-    <motion.div layout="position" transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+    <motion.div
       initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '4px solid transparent', borderRadius: 'var(--radius)', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden' }}
@@ -549,9 +549,8 @@ const Listings = () => {
         </select>
       </div>
 
-      <motion.div 
-        layout
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '24px' }}
+      <div 
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '24px', alignItems: 'start' }}
       >
         <AnimatePresence mode="popLayout">
           {filteredListings.map(l => (
@@ -568,7 +567,7 @@ const Listings = () => {
             {activeFilter !== 'all' ? (lang === 'sk' ? 'Žiadne ponuky v tejto kategórii' : 'No listings in this category') : t('noResults')}
           </div>
         )}
-      </motion.div>
+      </div>
 
       <AnimatePresence>
         {editingListing && (

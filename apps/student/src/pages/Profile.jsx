@@ -13,16 +13,19 @@ export default function Profile() {
   const [addingSkill, setAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState('');
   const skillInputRef = useRef(null);
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+        const uid = session.user.id;
         const { data } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', uid)
           .maybeSingle();
         if (data) {
           setProfile({
@@ -34,6 +37,21 @@ export default function Profile() {
             skills: data.skills || [],
             avatar_url: data.avatar_url || '',
           });
+        }
+
+        // Resolve avatar from storage with a fresh signed URL
+        try {
+          const { data: files } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
+          const avatarFile = (files || []).find(f => f.name.toLowerCase().startsWith('avatar.'));
+          if (avatarFile) {
+            const { data: signedData } = await supabase.storage.from('cvs').createSignedUrl(`${uid}/${avatarFile.name}`, 3600);
+            if (signedData?.signedUrl) {
+              setResolvedAvatarUrl(signedData.signedUrl);
+              setAvatarFailed(false);
+            }
+          }
+        } catch (avatarErr) {
+          console.error('Avatar resolve error:', avatarErr);
         }
       } catch (err) {
         console.error('Profile fetch error:', err);
@@ -52,7 +70,12 @@ export default function Profile() {
         const { data: files } = await supabase.storage
           .from('cvs')
           .list(uid, { limit: 20, sortBy: { column: 'created_at', order: 'desc' } });
-        setCvs((files || []).map(f => ({
+        // Filter out avatar/logo files — only keep actual CVs
+        const cvFiles = (files || []).filter(f => {
+          const name = f.name.toLowerCase();
+          return !name.startsWith('avatar.') && !name.startsWith('logo.');
+        });
+        setCvs(cvFiles.map(f => ({
           id: `${uid}/${f.name}`,
           path: `${uid}/${f.name}`,
           original_filename: f.name,
@@ -94,6 +117,19 @@ export default function Profile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const uid = session.user.id;
+
+      // Delete existing CV files first (keep only 1 CV)
+      const { data: existingFiles } = await supabase.storage
+        .from('cvs')
+        .list(uid, { limit: 20 });
+      const oldCvFiles = (existingFiles || []).filter(f => {
+        const name = f.name.toLowerCase();
+        return !name.startsWith('avatar.') && !name.startsWith('logo.');
+      });
+      if (oldCvFiles.length > 0) {
+        await supabase.storage.from('cvs').remove(oldCvFiles.map(f => `${uid}/${f.name}`));
+      }
+
       const fileName = `${uid}/${Date.now()}_${file.name}`;
 
       const { data, error } = await supabase.storage
@@ -113,12 +149,13 @@ export default function Profile() {
           original_filename: file.name,
         }).eq('user_id', uid);
 
-        setCvs(prev => [{
+        // Replace CVs list with just the new one
+        setCvs([{
           id: data.path,
           path: data.path,
           original_filename: file.name,
           created_at: new Date().toISOString(),
-        }, ...prev]);
+        }]);
       }
     } catch (err) { console.error('Upload error:', err); }
     finally { setUploading(false); }
@@ -162,14 +199,43 @@ export default function Profile() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      const uid = session.user.id;
+
+      // Remove any existing avatar files first
+      const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
+      const oldAvatars = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('avatar.'));
+      if (oldAvatars.length > 0) {
+        await supabase.storage.from('cvs').remove(oldAvatars.map(f => `${uid}/${f.name}`));
+      }
+
       const ext = file.name.split('.').pop();
-      const path = `${session.user.id}/avatar.${ext}`;
+      const path = `${uid}/avatar.${ext}`;
       const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
       if (!error) {
-        const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path);
-        const avatarUrl = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : '';
-        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('user_id', session.user.id);
+        // Always use a signed URL since the 'cvs' bucket is private
+        const { data: signedData } = await supabase.storage.from('cvs').createSignedUrl(path, 60 * 60 * 24 * 365);
+        const avatarUrl = signedData?.signedUrl || '';
+
+        // Update avatar_url via server proxy to bypass RLS
+        await fetch('/api/student/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            first_name: profile.name?.split(' ')[0] || '',
+            last_name: profile.name?.split(' ').slice(1).join(' ') || '',
+            education: profile.edu || '',
+            location: profile.loc || '',
+            skills: profile.skills || [],
+            avatar_url: avatarUrl,
+          }),
+        });
+
         setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+        setResolvedAvatarUrl(avatarUrl);
+        setAvatarFailed(false);
       }
     } catch (err) { console.error('Avatar upload error:', err); }
   };
@@ -192,8 +258,8 @@ export default function Profile() {
       <div style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
           <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0, overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {(resolvedAvatarUrl || profile.avatar_url) && !avatarFailed ? (
+              <img src={resolvedAvatarUrl || profile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
             ) : (
               profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
             )}
@@ -280,33 +346,40 @@ export default function Profile() {
 
         <div style={{ marginBottom: 24, padding: '0 20px 24px' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
-            {lang === 'en' ? 'Your CVs' : 'Tvoje životopisy'}
+            {lang === 'en' ? 'Your CV' : 'Tvoj životopis'}
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {cvs.map(cv => (
+          {cvs.length > 0 ? (
+            <div 
+              style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                padding: '14px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', 
+                borderRadius: 14 
+              }}
+            >
               <div 
-                key={cv.id} 
-                onClick={() => handleCvPreview(cv.id)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                  padding: '12px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', 
-                  borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s ease'
-                }}
-                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                onClick={() => handleCvPreview(cvs[0].id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1, minWidth: 0 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>📄</span>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{cv.original_filename}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(cv.created_at).toLocaleDateString()}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
-                  {lang === 'en' ? 'Preview' : 'Prezrieť'}
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,92,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>📄</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cvs[0].original_filename}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(cvs[0].created_at).toLocaleDateString()}</div>
                 </div>
               </div>
-            ))}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button 
+                  onClick={() => handleCvPreview(cvs[0].id)}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {lang === 'en' ? 'Preview' : 'Prezrieť'}
+                </button>
+                <label style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: uploading ? 'default' : 'pointer' }}>
+                  <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
+                  {uploading ? '...' : (lang === 'en' ? 'Change' : 'Zmeniť')}
+                </label>
+              </div>
+            </div>
+          ) : (
             <label style={{ 
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, 
               padding: '14px', borderRadius: 12, border: '2px dashed var(--border)', 
@@ -315,7 +388,7 @@ export default function Profile() {
               <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
               {uploading ? '...' : (lang === 'en' ? '+ Upload CV' : '+ Nahrať životopis')}
             </label>
-          </div>
+          )}
         </div>
 
         {/* Settings */}
@@ -416,8 +489,8 @@ export default function Profile() {
             {/* Avatar Upload */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
               <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}>
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {(resolvedAvatarUrl || profile.avatar_url) && !avatarFailed ? (
+                  <img src={resolvedAvatarUrl || profile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
                 ) : (
                   profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
                 )}
