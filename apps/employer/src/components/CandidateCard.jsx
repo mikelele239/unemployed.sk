@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useI18n } from '../contexts';
+import { supabase } from '../supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernDatePicker from './ModernDatePicker';
 

@@ -34,20 +34,20 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Check if profile exists via server API ──────────────────────────────
+  // ── Check if profile exists via direct Supabase query ────────────────────
   useEffect(() => {
     if (!session) return;
 
     const checkProfile = async () => {
       try {
-        const res = await fetch('/api/student/profile', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const { profile } = await res.json();
-          if (profile && (profile.first_name || profile.last_name)) {
-            setProfileStarted(true);
-          }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (profile && (profile.first_name || profile.last_name)) {
+          setProfileStarted(true);
         }
       } catch (err) {
         console.error('[App] Profile check error:', err);

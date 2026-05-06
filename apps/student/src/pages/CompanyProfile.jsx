@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Globe, Briefcase, Users, Zap, MapPin } from 'lucide-react';
+import { ArrowLeft, Globe, Briefcase, Users, Zap, MapPin, Heart } from 'lucide-react';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
+import { supabase } from '../supabase';
 
 export default function CompanyProfile() {
   const { companyName } = useParams();
@@ -24,15 +25,48 @@ export default function CompanyProfile() {
     const fetchCompany = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/company/${encodeURIComponent(companyName)}`);
-        if (!res.ok) {
+        
+        // Find the employer by name (decoded from URL)
+        const decodedName = decodeURIComponent(companyName);
+        const { data: empData, error: empErr } = await supabase
+          .from('employers')
+          .select('*')
+          .ilike('name', decodedName)
+          .maybeSingle();
+
+        if (empErr || !empData) {
           setError(lang === 'en' ? 'Company not found' : 'Spoločnosť sa nenašla');
           return;
         }
-        const data = await res.json();
-        setCompany(data.company);
-        setStats(data.stats);
-        setJobs(data.jobs);
+
+        setCompany({
+          name: empData.name,
+          description: empData.description || '',
+          website: empData.website || '',
+          logo: empData.logo_url || empData.name.charAt(0).toUpperCase(),
+          color: empData.color || '#FF5C00',
+          logo_url: empData.logo_url || '',
+          cover_url: empData.cover_url || '',
+        });
+
+        // Fetch jobs by this employer
+        const { data: jobsData } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('employer_id', empData.id)
+          .order('created_at', { ascending: false });
+
+        const companyJobs = jobsData || [];
+        setJobs(companyJobs);
+
+        // Compute stats
+        const totalViews = companyJobs.reduce((sum, j) => sum + (j.total_views || 0), 0);
+        const totalLikes = companyJobs.reduce((sum, j) => sum + (j.total_likes || 0), 0);
+        setStats({
+          activeJobs: companyJobs.length,
+          totalViews: totalViews,
+          totalLikes: totalLikes,
+        });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -167,10 +201,10 @@ export default function CompanyProfile() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, #3b82f6)' }}>
                 <Users size={14} />
-                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.totalApplications || 0}</span>
+                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.totalViews || 0}</span>
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                {lang === 'en' ? 'Applicants' : 'Prihlášky'}
+                {lang === 'en' ? 'Views' : 'Zobrazenia'}
               </span>
             </div>
             <div style={{ 
@@ -178,12 +212,12 @@ export default function CompanyProfile() {
               padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
               minWidth: 80
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--green, #22c55e)' }}>
-                <Zap size={14} />
-                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.avgMatchScore || 0}%</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444' }}>
+                <Heart size={14} />
+                <span style={{ fontSize: 20, fontWeight: 900, fontFamily: 'var(--font-display)' }}>{stats?.totalLikes || 0}</span>
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                {lang === 'en' ? 'AI Match' : 'AI Zhoda'}
+                {lang === 'en' ? 'Likes' : 'Záujem'}
               </span>
             </div>
           </motion.div>

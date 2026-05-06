@@ -119,7 +119,9 @@ export const AppStateProvider = ({ children }) => {
         .select('*')
         .eq('employer_id', uid)
         .order('created_at', { ascending: false });
-      if (jobsData) setListings(jobsData);
+
+      // We'll merge application counts below after fetching applications
+      let enrichedJobs = (jobsData || []).map(j => ({ ...j, applications: 0 }));
 
       const jobIds = (jobsData || []).map(j => j.id);
 
@@ -137,11 +139,21 @@ export const AppStateProvider = ({ children }) => {
 
         const allApps = apps || [];
         const pipeline = { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 };
+        const appsPerJob = {};
         allApps.forEach(a => {
           const s = a.status || 'Pending';
           if (pipeline[s] !== undefined) pipeline[s]++;
           else pipeline.Pending++;
+          // Count per job
+          appsPerJob[a.job_id] = (appsPerJob[a.job_id] || 0) + 1;
         });
+
+        // Merge application counts into enriched jobs
+        enrichedJobs = enrichedJobs.map(j => ({
+          ...j,
+          applications: appsPerJob[j.id] || 0,
+        }));
+        setListings(enrichedJobs);
 
         // Compute real 7-day trend from application created_at
         const now = new Date();
@@ -166,6 +178,7 @@ export const AppStateProvider = ({ children }) => {
           recent_apps_trend: trend,
         });
       } else {
+        setListings(enrichedJobs);
         setAnalytics({
           total_views: 0,
           total_likes: 0,
