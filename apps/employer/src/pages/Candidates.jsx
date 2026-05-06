@@ -66,6 +66,11 @@ const Candidates = () => {
             student_profile: { ...(app.student_profile || {}), ...profile },
             job_title: job.title || '—',
             job_location: job.location || '',
+            interviewInfo: {
+              offered_dates: app.interview_dates || [],
+              selected_date: app.selected_date || null,
+              declined: app.status === 'Declined',
+            },
           };
         });
 

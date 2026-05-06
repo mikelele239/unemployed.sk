@@ -306,48 +306,59 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {/* Interview Date Picker Overlay */}
+                {/* Interview Date Picker - Fixed Overlay */}
                 <AnimatePresence>
                   {showInterviewPicker && (
                     <motion.div 
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                      style={{ width: '100%', marginBottom: 8 }}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
+                      onClick={() => setShowInterviewPicker(false)}
                     >
-                      <ModernDatePicker 
-                        onSelect={async (dates) => {
-                          const { error } = await supabase.from('applications').update({ 
-                            status: 'Interview', 
-                            interview_dates: dates 
-                          }).eq('id', selectedApplicant.id);
-                          console.log('[Popup] Interview with dates:', error || 'OK', dates);
-                          if (!error) {
-                            setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
-                            setSelectedApplicant({ ...selectedApplicant, status: 'Interview' });
-                            setShowInterviewPicker(false);
-                          } else {
-                            alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
-                          }
-                        }}
-                        onCancel={() => setShowInterviewPicker(false)}
-                      />
+                      <div onClick={e => e.stopPropagation()}>
+                        <ModernDatePicker 
+                          onSelect={async (dates) => {
+                            const { error } = await supabase.from('applications').update({ 
+                              status: 'Interview', 
+                              interview_dates: dates 
+                            }).eq('id', selectedApplicant.id);
+                            console.log('[Popup] Interview with dates:', error || 'OK', dates);
+                            if (!error) {
+                              setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview', interview_dates: dates } : a));
+                              setSelectedApplicant({ ...selectedApplicant, status: 'Interview', interview_dates: dates });
+                            } else {
+                              alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
+                            }
+                          }}
+                          onCancel={() => setShowInterviewPicker(false)}
+                        />
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {!showInterviewPicker && (selectedApplicant.status || '').toLowerCase() !== 'interview' && (
+                {!showInterviewPicker && !['hired', 'rejected'].includes((selectedApplicant.status || '').toLowerCase()) && (
                   <motion.button 
                     whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(99,102,241,0.25)' }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => setShowInterviewPicker(true)}
                     style={{ 
                       flex: 1, padding: '14px 18px', borderRadius: 12, border: 'none', 
-                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', 
+                      background: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
+                        ? 'var(--bg)' : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
+                        ? 'var(--text)' : '#fff',
                       fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 4px 14px rgba(99,102,241,0.25)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                      border: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
+                        ? '1px solid var(--border)' : 'none',
+                      boxShadow: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
+                        ? 'none' : '0 4px 14px rgba(99,102,241,0.25)',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {lang === 'sk' ? 'Pohovor' : 'Interview'}
+                    {['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
+                      ? (lang === 'sk' ? 'Zmeniť termíny' : 'Reschedule')
+                      : (lang === 'sk' ? 'Pohovor' : 'Interview')}
                   </motion.button>
                 )}
                 {(selectedApplicant.status || '').toLowerCase() !== 'hired' && (

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, SlidersHorizontal, X } from 'lucide-react';
+import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import JobDetail from '../components/JobDetail';
@@ -36,6 +36,25 @@ export default function Search() {
     const match = String(rateStr).match(/[\d.]+/);
     return match ? parseFloat(match[0]) : 0;
   };
+
+  // Extract unique companies from jobs
+  const companies = useMemo(() => {
+    const map = {};
+    jobs.forEach(job => {
+      if (!job.company) return;
+      if (!map[job.company]) {
+        map[job.company] = { name: job.company, logo: job.logo || job.company.charAt(0), color: job.color || '#FF5C00', jobCount: 0, location: job.location };
+      }
+      map[job.company].jobCount++;
+    });
+    return Object.values(map);
+  }, [jobs]);
+
+  // Filter companies by query
+  const filteredCompanies = useMemo(() => {
+    if (!filterQuery || filterQuery.length < 2) return [];
+    return companies.filter(c => c.name.toLowerCase().includes(filterQuery.toLowerCase()));
+  }, [companies, filterQuery]);
 
   const filteredJobs = jobs.filter(job => {
     if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'Brigáda') return false;
@@ -75,10 +94,10 @@ export default function Search() {
             <SearchIcon size={18} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text" 
-              placeholder={t('search.placeholder') || "Názov pozície alebo firma..."}
+              placeholder={lang === 'sk' ? 'Pozícia, firma alebo lokalita...' : 'Job title, company or location...'}
               value={filterQuery}
               onChange={e => setFilterQuery(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, outline: 'none' }}
+              style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }}
             />
           </div>
           <button 
@@ -151,48 +170,105 @@ export default function Search() {
              <div className="typing-cursor" style={{ width: 24, height: 24, margin: '0 auto 12px' }}></div>
              {t('search.loading') || 'Načítavam ponuky...'}
           </div>
-        ) : filteredJobs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 40 }}>{t('search.empty') || 'Žiadne výsledky nenašli pre tieto filtre.'}</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filteredJobs.map(job => (
-              <div 
-                key={job.id} 
-                onClick={() => setSelectedJob(job)}
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '16px', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: job.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
-                    {job.logo}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>{job.title}</h3>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-                      <span 
-                        onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
-                        style={{ cursor: 'pointer', fontWeight: 600, transition: 'color 0.2s' }}
-                        onMouseEnter={e => e.target.style.color = 'var(--accent)'}
-                        onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
-                      >{job.company}</span> · {job.location}
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-                      {job.tags.slice(0, 2).map((tag, i) => (
-                         <span key={tag} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: i === 0 ? 'var(--accent-lighter)' : 'transparent', color: i === 0 ? 'var(--accent)' : 'var(--text-muted)', border: `1px solid ${i === 0 ? 'var(--accent-light)' : 'var(--border)'}` }}>{tag}</span>
-                      ))}
-                    </div>
-                  </div>
+          <>
+            {/* ── COMPANY RESULTS ── */}
+            {filteredCompanies.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Building2 size={16} color="var(--accent)" />
+                  <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent)', fontFamily: 'var(--font-body)' }}>
+                    {lang === 'sk' ? 'Firmy' : 'Companies'} ({filteredCompanies.length})
+                  </span>
                 </div>
-                
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>{job.rate} <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{job.rateUnit}</span></div>
-                  <button style={{ background: 'var(--text)', color: 'var(--bg)', border: 'none', padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('search.view') || 'Zobraziť'}</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredCompanies.map(comp => (
+                    <motion.div
+                      key={comp.name}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigate(`/company/${encodeURIComponent(comp.name)}`)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
+                        cursor: 'pointer', transition: 'border-color 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                    >
+                      <div style={{
+                        width: 42, height: 42, borderRadius: 12, background: comp.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0
+                      }}>{typeof comp.logo === 'string' && comp.logo.length <= 2 ? comp.logo : comp.name.charAt(0)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{comp.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+                          {comp.jobCount} {lang === 'sk' ? (comp.jobCount === 1 ? 'pozícia' : comp.jobCount < 5 ? 'pozície' : 'pozícií') : (comp.jobCount === 1 ? 'open position' : 'open positions')}
+                          {comp.location ? ` · ${comp.location}` : ''}
+                        </div>
+                      </div>
+                      <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    </motion.div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* ── JOB RESULTS ── */}
+            {filteredCompanies.length > 0 && filteredJobs.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+                  {lang === 'sk' ? 'Pozície' : 'Jobs'} ({filteredJobs.length})
+                </span>
+              </div>
+            )}
+
+            {filteredJobs.length === 0 && filteredCompanies.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 40 }}>{t('search.empty') || 'Žiadne výsledky nenašli pre tieto filtre.'}</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {filteredJobs.map(job => (
+                  <div 
+                    key={job.id} 
+                    onClick={() => setSelectedJob(job)}
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '16px', cursor: 'pointer' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: job.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                        {job.logo}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>{job.title}</h3>
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                          <span 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
+                            style={{ cursor: 'pointer', fontWeight: 600, transition: 'color 0.2s' }}
+                            onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                            onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+                          >{job.company}</span> · {job.location}
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                          {(job.tags || []).slice(0, 2).map((tag, i) => (
+                             <span key={tag} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: i === 0 ? 'var(--accent-lighter)' : 'transparent', color: i === 0 ? 'var(--accent)' : 'var(--text-muted)', border: `1px solid ${i === 0 ? 'var(--accent-light)' : 'var(--border)'}` }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>{job.rate} <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{job.rateUnit}</span></div>
+                      <button style={{ background: 'var(--text)', color: 'var(--bg)', border: 'none', padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('search.view') || 'Zobraziť'}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

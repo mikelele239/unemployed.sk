@@ -40,8 +40,10 @@ const CandidateCard = ({ candidate, onInvite }) => {
   const getStatusDisplay = () => {
     switch(status) {
       case 'hired': return { label: 'ZMLUVNE PRIJATÝ', color: '#22c55e', bg: 'var(--green-light)' };
-      case 'rejected': return { label: 'NEPRIJATÝ', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
-      case 'interview': return { label: 'POHOVOR V PROCESE', color: 'var(--accent)', bg: 'var(--accent-light)' };
+      case 'rejected': case 'declined': return { label: status === 'declined' ? 'ODMIETNUTÝ KANDIDÁTOM' : 'NEPRIJATÝ', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
+      case 'interview': return { label: 'POHOVOR V PROCESE', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' };
+      case 'interview-confirmed': return { label: 'POHOVOR POTVRDENÝ', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' };
+      case 'counter-offer': return { label: 'PROTINÁVRH TERMÍNU', color: 'var(--accent)', bg: 'var(--accent-light)' };
       default: return null;
     }
   };
@@ -226,30 +228,62 @@ const CandidateCard = ({ candidate, onInvite }) => {
                       </div>
 
                       {/* Interview Scheduling Status */}
-                      <div style={{ background: 'rgba(0,0,0,0.05)', padding: '16px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>Plánovanie pohovoru</div>
+                      <div style={{ background: 'rgba(0,0,0,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plánovanie pohovoru</div>
+                        
                         {candidate.interviewInfo?.declined ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444' }}>
                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
                             <div style={{ fontSize: '13px', fontWeight: '700' }}>Kandidát odmietol pozvanie.</div>
                           </div>
-                        ) : candidate.interviewInfo?.selected_date ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--green)' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)' }} />
-                            <div style={{ fontSize: '13px', fontWeight: '700' }}>
-                              Potvrdený termín: {new Date(candidate.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                        ) : status === 'counter-offer' && candidate.interviewInfo?.selected_date ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent)', marginBottom: 12 }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }} />
+                              <div style={{ fontSize: '13px', fontWeight: '700' }}>
+                                Kandidát navrhuje: {new Date(candidate.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <motion.button whileTap={{ scale: 0.95 }}
+                                onClick={() => onInvite(candidate.id, 'Interview-Confirmed', candidate.interview_dates)}
+                                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                              >✓ Súhlasím</motion.button>
+                              <motion.button whileTap={{ scale: 0.95 }}
+                                onClick={() => setShowPicker(true)}
+                                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                              >📅 Nové termíny</motion.button>
                             </div>
                           </div>
+                        ) : candidate.interviewInfo?.selected_date && status === 'interview-confirmed' ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#22c55e', marginBottom: 10 }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
+                              <div style={{ fontSize: '13px', fontWeight: '700' }}>
+                                Potvrdený: {new Date(candidate.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </div>
+                            </div>
+                            <motion.button whileTap={{ scale: 0.95 }}
+                              onClick={() => setShowPicker(true)}
+                              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                            >Zmeniť termín</motion.button>
+                          </div>
                         ) : (
-                          <div style={{ fontSize: '12px', color: 'var(--text)', opacity: 0.8 }}>
-                            Kandidát si vyberá z vašich termínov:
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: 'var(--text)', opacity: 0.8, marginBottom: 8 }}>
+                              ⏳ Kandidát si vyberá z vašich termínov:
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: 10 }}>
                               {(candidate.interviewInfo?.offered_dates || []).map(d => (
-                                <span key={d} style={{ fontSize: '10px', background: 'var(--bg)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                                <span key={d} style={{ fontSize: '11px', background: 'var(--bg)', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
                                   {new Date(d).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' })}
                                 </span>
                               ))}
                             </div>
+                            <motion.button whileTap={{ scale: 0.95 }}
+                              onClick={() => setShowPicker(true)}
+                              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                            >Zmeniť termíny</motion.button>
                           </div>
                         )}
                       </div>
