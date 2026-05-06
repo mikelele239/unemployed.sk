@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApplications } from '../hooks/useApplications';
 import JobDetail from '../components/JobDetail';
+import ModernDatePicker from '../components/ModernDatePicker';
 import { useTranslation } from '../I18nContext';
 import { supabase } from '../supabase';
 
@@ -13,6 +14,7 @@ export default function Applications() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState(null);
   const [successId, setSuccessId] = useState(null);
+  const [counterPickerId, setCounterPickerId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
 
   const getStatusColor = (status) => {
@@ -265,56 +267,60 @@ export default function Applications() {
                           {/* Counter-offer */}
                           {(app.interviewInfo?.offered_dates || []).length > 0 && (
                             <div style={{ marginTop: 4 }}>
-                              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
-                                Alebo navrhni iný termín:
-                              </div>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                <input 
-                                  type="datetime-local"
-                                  id={`counter-${app.id}`}
-                                  style={{
-                                    flex: 1, padding: '10px 12px', borderRadius: 10, 
-                                    border: '1px solid var(--border)', background: 'var(--bg)',
-                                    color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)',
-                                    fontWeight: 600
-                                  }}
-                                  onClick={e => e.stopPropagation()}
-                                />
-                                <motion.button
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    const input = document.getElementById(`counter-${app.id}`);
-                                    if (!input?.value) return;
-                                    const counterDate = new Date(input.value).toISOString();
-                                    try {
-                                      const { data: { session } } = await supabase.auth.getSession();
-                                      if (!session) return;
-                                      const { error } = await supabase
-                                        .from('applications')
-                                        .update({ 
-                                          status: 'Counter-Offer',
-                                          selected_date: counterDate
-                                        })
-                                        .eq('id', app.appId || app.id);
-                                      if (!error) {
-                                        setSuccessId(app.id);
-                                        setTimeout(() => { setSuccessId(null); fetchApplications(); }, 2000);
-                                      }
-                                    } catch (err) { console.error(err); }
-                                  }}
-                                  style={{
-                                    padding: '10px 16px', borderRadius: 10, border: 'none',
-                                    background: 'var(--accent)', color: '#fff', fontSize: 12,
-                                    fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                >
-                                  Navrhnúť
-                                </motion.button>
-                              </div>
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={(e) => { e.stopPropagation(); setCounterPickerId(app.id); }}
+                                style={{
+                                  width: '100%', padding: '12px 16px', borderRadius: 12,
+                                  border: '1.5px dashed var(--accent)', background: 'rgba(255,92,0,0.04)',
+                                  color: 'var(--accent)', fontSize: 12, fontWeight: 700,
+                                  cursor: 'pointer', fontFamily: 'var(--font-body)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                                }}
+                              >
+                                📅 {lang === 'sk' ? 'Navrhnúť iný termín' : 'Propose different date'}
+                              </motion.button>
                             </div>
                           )}
+
+                          {/* Counter-offer calendar overlay */}
+                          <AnimatePresence>
+                            {counterPickerId === app.id && (
+                              <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                style={{
+                                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+                                  backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', zIndex: 10001, padding: 20
+                                }}
+                                onClick={() => setCounterPickerId(null)}
+                              >
+                                <div onClick={e => e.stopPropagation()}>
+                                  <ModernDatePicker
+                                    singleDate
+                                    title={lang === 'sk' ? 'Navrhnúť termín' : 'Propose Date'}
+                                    onSelect={async (dates) => {
+                                      const counterDate = dates[0];
+                                      try {
+                                        const { data: { session } } = await supabase.auth.getSession();
+                                        if (!session) return;
+                                        const { error } = await supabase
+                                          .from('applications')
+                                          .update({ status: 'Counter-Offer', selected_date: counterDate })
+                                          .eq('id', app.appId || app.id);
+                                        if (!error) {
+                                          setCounterPickerId(null);
+                                          setSuccessId(app.id);
+                                          setTimeout(() => { setSuccessId(null); fetchApplications(); }, 2000);
+                                        }
+                                      } catch (err) { console.error(err); }
+                                    }}
+                                    onCancel={() => setCounterPickerId(null)}
+                                  />
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     )}

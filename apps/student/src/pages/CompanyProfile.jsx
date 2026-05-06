@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Globe, Briefcase, Users, Zap, MapPin, Heart } from 'lucide-react';
+import { ArrowLeft, Globe, Briefcase, Zap, MapPin } from 'lucide-react';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
@@ -47,6 +47,7 @@ export default function CompanyProfile() {
           color: empData.color || '#FF5C00',
           logo_url: empData.logo_url || '',
           cover_url: empData.cover_url || '',
+          location: empData.location || '',
         });
 
         // Fetch jobs by this employer
@@ -60,12 +61,8 @@ export default function CompanyProfile() {
         setJobs(companyJobs);
 
         // Compute stats
-        const totalViews = companyJobs.reduce((sum, j) => sum + (j.total_views || 0), 0);
-        const totalLikes = companyJobs.reduce((sum, j) => sum + (j.total_likes || 0), 0);
         setStats({
           activeJobs: companyJobs.length,
-          totalViews: totalViews,
-          totalLikes: totalLikes,
         });
       } catch (err) {
         setError(err.message);
@@ -194,32 +191,20 @@ export default function CompanyProfile() {
                 {lang === 'en' ? 'Jobs' : 'Ponuky'}
               </span>
             </div>
-            <div style={{ 
-              background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, 
-              padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              minWidth: 80
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, #3b82f6)' }}>
-                <Users size={14} />
-                <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{stats?.totalViews || 0}</span>
+            {company.location && (
+              <div style={{ 
+                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, 
+                padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                minWidth: 80
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, #3b82f6)' }}>
+                  <MapPin size={14} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.3px' }}>
+                  {company.location}
+                </span>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                {lang === 'en' ? 'Views' : 'Zobrazenia'}
-              </span>
-            </div>
-            <div style={{ 
-              background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, 
-              padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              minWidth: 80
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444' }}>
-                <Heart size={14} />
-                <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-body)' }}>{stats?.totalLikes || 0}</span>
-              </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                {lang === 'en' ? 'Likes' : 'Záujem'}
-              </span>
-            </div>
+            )}
           </motion.div>
         </motion.div>
 

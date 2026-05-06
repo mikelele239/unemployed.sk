@@ -43,10 +43,13 @@ const Dashboard = () => {
 
   // Interviews in progress = Interview + Interview-Confirmed + Counter-Offer
   const interviewsActive = (pipeline.Interview || 0) + (pipeline['Interview-Confirmed'] || 0) + (pipeline['Counter-Offer'] || 0);
+  const confirmed = pipeline['Interview-Confirmed'] || 0;
+  const countered = pipeline['Counter-Offer'] || 0;
+  const skPlural = (n, one, few, many) => n === 1 ? one : (n >= 2 && n <= 4) ? few : many;
   const interviewsSubtext = interviewsActive > 0
     ? (lang === 'sk' 
-        ? `${pipeline['Interview-Confirmed'] || 0} potvrdených · ${pipeline['Counter-Offer'] || 0} protinávrhov`
-        : `${pipeline['Interview-Confirmed'] || 0} confirmed · ${pipeline['Counter-Offer'] || 0} counter-offers`)
+        ? `${confirmed} ${skPlural(confirmed, 'potvrdený', 'potvrdené', 'potvrdených')} · ${countered} ${skPlural(countered, 'protinávrh', 'protinávrhy', 'protinávrhov')}`
+        : `${confirmed} confirmed · ${countered} counter-offer${countered === 1 ? '' : 's'}`)
     : (lang === 'sk' ? 'Žiadne aktívne pohovory' : 'No active interviews');
 
   // Conversion rate = Hired / total apps
