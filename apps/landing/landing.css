@@ -223,7 +223,7 @@
 
     /* ── HERO ── */
     .hero {
-      min-height: 100vh;
+      min-height: 100svh;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -821,13 +821,16 @@
       justify-content: center;
       padding: 24px;
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s ease, visibility 0s 0.3s;
     }
 
     .privacy-modal-overlay.open {
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
+      transition: opacity 0.3s ease, visibility 0s 0s;
     }
 
     .privacy-modal {
@@ -960,6 +963,7 @@
       gap: 14px;
       z-index: 10;
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
       overflow: hidden;
       box-shadow: inset 0 0 0 1px rgba(255,92,0,0.12), 0 20px 60px rgba(0,0,0,0.06);
@@ -972,11 +976,15 @@
 
     .form-submitted-overlay.show {
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
     }
 
     .form-submitted-overlay.animate {
-      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.6s;
+    }
+    .form-submitted-overlay.show.animate {
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0s;
     }
 
     .form-submitted-icon {
@@ -1026,7 +1034,8 @@
       max-width: 520px;
       width: calc(100% - 32px);
       opacity: 0;
-      transition: transform 0.4s ease, opacity 0.4s ease;
+      visibility: hidden;
+      transition: transform 0.4s ease, opacity 0.4s ease, visibility 0s 0.4s;
       pointer-events: none;
       box-shadow: 0 8px 40px rgba(0,0,0,0.1);
     }
@@ -1039,7 +1048,9 @@
     .consent-banner.show {
       transform: translateX(-50%) translateY(0);
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
+      transition: transform 0.4s ease, opacity 0.4s ease, visibility 0s 0s;
     }
 
     .consent-banner-icon {
@@ -1134,7 +1145,8 @@
       align-items: center;
       gap: 12px;
       opacity: 0;
-      transition: transform 0.4s ease, opacity 0.4s ease;
+      visibility: hidden;
+      transition: transform 0.4s ease, opacity 0.4s ease, visibility 0s 0.4s;
       pointer-events: none;
     }
 
@@ -1146,7 +1158,9 @@
     .toast.show {
       transform: translateX(-50%) translateY(0);
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
+      transition: transform 0.4s ease, opacity 0.4s ease, visibility 0s 0s;
     }
 
     .toast-icon {
@@ -1226,9 +1240,10 @@
       max-height: 0;
       overflow: hidden;
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
       touch-action: none; /* Don't intercept touch when closed */
-      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s ease, opacity 0.3s ease;
+      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s ease, opacity 0.3s ease, visibility 0s 0.5s;
     }
 
     body.light-mode .mobile-dropdown {
@@ -1244,6 +1259,8 @@
       pointer-events: auto;
       touch-action: pan-y;
       opacity: 1;
+      visibility: visible;
+      transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s ease, opacity 0.3s ease, visibility 0s 0s;
     }
 
     .mobile-dropdown .mobile-link {
@@ -1419,10 +1436,11 @@
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.4s ease, visibility 0s 0.4s;
     }
-    .demo-overlay.open { opacity: 1; pointer-events: all; }
+    .demo-overlay.open { opacity: 1; visibility: visible; pointer-events: all; transition: opacity 0.4s ease, visibility 0s 0s; }
 
     .demo-phone-wrap {
       position: relative;
