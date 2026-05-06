@@ -3,6 +3,7 @@ import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModernDatePicker from '../components/ModernDatePicker';
 
 const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus, liveViewerCount }) => {
   const [isConfirming, setIsConfirming] = useState(false);
@@ -10,6 +11,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   const [applicants, setApplicants] = useState(null);
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [showInterviewPicker, setShowInterviewPicker] = useState(false);
   const title = l.title || '—';
   const status = l.status || 'Active';
   const workModel = l.work_model || l.workModel || 'On-site';
@@ -108,9 +110,12 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
       </div>
 
       {/* ── Applicants Dropdown ── */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+          <motion.div key="applicants-dropdown"
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1, transition: { duration: 0.3 } }} 
+            exit={{ height: 0, opacity: 0, transition: { duration: 0.2 } }}
             style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)', overflow: 'hidden' }}
           >
             <div style={{ padding: '16px 24px' }}>
@@ -176,7 +181,9 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                     </div>
                   </div>
                 </div>
-                <button onClick={() => setSelectedApplicant(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+                <button onClick={() => setSelectedApplicant(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
 
               {/* Status Badge */}
@@ -243,23 +250,56 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(selectedApplicant.status || '').toLowerCase() !== 'interview' && (
-                  <button onClick={async () => {
-                    const { error } = await supabase.from('applications').update({ status: 'Interview' }).eq('id', selectedApplicant.id);
-                    console.log('[Popup] Interview update:', error || 'OK');
-                    if (!error) {
-                      setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
-                      setSelectedApplicant({ ...selectedApplicant, status: 'Interview' });
-                    } else {
-                      alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
-                    }
-                  }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    📅 {lang === 'sk' ? 'Pohovor' : 'Interview'}
-                  </button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {/* Interview Date Picker Overlay */}
+                <AnimatePresence>
+                  {showInterviewPicker && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                      style={{ width: '100%', marginBottom: 8 }}
+                    >
+                      <ModernDatePicker 
+                        onSelect={async (dates) => {
+                          const { error } = await supabase.from('applications').update({ 
+                            status: 'Interview', 
+                            interview_dates: dates 
+                          }).eq('id', selectedApplicant.id);
+                          console.log('[Popup] Interview with dates:', error || 'OK', dates);
+                          if (!error) {
+                            setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
+                            setSelectedApplicant({ ...selectedApplicant, status: 'Interview' });
+                            setShowInterviewPicker(false);
+                          } else {
+                            alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
+                          }
+                        }}
+                        onCancel={() => setShowInterviewPicker(false)}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {!showInterviewPicker && (selectedApplicant.status || '').toLowerCase() !== 'interview' && (
+                  <motion.button 
+                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(99,102,241,0.25)' }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => setShowInterviewPicker(true)}
+                    style={{ 
+                      flex: 1, padding: '14px 18px', borderRadius: 12, border: 'none', 
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', 
+                      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 4px 14px rgba(99,102,241,0.25)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {lang === 'sk' ? 'Pohovor' : 'Interview'}
+                  </motion.button>
                 )}
                 {(selectedApplicant.status || '').toLowerCase() !== 'hired' && (
-                  <button onClick={async () => {
+                  <motion.button 
+                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34,197,94,0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', borderColor: 'transparent' }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={async () => {
                     const { error } = await supabase.from('applications').update({ status: 'Hired' }).eq('id', selectedApplicant.id);
                     console.log('[Popup] Hire update:', error || 'OK');
                     if (!error) {
@@ -268,11 +308,21 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                     } else {
                       alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                     }
-                  }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#22c55e', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                    ✓ {lang === 'sk' ? 'Prijať' : 'Hire'}
-                  </button>
+                  }} style={{ 
+                    flex: 1, padding: '14px 18px', borderRadius: 12, border: '1.5px solid #22c55e', 
+                    background: 'rgba(34,197,94,0.06)', color: '#22c55e', 
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    {lang === 'sk' ? 'Prijať' : 'Hire'}
+                  </motion.button>
                 )}
-                <button onClick={async () => {
+                <motion.button 
+                  whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444', color: '#ef4444' }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={async () => {
                   const { error } = await supabase.from('applications').update({ status: 'Rejected' }).eq('id', selectedApplicant.id);
                   console.log('[Popup] Reject update:', error || 'OK');
                   if (!error) {
@@ -281,9 +331,16 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                   } else {
                     alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                   }
-                }} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  ✕ {lang === 'sk' ? 'Odmietnuť' : 'Reject'}
-                </button>
+                }} style={{ 
+                  padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--border)', 
+                  background: 'var(--bg-card)', color: 'var(--text-muted)', 
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  {lang === 'sk' ? 'Odmietnuť' : 'Reject'}
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>

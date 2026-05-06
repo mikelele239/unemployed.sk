@@ -98,6 +98,11 @@ export function useApplications() {
         rateUnit: app.jobs?.rate_unit || '',
         startDate: app.jobs?.start_date || '',
         workModel: app.jobs?.work_model || '',
+        interviewInfo: {
+          offered_dates: app.interview_dates || [],
+          selected_date: app.selected_date || null,
+          declined: app.status === 'Declined',
+        },
       }));
 
       setApplications(enriched);

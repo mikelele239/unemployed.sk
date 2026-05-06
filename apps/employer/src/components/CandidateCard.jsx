@@ -303,81 +303,95 @@ const CandidateCard = ({ candidate, onInvite }) => {
                         {localSuccess ? (
                           <motion.div 
                             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                            style={{ width: '100%', textAlign: 'center', padding: '20px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}
+                            style={{ width: '100%', textAlign: 'center', padding: '24px', background: 'var(--bg-card)', borderRadius: '14px', border: '1px solid var(--border)' }}
                           >
-                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>{localSuccess === 'Hired' ? '🤝' : '✅'}</div>
-                            <div style={{ fontSize: '15px', fontWeight: '800', color: localSuccess === 'Hired' ? 'var(--green)' : 'var(--text-muted)' }}>
+                            <div style={{ fontSize: '36px', marginBottom: '10px' }}>{localSuccess === 'Hired' ? '🤝' : '✅'}</div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', color: localSuccess === 'Hired' ? '#22c55e' : 'var(--text-muted)' }}>
                               {localSuccess === 'Hired' ? 'Kandidát prijatý!' : 'Kandidát odmietnutý'}
                             </div>
                           </motion.div>
                         ) : confirmReject ? (
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            style={{ width: '100%', padding: '16px', background: 'rgba(239,68,68,0.05)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}
+                            style={{ width: '100%', padding: '20px', background: 'rgba(239,68,68,0.04)', borderRadius: '14px', border: '1px solid rgba(239,68,68,0.15)' }}
                           >
-                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#ef4444', marginBottom: '12px', textAlign: 'center' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: '#ef4444', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
                               Naozaj chcete odmietnuť tohto kandidáta?
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                              <button onClick={() => setConfirmReject(false)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', background: '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>ZRUŠIŤ</button>
-                              <button 
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                                onClick={() => setConfirmReject(false)} 
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
+                              >Zrušiť</motion.button>
+                              <motion.button 
+                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(239,68,68,0.3)' }} whileTap={{ scale: 0.97 }}
                                 onClick={() => {
                                   onInvite(candidate.id, 'Rejected');
                                   setLocalSuccess('Rejected');
                                 }}
-                                style={{ flex: 1, padding: '10px', borderRadius: '4px', border: 'none', background: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(239,68,68,0.25)', transition: 'all 0.2s' }}
                               >
-                                ODMIETNUŤ
-                              </button>
+                                Odmietnuť
+                              </motion.button>
                             </div>
                           </motion.div>
                         ) : confirmHire ? (
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            style={{ width: '100%', padding: '16px', background: 'rgba(34,197,94,0.05)', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}
+                            style={{ width: '100%', padding: '20px', background: 'rgba(34,197,94,0.04)', borderRadius: '14px', border: '1px solid rgba(34,197,94,0.15)' }}
                           >
-                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#22c55e', marginBottom: '12px', textAlign: 'center' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: '#22c55e', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
                               Chcete oficiálne prijať tohto kandidáta?
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                              <button onClick={() => setConfirmHire(false)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', background: '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>ZRUŠIŤ</button>
-                              <button 
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                                onClick={() => setConfirmHire(false)} 
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
+                              >Zrušiť</motion.button>
+                              <motion.button 
+                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(34,197,94,0.3)' }} whileTap={{ scale: 0.97 }}
                                 onClick={() => {
                                   onInvite(candidate.id, 'Hired');
                                   setLocalSuccess('Hired');
                                 }}
-                                style={{ flex: 1, padding: '10px', borderRadius: '4px', border: 'none', background: '#22c55e', color: '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(34,197,94,0.25)', transition: 'all 0.2s' }}
                               >
-                                POTVRDIŤ PRIJATIE
-                              </button>
+                                Potvrdiť prijatie
+                              </motion.button>
                             </div>
                           </motion.div>
                         ) : (
                           <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
                             <motion.button 
-                              whileHover={{ scale: 1.02, boxShadow: '0 4px 15px rgba(34, 197, 94, 0.2)' }}
-                              whileTap={{ scale: 0.95 }}
+                              whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34, 197, 94, 0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', borderColor: 'transparent' }}
+                              whileTap={{ scale: 0.96 }}
                               onClick={() => setConfirmHire(true)}
                               style={{
-                                flex: 1, padding: '14px', borderRadius: '8px', border: '1.5px solid #22c55e', background: '#fff',
-                                color: '#22c55e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                                flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid #22c55e', 
+                                background: 'rgba(34,197,94,0.06)', color: '#22c55e', cursor: 'pointer', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                               }}
                             >
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-                              <span style={{ fontSize: '12px', fontWeight: '900' }}>PRIJAŤ</span>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                              <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Prijať</span>
                             </motion.button>
 
                             <motion.button 
-                              whileHover={{ scale: 1.02, boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)' }}
-                              whileTap={{ scale: 0.95 }}
+                              whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239, 68, 68, 0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444' }}
+                              whileTap={{ scale: 0.96 }}
                               onClick={() => setConfirmReject(true)}
                               style={{
-                                flex: 2, padding: '14px', borderRadius: '8px', border: '1.5px solid var(--border)', background: '#fff',
-                                color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                                flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid var(--border)', 
+                                background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                               }}
                             >
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                              <span style={{ fontSize: '12px', fontWeight: '900' }}>ODMIETNUŤ</span>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Odmietnuť</span>
                             </motion.button>
                           </div>
                         )}
