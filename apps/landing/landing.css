@@ -1,4 +1,4 @@
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; touch-action: pan-y; }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     /* Interactive elements: manipulation removes 300ms tap delay on iOS */
     a, button, input, select, textarea, label, [role="button"] { touch-action: manipulation; }
@@ -25,7 +25,7 @@
       --border: #E0E0E0;
     }
 
-    html { scroll-behavior: smooth; overflow-x: clip; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+    html { scroll-behavior: smooth; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
 
     /* ── CUSTOM CURSOR GLOW ── */
     .cursor-glow {
@@ -67,9 +67,8 @@
       font-size: 16px;
       line-height: 1.6;
       transition: background 0.3s, color 0.3s;
-      overflow-x: clip;
+      overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
       -webkit-tap-highlight-color: transparent;
     }
 
