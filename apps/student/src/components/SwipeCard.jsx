@@ -144,9 +144,9 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
           <div>
             <div 
               onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
-              style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)', cursor: 'pointer', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'var(--accent)'}
-              onMouseLeave={e => e.target.style.color = 'var(--text)'}
+              style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'underline', textDecorationColor: 'transparent', textUnderlineOffset: '3px' }}
+              onMouseEnter={e => { e.target.style.textDecorationColor = 'var(--accent)'; e.target.style.opacity = '0.8'; }}
+              onMouseLeave={e => { e.target.style.textDecorationColor = 'transparent'; e.target.style.opacity = '1'; }}
             >{job.company}</div>
             <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{t('card.verified')}</div>
           </div>

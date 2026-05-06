@@ -7,12 +7,13 @@ import { useTranslation } from '../I18nContext';
 import { supabase } from '../supabase';
 
 export default function Applications() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const navigate = useNavigate();
   const { applications, fetchApplications } = useApplications();
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState(null);
   const [successId, setSuccessId] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -24,23 +25,54 @@ export default function Applications() {
     }
   };
 
+  const filters = [
+    { key: 'all', label: lang === 'sk' ? 'Všetky' : 'All' },
+    { key: 'Pending', label: lang === 'sk' ? 'Čaká sa' : 'Pending', color: 'var(--text-muted)' },
+    { key: 'Interview', label: lang === 'sk' ? 'Pohovor' : 'Interview', color: 'var(--accent)' },
+    { key: 'Hired', label: lang === 'sk' ? 'Prijaté' : 'Hired', color: 'var(--green)' },
+  ];
+
+  const filteredApps = activeFilter === 'all' 
+    ? applications 
+    : applications.filter(a => (a.status || 'Pending') === activeFilter);
+
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '16px 20px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800 }}>{t('apps.title') || 'Prihlášky'}</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('apps.subtitle') || 'Sleduj stav svojich žiadostí.'}</p>
+        {/* Filter chips */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, overflowX: 'auto', paddingBottom: 4 }}>
+          {filters.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFilter(f.key)}
+              style={{
+                padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                border: activeFilter === f.key ? '2px solid var(--accent)' : '1px solid var(--border)',
+                background: activeFilter === f.key ? 'var(--accent)' : 'var(--bg-card)',
+                color: activeFilter === f.key ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              {f.color && <span style={{ width: 6, height: 6, borderRadius: '50%', background: activeFilter === f.key ? '#fff' : f.color }} />}
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ padding: '20px', flex: 1 }}>
-        {applications.length === 0 ? (
+        {filteredApps.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 60 }}>
             <span style={{ fontSize: 40, marginBottom: 12, display: 'block' }}>📄</span>
-            <p>{t('apps.empty') || 'Zatiaľ si sa nikam neprihlásil/a.'}</p>
+            <p>{activeFilter !== 'all' ? (lang === 'sk' ? 'Žiadne prihlášky v tejto kategórii.' : 'No applications in this category.') : (t('apps.empty') || 'Zatiaľ si sa nikam neprihlásil/a.')}</p>
             <p style={{ fontSize: 12, marginTop: 4 }}>{t('apps.emptyDesc') || 'Potiahni doprava na karte práce, o ktorú máš záujem.'}</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {applications.map(app => (
+            {filteredApps.map(app => (
               <React.Fragment key={app.id}>
                 <motion.div 
                   whileHover={{ scale: 1.01, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
@@ -128,14 +160,10 @@ export default function Applications() {
                               try {
                                 const { data: { session } } = await supabase.auth.getSession();
                                 if (!session) return;
-                                await fetch(`/api/applications/${app.appId || app.id}`, {
-                                  method: 'PATCH',
-                                  headers: { 
-                                    'Content-Type': 'application/json', 
-                                    'Authorization': `Bearer ${session.access_token}` 
-                                  },
-                                  body: JSON.stringify({ status: 'Declined' })
-                                });
+                                await supabase
+                                  .from('applications')
+                                  .update({ status: 'Declined' })
+                                  .eq('id', app.appId || app.id);
                               } catch (err) {
                                 console.error('Decline error:', err);
                               }
@@ -202,15 +230,11 @@ export default function Applications() {
                                   try {
                                     const { data: { session } } = await supabase.auth.getSession();
                                     if (!session) return;
-                                    const res = await fetch(`/api/applications/${app.appId || app.id}`, {
-                                      method: 'PATCH',
-                                      headers: { 
-                                        'Content-Type': 'application/json', 
-                                        'Authorization': `Bearer ${session.access_token}` 
-                                      },
-                                      body: JSON.stringify({ status: 'Interview-Confirmed' })
-                                    });
-                                    if (res.ok) {
+                                    const { error } = await supabase
+                                      .from('applications')
+                                      .update({ status: 'Interview-Confirmed' })
+                                      .eq('id', app.appId || app.id);
+                                    if (!error) {
                                       setSuccessId(app.id);
                                       setTimeout(() => {
                                         setSuccessId(null);

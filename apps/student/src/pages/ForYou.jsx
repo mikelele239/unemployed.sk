@@ -187,7 +187,7 @@ export default function ForYou() {
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
             {t('foryou.subtitle')}{profile.name ? profile.name.split(' ')[0] : t('foryou.defaultName')}
             {cards.length > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>
-              {cards.length} {lang === 'sk' ? 'pozícií' : 'jobs left'}
+              {cards.length} {lang === 'sk' ? (cards.length === 1 ? 'pozícia' : cards.length < 5 ? 'pozície' : 'pozícií') : (cards.length === 1 ? 'job left' : 'jobs left')}
             </span>}
           </p>
         </div>
@@ -226,9 +226,9 @@ export default function ForYou() {
                   <div>
                     <div 
                       onClick={() => navigate(`/company/${encodeURIComponent(currentJob.company)}`)}
-                      style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', cursor: 'pointer', transition: 'color 0.2s' }}
-                      onMouseEnter={e => e.target.style.color = 'var(--accent)'}
-                      onMouseLeave={e => e.target.style.color = 'var(--text)'}
+                      style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'underline', textDecorationColor: 'transparent', textUnderlineOffset: '3px' }}
+                      onMouseEnter={e => { e.target.style.textDecorationColor = 'var(--accent)'; e.target.style.opacity = '0.8'; }}
+                      onMouseLeave={e => { e.target.style.textDecorationColor = 'transparent'; e.target.style.opacity = '1'; }}
                     >{currentJob.company}</div>
                     <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                       {t('card.verified')}
@@ -366,14 +366,7 @@ export default function ForYou() {
                       <span style={{ fontWeight: 600 }}>{currentJob.type}</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Zobrazenia' : 'Views'}</span>
-                    <span style={{ fontWeight: 600 }}>{currentJob.total_views ?? '—'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Záujem' : 'Likes'}</span>
-                    <span style={{ fontWeight: 600, color: likedJobIds.has(currentJob.id) ? '#ef4444' : 'var(--text)' }}>{currentJob.total_likes ?? '—'}</span>
-                  </div>
+
                 </div>
 
                 {/* Spacer */}

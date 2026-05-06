@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search as SearchIcon, FileText, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
@@ -7,6 +7,7 @@ import { useTranslation } from '../I18nContext';
 export default function MainLayout() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
@@ -53,15 +54,20 @@ export default function MainLayout() {
             padding: '32px 16px',
             marginBottom: '20px'
           }}>
-            <div style={{ 
-              fontFamily: 'var(--font-display)', 
-              fontSize: '1.3rem', 
-              color: 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'default',
-              whiteSpace: 'nowrap'
-            }}>
+            <div 
+              onClick={() => navigate('/foryou')}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              style={{ 
+                fontFamily: 'var(--font-display)', 
+                fontSize: '1.3rem', 
+                color: 'var(--text)',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'opacity 0.2s'
+              }}>
               <span style={{ position: 'relative' }}>
                 un
                 <span style={{ 
