@@ -6,16 +6,14 @@ button, a, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
 html, body, #root {
-  width:100%; height:100%; height: 100dvh; 
-  overflow:hidden;
+  width:100%;
+  min-height:100%;
+  min-height: 100dvh;
+  overflow-x:hidden;
   font-family: var(--font-body); background: var(--bg); color: var(--text);
   -webkit-font-smoothing: antialiased; transition: background 0.3s, color 0.3s;
   -webkit-overflow-scrolling: touch;
-}
-
-/* Fix for hold-to-scroll issue */
-* {
-  touch-action: pan-y;
+  overscroll-behavior-y: none;
 }
 
 .main-app {
@@ -24,17 +22,20 @@ html, body, #root {
   width: 100vw;
   overflow: hidden;
   background: var(--bg);
+  min-height: 0;
 }
 
 .app-content {
   flex: 1;
   height: 100dvh;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 48px 64px;
   background: var(--bg);
   position: relative;
-  touch-action: auto;
+  touch-action: pan-y;
 }
 
 /* Sidebar Links Styling */
@@ -157,6 +158,7 @@ html, body, #root {
   .main-app {
     flex-direction: column;
     height: 100dvh;
+    min-height: 0;
   }
   .side-nav {
     width: 100vw;
@@ -175,6 +177,7 @@ html, body, #root {
     padding-top: 70px;
     flex: 1;
     height: auto;
+    min-height: 0;
     overflow-y: auto;
     order: 1;
   }

@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import Onboarding from './pages/Onboarding';
 import MainLayout from './components/MainLayout';
 import ForYou from './pages/ForYou';

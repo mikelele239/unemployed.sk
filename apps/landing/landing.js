@@ -270,16 +270,19 @@
     // Background grid
     (function() {
       const canvas = document.getElementById('bgGrid');
+      if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const GRID = 80;
       const flashes = [];
+      const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        if (!shouldAnimate) draw();
       }
       resize();
-      window.addEventListener('resize', resize);
+      window.addEventListener('resize', resize, { passive: true });
 
       function addFlash() {
         const isDark = !document.body.classList.contains('light-mode');
@@ -339,11 +342,19 @@
           ctx.stroke();
           ctx.restore();
         }
-        requestAnimationFrame(draw);
       }
 
-      setInterval(addFlash, 2000);
-      draw();
+      function animate() {
+        draw();
+        requestAnimationFrame(animate);
+      }
+
+      if (shouldAnimate) {
+        setInterval(addFlash, 2000);
+        animate();
+      } else {
+        new MutationObserver(draw).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
     })();
 
     // ── i18n ──
@@ -964,6 +975,8 @@
 
     // ── Custom cursor glow ──
     (function() {
+      if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+
       var glow = document.createElement('div');
       glow.className = 'cursor-glow';
       document.body.appendChild(glow);
