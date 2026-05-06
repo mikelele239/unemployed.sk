@@ -283,7 +283,6 @@
       const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       let canvasWidth = 0;
       let canvasHeight = 0;
-      const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
       function resize() {
         const nextWidth = window.innerWidth;
