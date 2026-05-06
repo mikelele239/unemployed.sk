@@ -22,7 +22,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
     try {
       const { data: apps } = await supabase
         .from('applications')
-        .select('id, student_name, student_email, status, created_at, candidate_id')
+        .select('id, student_name, student_email, status, created_at, candidate_id, interview_dates, selected_date')
         .eq('job_id', l.id)
         .order('created_at', { ascending: false });
       const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
@@ -44,7 +44,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   };
 
   const handleCardClick = () => { if (!expanded) fetchApplicants(); setExpanded(!expanded); };
-  const appStatusColor = (s) => { switch ((s||'').toLowerCase()) { case 'hired': return '#22c55e'; case 'interview': return 'var(--accent)'; case 'rejected': return '#ef4444'; default: return 'var(--text-muted)'; } };
+  const appStatusColor = (s) => { switch ((s||'').toLowerCase()) { case 'hired': return '#22c55e'; case 'interview': return '#6366f1'; case 'interview-confirmed': return '#22c55e'; case 'counter-offer': return 'var(--accent)'; case 'rejected': case 'declined': return '#ef4444'; default: return 'var(--text-muted)'; } };
 
   return (
     <motion.div layout="position" transition={{ type: 'spring', damping: 25, stiffness: 200 }}
@@ -196,6 +196,65 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 </span>
               </div>
 
+              {/* Interview Status */}
+              {(selectedApplicant.status === 'Interview-Confirmed' || selectedApplicant.status === 'Counter-Offer') && selectedApplicant.selected_date && (
+                <div style={{ padding: 16, borderRadius: 14, marginBottom: 20,
+                  background: selectedApplicant.status === 'Counter-Offer' ? 'rgba(255,92,0,0.06)' : 'rgba(34,197,94,0.06)',
+                  border: `1px solid ${selectedApplicant.status === 'Counter-Offer' ? 'rgba(255,92,0,0.2)' : 'rgba(34,197,94,0.2)'}`
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8,
+                    color: selectedApplicant.status === 'Counter-Offer' ? 'var(--accent)' : '#22c55e'
+                  }}>
+                    {selectedApplicant.status === 'Counter-Offer' 
+                      ? (lang === 'sk' ? '📅 Kandidát navrhuje iný termín' : '📅 Candidate proposes different date')
+                      : (lang === 'sk' ? '✅ Kandidát potvrdil termín' : '✅ Candidate confirmed date')}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 12, fontFamily: 'var(--font-body)' }}>
+                    {new Date(selectedApplicant.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </div>
+                  {selectedApplicant.status === 'Counter-Offer' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={async () => {
+                          const { error } = await supabase.from('applications')
+                            .update({ status: 'Interview-Confirmed' })
+                            .eq('id', selectedApplicant.id);
+                          if (!error) {
+                            setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview-Confirmed' } : a));
+                            setSelectedApplicant({ ...selectedApplicant, status: 'Interview-Confirmed' });
+                          }
+                        }}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                      >
+                        ✓ {lang === 'sk' ? 'Súhlasím s termínom' : 'Accept date'}
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowInterviewPicker(true)}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                      >
+                        📅 {lang === 'sk' ? 'Navrhnúť nové' : 'Propose new dates'}
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedApplicant.status === 'Interview' && selectedApplicant.interview_dates && selectedApplicant.interview_dates.length > 0 && (
+                <div style={{ padding: 14, borderRadius: 14, marginBottom: 20, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                    {lang === 'sk' ? '⏳ Čaká sa na odpoveď kandidáta' : '⏳ Waiting for candidate response'}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {selectedApplicant.interview_dates.map(d => (
+                      <span key={d} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
+                        {new Date(d).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Skills */}
               {selectedApplicant.skills && selectedApplicant.skills.length > 0 && (
                 <div style={{ marginBottom: 20 }}>

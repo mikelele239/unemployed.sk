@@ -18,7 +18,7 @@ END $$;
 
 ALTER TABLE public.applications
   ADD CONSTRAINT applications_status_check 
-  CHECK (status IN ('Pending', 'Viewed', 'Interview', 'Interview-Confirmed', 'Hired', 'Rejected', 'Declined'))
+  CHECK (status IN ('Pending', 'Viewed', 'Interview', 'Interview-Confirmed', 'Hired', 'Rejected', 'Declined', 'Counter-Offer'))
   NOT VALID;
 
 -- 3. Fix storage policies for the 'cvs' bucket

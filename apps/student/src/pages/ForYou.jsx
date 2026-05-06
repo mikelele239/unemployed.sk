@@ -379,14 +379,14 @@ export default function ForYou() {
                     style={{
                       flex: 1, padding: '16px', borderRadius: 16,
                       border: '1px solid var(--border)', background: 'transparent',
-                      color: 'var(--text-muted)', fontSize: 15, fontWeight: 700,
+                      color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600,
                       cursor: 'pointer', transition: 'all 0.2s',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                     }}
                     onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4747'; e.currentTarget.style.color = '#ff4747'; }}
                     onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     {lang === 'sk' ? 'Preskočiť' : 'Skip'}
                   </button>
 
@@ -395,7 +395,7 @@ export default function ForYou() {
                     style={{
                       flex: 2, padding: '16px', borderRadius: 16,
                       border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)',
-                      color: '#fff', fontSize: 15, fontWeight: 700,
+                      color: '#fff', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
                       cursor: 'pointer', transition: 'all 0.2s',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       boxShadow: '0 6px 24px rgba(255,92,0,0.35)'
@@ -403,7 +403,7 @@ export default function ForYou() {
                     onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                     onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     {lang === 'sk' ? 'Mám záujem' : "I'm interested"}
                   </button>
                 </div>

@@ -16,6 +16,8 @@ const translations = {
     'foryou.empty': 'To je všetko!',
     'foryou.emptyDesc': 'Prezri si záložku Prihlášky',
     'foryou.toast': '✓ Máš záujem! Zamestnávateľ sa ti ozve.',
+    'foryou.skip': 'Preskočiť',
+    'foryou.interested': 'Mám záujem',
 
     // Swipe Card / Detail
     'card.verified': 'Overená firma',
@@ -129,6 +131,8 @@ const translations = {
     'foryou.empty': 'That\'s all!',
     'foryou.emptyDesc': 'Check out your Applications tab',
     'foryou.toast': '✓ Interested! The employer will contact you.',
+    'foryou.skip': 'Skip',
+    'foryou.interested': "I'm interested",
 
     // Swipe Card / Detail
     'card.verified': 'Verified company',

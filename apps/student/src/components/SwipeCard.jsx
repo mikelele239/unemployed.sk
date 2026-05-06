@@ -177,31 +177,35 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
 
       {/* ── ACTION BUTTONS ── */}
       {isTop && (
-        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 20, zIndex: 100 }}>
+        <div style={{ position: 'absolute', bottom: 14, left: 16, right: 16, display: 'flex', justifyContent: 'center', gap: 12, zIndex: 100 }}>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('left', job); }}
             style={{ 
-              width: 48, height: 48, borderRadius: 24, 
+              flex: 1, height: 48, borderRadius: 14, 
               border: '1px solid var(--border)', background: 'var(--bg-card)', 
-              boxShadow: '0 8px 24px rgba(0,0,0,0.2)', color: 'var(--text-muted)', 
+              boxShadow: '0 4px 16px rgba(0,0,0,0.15)', color: 'var(--text-muted)', 
               cursor: 'pointer', transition: 'all 0.2s',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            {t('foryou.skip') || 'Preskočiť'}
           </button>
 
           <button
             onClick={(e) => { e.stopPropagation(); onSwipe('right', job); }}
             style={{ 
-              width: 56, height: 56, borderRadius: 28, 
-              border: 'none', background: 'var(--accent)', 
-              boxShadow: '0 8px 24px rgba(255,92,0,0.4)', color: '#fff', 
+              flex: 2, height: 48, borderRadius: 14, 
+              border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)', 
+              boxShadow: '0 6px 20px rgba(255,92,0,0.35)', color: '#fff', 
               cursor: 'pointer', transition: 'all 0.2s',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {t('foryou.interested') || 'Mám záujem'}
           </button>
         </div>
       )}

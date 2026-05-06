@@ -87,9 +87,9 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-grid">
-        <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType={stats.views > 0 ? 'neutral' : 'neutral'} />
-        <StatCard label={lang === 'sk' ? 'Záujem' : 'Likes'} value={stats.likes} unit="" changeText={stats.likes > 0 ? (lang === 'sk' ? `${stats.likes} celkovo` : `${stats.likes} total`) : (lang === 'sk' ? 'Zatiaľ žiadne lajky' : 'No likes yet')} changeType={stats.likes > 0 ? 'up' : 'neutral'} />
-        <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType={todayApps > 0 ? 'up' : 'neutral'} />
+        <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType="neutral" />
+        <StatCard label={lang === 'sk' ? 'Záujem' : 'Likes'} value={stats.likes} unit="" changeText={stats.likes > 0 ? (lang === 'sk' ? `${stats.likes} celkovo` : `${stats.likes} total`) : (lang === 'sk' ? 'Zatiaľ žiadne lajky' : 'No likes yet')} changeType="neutral" />
+        <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType="neutral" />
         <StatCard 
           label={lang === 'sk' ? 'Stav náborového procesu' : 'Recruitment Process State'} 
           value={`${processedCount}/${stats.apps}`} 
@@ -97,7 +97,7 @@ const Dashboard = () => {
           changeText={processedSubtext} 
           changeType={pipeline.Pending === 0 && stats.apps > 0 ? 'up' : 'neutral'} 
         />
-        <StatCard label={t('statActive')} value={stats.active} unit="" changeText={activeSubtext} changeType={stats.active > 0 ? 'up' : 'neutral'} />
+        <StatCard label={t('statActive')} value={stats.active} unit="" changeText={activeSubtext} changeType="neutral" />
       </div>
 
       <div className="dashboard-main-grid">

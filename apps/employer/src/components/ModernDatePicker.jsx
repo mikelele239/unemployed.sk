@@ -84,10 +84,14 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
                   height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '13px', fontWeight: '800', borderRadius: '8px', cursor: 'pointer',
                   background: isSelected ? 'var(--accent)' : isActive ? '#333' : 'transparent',
-                  color: '#fff',
-                  border: isSelected ? '1px solid var(--accent)' : '1px solid #222',
-                  transition: 'all 0.2s'
+                  color: isSelected ? '#fff' : isActive ? '#fff' : '#aaa',
+                  border: 'none',
+                  outline: isSelected ? '2px solid var(--accent)' : 'none',
+                  outlineOffset: '-2px',
+                  transition: 'background 0.15s, color 0.15s'
                 }}
+                onMouseEnter={e => { if (!isSelected && !isActive) e.currentTarget.style.background = '#1a1a1a'; }}
+                onMouseLeave={e => { if (!isSelected && !isActive) e.currentTarget.style.background = 'transparent'; }}
               >
                 {day}
               </div>
