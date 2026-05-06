@@ -8,9 +8,10 @@ ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS total_views  int4 DEFAULT 0;
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS total_likes  int4 DEFAULT 0;
 
 -- ─── 2. Job Views tracking table ────────────────────────────────────────────
+-- NOTE: jobs.id is bigint, so job_id must also be bigint
 CREATE TABLE IF NOT EXISTS public.job_views (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  job_id      uuid NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
+  job_id      bigint NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
   viewer_id   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   viewed_at   timestamptz DEFAULT now()
 );
@@ -38,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_job_views_job_id ON public.job_views(job_id);
 -- ─── 3. Job Likes tracking table ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.job_likes (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  job_id      uuid NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
+  job_id      bigint NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at  timestamptz DEFAULT now(),
   UNIQUE(job_id, user_id)
