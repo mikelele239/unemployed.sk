@@ -9,6 +9,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   const [expanded, setExpanded] = useState(false);
   const [applicants, setApplicants] = useState(null);
   const [loadingApps, setLoadingApps] = useState(false);
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
   const title = lang === 'sk' ? (l.title || l.title_en) : (l.title_en || l.title);
   const status = l.status || 'Active';
   const workModel = l.work_model || l.workModel || 'On-site';
@@ -25,7 +26,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
       const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
       let profilesMap = {};
       if (candidateIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('user_id, first_name, last_name, education, location').in('user_id', candidateIds);
+        const { data: profiles } = await supabase.from('profiles').select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, avatar_url').in('user_id', candidateIds);
         (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
       }
       setApplicants((apps || []).map(app => {
@@ -33,6 +34,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
         return { ...app,
           student_name: (prof.first_name || prof.last_name) ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim() : app.student_name || app.student_email?.split('@')[0] || 'Kandidát',
           education: prof.education || '', location: prof.location || '',
+          skills: prof.skills || [], cv_id: prof.cv_id || '', original_filename: prof.original_filename || '', avatar_url: prof.avatar_url || '',
         };
       }));
     } catch (err) { console.error(err); }
@@ -125,10 +127,11 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {applicants.map(app => (
-                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', transition: 'all 0.2s' }}
+                    <div key={app.id} onClick={(e) => { e.stopPropagation(); setSelectedApplicant(app); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', transition: 'all 0.2s', cursor: 'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '13px', fontWeight: 800 }}>
-                        {(app.student_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '13px', fontWeight: 800, overflow: 'hidden' }}>
+                        {app.avatar_url ? <img src={app.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (app.student_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.student_name}</div>
@@ -147,6 +150,121 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Applicant Detail Popup ── */}
+      <AnimatePresence>
+        {selectedApplicant && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={() => setSelectedApplicant(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #333, #111)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 900, overflow: 'hidden', flexShrink: 0 }}>
+                    {selectedApplicant.avatar_url ? <img src={selectedApplicant.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (selectedApplicant.student_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedApplicant.student_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {selectedApplicant.education || '—'}{selectedApplicant.location && ` · ${selectedApplicant.location}`}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedApplicant(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+              </div>
+
+              {/* Status Badge */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                <span style={{ fontSize: 10, fontWeight: 900, padding: '5px 12px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.5px', color: appStatusColor(selectedApplicant.status), background: 'var(--bg)', border: `1px solid ${appStatusColor(selectedApplicant.status)}33` }}>
+                  {selectedApplicant.status || 'Pending'}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                  {lang === 'sk' ? 'Prihlásený' : 'Applied'}: {selectedApplicant.created_at ? new Date(selectedApplicant.created_at).toLocaleDateString('sk-SK') : '—'}
+                </span>
+              </div>
+
+              {/* Skills */}
+              {selectedApplicant.skills && selectedApplicant.skills.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{lang === 'sk' ? 'Zručnosti' : 'Skills'}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {selectedApplicant.skills.map(s => (
+                      <span key={s} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.08)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.15)' }}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CV */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{lang === 'sk' ? 'Životopis' : 'CV'}</div>
+                {selectedApplicant.cv_id ? (
+                  <button onClick={async () => {
+                    const { data } = await supabase.storage.from('cvs').createSignedUrl(selectedApplicant.cv_id, 3600);
+                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                  }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', width: '100%' }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                    📄 {selectedApplicant.original_filename || 'CV.pdf'}
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{lang === 'sk' ? 'Otvoriť' : 'Open'}</span>
+                  </button>
+                ) : (
+                  <div style={{ padding: '10px 16px', borderRadius: 12, border: '1px dashed var(--border)', color: 'var(--text-muted)', fontSize: 13 }}>
+                    {lang === 'sk' ? 'Žiadny životopis nahraný' : 'No CV uploaded'}
+                  </div>
+                )}
+              </div>
+
+              {/* AI Match placeholder */}
+              <div style={{ padding: 14, borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18 }}>🤖</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6366f1' }}>{lang === 'sk' ? 'AI Zhoda' : 'AI Match'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Čoskoro dostupné' : 'Coming soon'}</div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(selectedApplicant.status || '').toLowerCase() !== 'interview' && (
+                  <button onClick={async () => {
+                    const { error } = await supabase.from('applications').update({ status: 'Interview' }).eq('id', selectedApplicant.id);
+                    if (!error) {
+                      setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview' } : a));
+                      setSelectedApplicant(prev => ({ ...prev, status: 'Interview' }));
+                    }
+                  }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    📅 {lang === 'sk' ? 'Pohovor' : 'Interview'}
+                  </button>
+                )}
+                {(selectedApplicant.status || '').toLowerCase() !== 'hired' && (
+                  <button onClick={async () => {
+                    const { error } = await supabase.from('applications').update({ status: 'Hired' }).eq('id', selectedApplicant.id);
+                    if (!error) {
+                      setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Hired' } : a));
+                      setSelectedApplicant(prev => ({ ...prev, status: 'Hired' }));
+                    }
+                  }} style={{ flex: 1, padding: 12, borderRadius: 12, border: 'none', background: '#22c55e', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    ✓ {lang === 'sk' ? 'Prijať' : 'Hire'}
+                  </button>
+                )}
+                <button onClick={async () => {
+                  const { error } = await supabase.from('applications').update({ status: 'Rejected' }).eq('id', selectedApplicant.id);
+                  if (!error) {
+                    setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'Rejected' } : a));
+                    setSelectedApplicant(null);
+                  }
+                }} style={{ padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  ✕ {lang === 'sk' ? 'Odmietnuť' : 'Reject'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -23,13 +23,24 @@ const Candidates = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { setLoading(false); return; }
 
+        // Step 1: Get employer's job IDs
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id, title, title_en, location')
+          .eq('employer_id', session.user.id);
+
+        const jobIds = (jobs || []).map(j => j.id);
+        if (jobIds.length === 0) { setLoading(false); return; }
+
+        const jobsMap = {};
+        (jobs || []).forEach(j => { jobsMap[j.id] = j; });
+
+        // Step 2: Get applications for those jobs
         const { data: apps, error: appsErr } = await supabase
           .from('applications')
-          .select('*, jobs!inner(id, employer_id, title, title_en, location)')
-          .eq('jobs.employer_id', session.user.id)
-          .order('created_at', { ascending: false });
-
-        if (appsErr) throw appsErr;
+          .select('*')
+          .in('job_id', jobIds)
+          .order('created_at', { ascending: false });        if (appsErr) throw appsErr;
 
         const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
         let profilesMap = {};
@@ -43,14 +54,15 @@ const Candidates = () => {
 
         const enrichedCandidates = (apps || []).map(app => {
           const profile = profilesMap[app.candidate_id] || {};
+          const job = jobsMap[app.job_id] || {};
           return {
             ...app,
             student_name: (profile.first_name || profile.last_name)
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
               : app.student_name,
             student_profile: { ...(app.student_profile || {}), ...profile },
-            job_title: app.jobs?.title || app.jobs?.title_en || '—',
-            job_location: app.jobs?.location || '',
+            job_title: job.title || job.title_en || '—',
+            job_location: job.location || '',
           };
         });
 
