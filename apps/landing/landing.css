@@ -22,7 +22,7 @@
       --border: #E0E0E0;
     }
 
-    html { scroll-behavior: smooth; overflow-x: hidden; }
+    html { scroll-behavior: smooth; overflow-x: clip; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 
     /* ── CUSTOM CURSOR GLOW ── */
     .cursor-glow {
@@ -53,6 +53,7 @@
       width: 100%; height: 100%;
       z-index: -1;
       pointer-events: none;
+      touch-action: none;
     }
 
     body {
@@ -62,7 +63,10 @@
       font-size: 16px;
       line-height: 1.6;
       transition: background 0.3s, color 0.3s;
-      overflow-x: hidden;
+      overflow-x: clip;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      -webkit-tap-highlight-color: transparent;
     }
 
     /* ── NAV ── */
@@ -296,6 +300,10 @@
       justify-content: center;
       align-items: center;
       overflow: visible;
+      /* Prevent cards from blocking page scroll on iOS touch devices */
+      touch-action: pan-y;
+      /* Ensure the carousel itself never eats touches outside card area */
+      pointer-events: none;
     }
 
     .phone-card {
@@ -306,6 +314,8 @@
       padding: 22px 18px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.25);
       position: absolute;
+      touch-action: pan-y; /* Let vertical touch pass through to page scroll on iOS */
+      pointer-events: auto; /* Re-enable pointer events on individual cards */
       transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease, border-color 0.3s, background 0.3s, box-shadow 0.7s ease, z-index 0s;
     }
 
@@ -1173,6 +1183,7 @@
       overflow: hidden;
       opacity: 0;
       pointer-events: none;
+      touch-action: none; /* Don't intercept touch when closed */
       transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s ease, opacity 0.3s ease;
     }
 
@@ -1187,6 +1198,7 @@
       padding: 76px 24px 28px;
       border-radius: 28px;
       pointer-events: auto;
+      touch-action: pan-y;
       opacity: 1;
     }
 
