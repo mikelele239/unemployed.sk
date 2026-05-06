@@ -19,21 +19,20 @@ export default function Profile() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch('/api/student/profile', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const { profile: data } = await res.json();
-          if (data) {
-            setProfile({
-              ...data,
-              name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-              edu: data.education || '',
-              loc: data.location || '',
-              bio: '',
-              skills: data.skills || [],
-            });
-          }
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (data) {
+          setProfile({
+            ...data,
+            name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+            edu: data.education || '',
+            loc: data.location || '',
+            bio: '',
+            skills: data.skills || [],
+          });
         }
       } catch (err) {
         console.error('Profile fetch error:', err);
@@ -48,13 +47,16 @@ export default function Profile() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch('/api/cvs', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCvs(Array.isArray(data) ? data : []);
-        }
+        const uid = session.user.id;
+        const { data: files } = await supabase.storage
+          .from('cvs')
+          .list(uid, { limit: 20, sortBy: { column: 'created_at', order: 'desc' } });
+        setCvs((files || []).map(f => ({
+          id: `${uid}/${f.name}`,
+          path: `${uid}/${f.name}`,
+          original_filename: f.name,
+          created_at: f.created_at,
+        })));
       } catch (err) { console.error('Load CVs error:', err); }
     };
     loadCvs();
@@ -66,22 +68,18 @@ export default function Profile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const nameParts = (profile.name || '').trim().split(' ');
-      const res = await fetch('/api/student/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: session.user.id,
           first_name: nameParts[0] || '',
           last_name: nameParts.slice(1).join(' ') || '',
           education: profile.edu,
           location: profile.loc,
           skills: profile.skills,
-        })
-      });
-      if (res.ok) setIsEditing(false);
-      else console.error('Profile save error:', await res.text());
+        }, { onConflict: 'user_id' });
+      if (!error) setIsEditing(false);
+      else console.error('Profile save error:', error);
     } catch (err) { console.error('Save error:', err); }
     finally { setSaving(false); }
   };
@@ -94,36 +92,44 @@ export default function Profile() {
       setUploading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const formData = new FormData();
-      formData.append('cv', file);
+      const uid = session.user.id;
+      const fileName = `${uid}/${Date.now()}_${file.name}`;
 
-      const res = await fetch('/api/cvs/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-        body: formData
-      });
+      const { data, error } = await supabase.storage
+        .from('cvs')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || 'application/pdf',
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        setCvs(prev => [data.cv, ...prev]);
+      if (error) {
+        console.error('Upload error:', error);
       } else {
-        const err = await res.json();
-        console.error('Upload error:', err);
+        // Update profile with CV path
+        await supabase.from('profiles').update({
+          cv_id: data.path,
+          original_filename: file.name,
+        }).eq('user_id', uid);
+
+        setCvs(prev => [{
+          id: data.path,
+          path: data.path,
+          original_filename: file.name,
+          created_at: new Date().toISOString(),
+        }, ...prev]);
       }
     } catch (err) { console.error('Upload error:', err); }
     finally { setUploading(false); }
   };
 
-  const handleCvPreview = async (cvId) => {
+  const handleCvPreview = async (cvPath) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch(`/api/cvs/download/${cvId}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        window.open(data.url, '_blank');
+      const { data, error } = await supabase.storage
+        .from('cvs')
+        .createSignedUrl(cvPath, 3600);
+      if (!error && data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
       }
     } catch (err) { console.error('CV preview error:', err); }
   };

@@ -9,100 +9,95 @@ export function useApplications() {
     catch { return []; }
   });
 
-  // Helper to get auth token
-  const getToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token;
-  };
-
   // ── Add application (swipe right or click Apply) ──────────────────────────
   const addApplication = async (job) => {
     // Optimistic local update first
     setApplications(prev => {
-      if (prev.find(a => a.id === job.id)) return prev;
+      if (prev.find(a => a.id === job.id || a.job_id === job.id)) return prev;
       const next = [{ ...job, status: 'Pending', timestamp: new Date().toISOString() }, ...prev];
       try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
       return next;
     });
 
-    // Sync via server API (bypasses RLS)
+    // Sync directly to Supabase
     try {
-      const token = await getToken();
-      if (!token) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const uid = session.user.id;
 
-      // Get full profile info for application
+      // Get student profile for the application
       let studentName = '';
       let studentProfile = {};
       try {
-        const profRes = await fetch('/api/student/profile', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (profRes.ok) {
-          const { profile } = await profRes.json();
-          if (profile) {
-            studentName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-            studentProfile = {
-              first_name: profile.first_name || '',
-              last_name: profile.last_name || '',
-              education: profile.education || '',
-              location: profile.location || '',
-              skills: profile.skills || [],
-              cv_id: profile.cv_id || null,
-              original_filename: profile.original_filename || null,
-              school: profile.education || '',
-            };
-          }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', uid)
+          .maybeSingle();
+
+        if (profile) {
+          studentName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          studentProfile = {
+            first_name: profile.first_name || '',
+            last_name: profile.last_name || '',
+            education: profile.education || '',
+            location: profile.location || '',
+            skills: profile.skills || [],
+            cv_id: profile.cv_id || null,
+            original_filename: profile.original_filename || null,
+            school: profile.education || '',
+          };
         }
       } catch {}
 
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('applications')
+        .insert({
           job_id: job.id,
-          student_name: studentName || undefined,
+          candidate_id: uid,
+          student_name: studentName || session.user.email?.split('@')[0] || 'Kandidát',
+          student_email: session.user.email || '',
           student_profile: studentProfile,
-          ai_score: 50,
-          ai_reasoning: 'Submitted via Unemployed.sk',
-        })
-      });
+          status: 'Pending',
+        });
 
-      if (!res.ok && res.status !== 409) {
-        const err = await res.json();
-        console.error('[useApplications] Server error:', err);
+      if (error && error.code !== '23505') { // 23505 = unique violation (already applied)
+        console.error('[useApplications] Insert error:', error);
       }
     } catch (err) {
       console.error('[useApplications] Sync error:', err);
     }
   };
 
-  // ── Fetch applications from server API ──────────────────────────────────
+  // ── Fetch applications from Supabase ──────────────────────────────────────
   const fetchApplications = async () => {
     try {
-      const token = await getToken();
-      if (!token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         try { setApplications(JSON.parse(localStorage.getItem(storageKey)) || []); } catch {}
         return;
       }
 
-      const res = await fetch('/api/applications', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Fetch applications with the associated job data
+      const { data: apps, error } = await supabase
+        .from('applications')
+        .select('*, jobs(*)')
+        .eq('candidate_id', session.user.id)
+        .order('created_at', { ascending: false });
 
-      if (!res.ok) throw new Error('Failed to fetch applications');
-
-      const { applications: data } = await res.json();
+      if (error) throw error;
 
       // Flatten: merge job fields into application for UI compatibility
-      const enriched = (data || []).map(app => ({
-        ...app.job,
+      const enriched = (apps || []).map(app => ({
+        ...(app.jobs || {}),
         ...app,
         id: app.job_id,
         appId: app.id,
         status: app.status || 'Pending',
+        job_title: app.jobs?.title || '',
+        rateUnit: app.jobs?.rate_unit || '',
+        startDate: app.jobs?.start_date || '',
+        workModel: app.jobs?.work_model || '',
       }));
 
       setApplications(enriched);
@@ -113,24 +108,17 @@ export function useApplications() {
     }
   };
 
-  // ── Update application status (decline) ──────────────────────────────────
-  const updateStatus = async (appId, status) => {
+  // ── Update application status (e.g. student declines interview) ───────────
+  const updateStatus = async (appId, status, extras = {}) => {
     try {
-      const token = await getToken();
-      if (!token) return;
+      const { error } = await supabase
+        .from('applications')
+        .update({ status, ...extras })
+        .eq('id', appId);
 
-      const res = await fetch(`/api/applications/${appId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
+      if (error) throw error;
 
-      if (!res.ok) throw new Error('Failed to update status');
-
-      setApplications(prev => prev.map(a => a.appId === appId ? { ...a, status } : a));
+      setApplications(prev => prev.map(a => a.appId === appId ? { ...a, status, ...extras } : a));
     } catch (err) {
       console.error('[useApplications] Status update error:', err);
     }

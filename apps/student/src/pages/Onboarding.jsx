@@ -84,13 +84,10 @@ export default function Onboarding({ onComplete }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const nameParts = (data.name || '').trim().split(' ');
-        const res = await fetch('/api/student/profile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: session.user.id,
             first_name: nameParts[0] || '',
             last_name: nameParts.slice(1).join(' ') || '',
             education: data.edu || '',
@@ -98,10 +95,10 @@ export default function Onboarding({ onComplete }) {
             skills: data.skills || [],
             job_preferences: data.jobType || [],
             ...(data.cv_id && !data.cv_id.startsWith('mock-') ? { cv_id: data.cv_id } : {}),
-          })
-        });
-        if (res.ok) console.log('Profile saved via server API.');
-        else console.error('Profile save error:', await res.text());
+          }, { onConflict: 'user_id' });
+
+        if (!error) console.log('Profile saved via Supabase.');
+        else console.error('Profile save error:', error);
       }
       // Also keep local copy as fallback
       localStorage.setItem('unemployed_profile', JSON.stringify(data));
