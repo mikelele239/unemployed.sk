@@ -138,7 +138,7 @@ export const AppStateProvider = ({ children }) => {
           .in('job_id', jobIds);
 
         const allApps = apps || [];
-        const pipeline = { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 };
+        const pipeline = { Pending: 0, Viewed: 0, Interview: 0, 'Interview-Confirmed': 0, 'Counter-Offer': 0, Hired: 0, Rejected: 0, Declined: 0 };
         const appsPerJob = {};
         allApps.forEach(a => {
           const s = a.status || 'Pending';
@@ -184,7 +184,7 @@ export const AppStateProvider = ({ children }) => {
           total_likes: 0,
           total_applications: 0,
           active_jobs: 0,
-          pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
+          pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, 'Interview-Confirmed': 0, 'Counter-Offer': 0, Hired: 0, Rejected: 0, Declined: 0 },
           recent_candidates: [],
           recent_apps_trend: [0, 0, 0, 0, 0, 0, 0],
         });

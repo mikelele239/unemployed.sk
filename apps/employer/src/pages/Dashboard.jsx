@@ -41,9 +41,21 @@ const Dashboard = () => {
   const yesterdayApps = chartData[5] || 0;
   const weekTotal = chartData.reduce((a, b) => a + b, 0);
 
-  const viewsSubtext = stats.views > 0
-    ? (lang === 'sk' ? `${stats.views} celkovo zo všetkých ponúk` : `${stats.views} total across all listings`)
-    : (lang === 'sk' ? 'Zatiaľ žiadne zobrazenia' : 'No views yet');
+  // Interviews in progress = Interview + Interview-Confirmed + Counter-Offer
+  const interviewsActive = (pipeline.Interview || 0) + (pipeline['Interview-Confirmed'] || 0) + (pipeline['Counter-Offer'] || 0);
+  const interviewsSubtext = interviewsActive > 0
+    ? (lang === 'sk' 
+        ? `${pipeline['Interview-Confirmed'] || 0} potvrdených · ${pipeline['Counter-Offer'] || 0} protinávrhov`
+        : `${pipeline['Interview-Confirmed'] || 0} confirmed · ${pipeline['Counter-Offer'] || 0} counter-offers`)
+    : (lang === 'sk' ? 'Žiadne aktívne pohovory' : 'No active interviews');
+
+  // Conversion rate = Hired / total apps
+  const conversionRate = stats.apps > 0 ? Math.round(((pipeline.Hired || 0) / stats.apps) * 100) : 0;
+  const conversionSubtext = stats.apps > 0
+    ? (lang === 'sk' 
+        ? `${pipeline.Hired || 0} prijatí z ${stats.apps} prihlášok`
+        : `${pipeline.Hired || 0} hired from ${stats.apps} applications`)
+    : (lang === 'sk' ? 'Zatiaľ žiadne prihlášky' : 'No applications yet');
 
   const appsSubtext = todayApps > 0
     ? (lang === 'sk' ? `+${todayApps} dnes · ${weekTotal} za 7 dní` : `+${todayApps} today · ${weekTotal} in 7 days`)
@@ -86,10 +98,23 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-grid">
-        <StatCard label={t('statViews')} value={stats.views} unit="" changeText={viewsSubtext} changeType="neutral" />
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType="neutral" />
         <StatCard 
-          label={lang === 'sk' ? 'Stav náborového procesu' : 'Recruitment Process State'} 
+          label={lang === 'sk' ? 'Pohovory' : 'Interviews'} 
+          value={interviewsActive} 
+          unit="" 
+          changeText={interviewsSubtext} 
+          changeType={interviewsActive > 0 ? 'up' : 'neutral'} 
+        />
+        <StatCard 
+          label={lang === 'sk' ? 'Konverzia' : 'Conversion'} 
+          value={`${conversionRate}%`} 
+          unit="" 
+          changeText={conversionSubtext} 
+          changeType={conversionRate > 0 ? 'up' : 'neutral'} 
+        />
+        <StatCard 
+          label={lang === 'sk' ? 'Spracované' : 'Processed'} 
           value={`${processedCount}/${stats.apps}`} 
           unit="" 
           changeText={processedSubtext} 
@@ -111,21 +136,21 @@ const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-            {['Pending', 'Viewed', 'Interview', 'Hired', 'Rejected'].map(status => {
-              const count = pipeline[status] || 0;
+            {[
+              { key: 'Pending', sk: 'Čakajúci', color: '#94a3b8' },
+              { key: 'Viewed', sk: 'Zobrazení', color: '#3b82f6' },
+              { key: 'Interview', sk: 'Pohovor', color: '#6366f1' },
+              { key: 'Interview-Confirmed', sk: 'Potvrdený pohovor', color: '#8b5cf6' },
+              { key: 'Counter-Offer', sk: 'Protinávrh', color: '#f59e0b' },
+              { key: 'Hired', sk: 'Prijatí', color: '#22c55e' },
+              { key: 'Rejected', sk: 'Odmietnutí', color: '#ef4444' },
+            ].map(({ key, sk, color }) => {
+              const count = pipeline[key] || 0;
               const total = stats.apps || 1;
               const percent = Math.round((count / total) * 100);
-              const colors = { 
-                Pending: ['#94a3b8', 'rgba(148, 163, 184, 0.08)'], 
-                Viewed: ['#3b82f6', 'rgba(59, 130, 246, 0.08)'], 
-                Interview: ['#6366f1', 'rgba(99, 102, 241, 0.08)'], 
-                Hired: ['#22c55e', 'rgba(34, 197, 94, 0.08)'], 
-                Rejected: ['#ef4444', 'rgba(239, 68, 68, 0.08)'] 
-              };
-              const labelMap = { Pending: 'Čakajúci', Viewed: 'Zobrazení', Interview: 'Pohovor', Hired: 'Prijatí', Rejected: 'Odmietnutí' };
 
               return (
-                <div key={status} style={{ 
+                <div key={key} style={{ 
                   padding: '10px 14px', background: 'rgba(255,255,255,0.015)', borderRadius: '6px', 
                   border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '14px',
                   position: 'relative', overflow: 'hidden'
@@ -133,14 +158,14 @@ const Dashboard = () => {
                   {/* The Fill Bar */}
                   <div style={{ 
                     position: 'absolute', left: 0, top: 0, height: '100%', width: `${percent}%`, 
-                    background: colors[status][1], transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 0,
-                    borderRight: percent > 0 ? `2px solid ${colors[status][0]}` : 'none'
+                    background: `${color}11`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 0,
+                    borderRight: percent > 0 ? `2px solid ${color}` : 'none'
                   }} />
                   
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors[status][0], zIndex: 1 }} />
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, zIndex: 1 }} />
                   <div style={{ flex: 1, zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>
-                      {lang === 'sk' ? labelMap[status] : status}
+                      {lang === 'sk' ? sk : key}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: 'var(--text)' }}>{count}</span>

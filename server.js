@@ -643,6 +643,28 @@ app.patch('/api/applications/:id', async (req, res) => {
   }
 });
 
+// ── Public Employers List (for student search) ─────────────────────────────
+app.get('/api/employers', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('employers').select('id, name, description, color, logo_url');
+    if (error) return res.status(500).json({ error: error.message });
+    // Count jobs per employer
+    const { data: jobs } = await supabase.from('jobs').select('employer_id');
+    const jobCounts = {};
+    (jobs || []).forEach(j => { if (j.employer_id) jobCounts[j.employer_id] = (jobCounts[j.employer_id] || 0) + 1; });
+    const employers = (data || []).map(emp => ({
+      name: emp.name,
+      logo: emp.logo_url || emp.name.charAt(0).toUpperCase(),
+      color: emp.color || '#FF5C00',
+      jobCount: jobCounts[emp.id] || 0,
+      description: emp.description || '',
+    }));
+    res.json({ employers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SPA Fallbacks ──────────────────────────────────────────────────────────────
 const distBase = __dirname;
 app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));

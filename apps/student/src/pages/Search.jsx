@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
-import { supabase } from '../supabase';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
 
@@ -28,33 +27,23 @@ export default function Search() {
   const [minRate, setMinRate] = useState(null);
   const [selectedFocus, setSelectedFocus] = useState([]);
   
-  // Fetch registered employers from Supabase
+  // Fetch registered employers via server API (bypasses RLS)
   const [employers, setEmployers] = useState([]);
   useEffect(() => {
     const fetchEmployers = async () => {
       try {
-        const { data } = await supabase.from('employers').select('id, name, description, color, logo_url');
-        if (data) {
-          // Count jobs per employer
-          const jobCounts = {};
-          jobs.forEach(j => {
-            if (j.employer_id) jobCounts[j.employer_id] = (jobCounts[j.employer_id] || 0) + 1;
-            if (j.company) jobCounts[j.company] = (jobCounts[j.company] || 0) + 1;
-          });
-          setEmployers(data.map(emp => ({
-            name: emp.name,
-            logo: emp.logo_url || emp.name.charAt(0).toUpperCase(),
-            color: emp.color || '#FF5C00',
-            jobCount: jobCounts[emp.id] || jobCounts[emp.name] || 0,
-            description: emp.description || '',
-          })));
+        const res = await fetch('/api/employers');
+        const json = await res.json();
+        console.log('[Search] Employers API result:', json);
+        if (json.employers) {
+          setEmployers(json.employers);
         }
       } catch (err) {
         console.error('[Search] Failed to fetch employers:', err);
       }
     };
     fetchEmployers();
-  }, [jobs]);
+  }, []);
 
   const tabs = [t('search.all') || 'Všetky', t('search.parttime') || 'Brigády', t('search.internships') || 'Stáže', t('search.gigs') || 'Jednorázovky'];
 
