@@ -124,6 +124,24 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
           </svg>
           {job.location}
         </div>
+        {/* ── AI Match Score Badge ── */}
+        {job.match && typeof job.match.overall_score === 'number' && (
+          <div style={{
+            position: 'absolute', top: 12, right: 12, zIndex: 10,
+            background: job.match.overall_score >= 70 ? 'rgba(34,197,94,0.9)' : job.match.overall_score >= 40 ? 'rgba(255,170,0,0.9)' : 'rgba(239,68,68,0.85)',
+            backdropFilter: 'blur(12px)',
+            padding: '5px 10px', borderRadius: 10,
+            display: 'flex', alignItems: 'center', gap: 5,
+            fontSize: 12, fontWeight: 800, color: '#fff',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            letterSpacing: '-0.3px',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            {job.match.overall_score}%
+          </div>
+        )}
       </div>
 
       {/* ── CONTENT (Only fully visible for top/active card to prevent overlap ghosting) ── */}

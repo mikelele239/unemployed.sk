@@ -1,14 +1,30 @@
 'use strict';
 // ── Jobs Routes ──────────────────────────────────────────────────────────────
-module.exports = function jobsRouter(app, supabase) {
+module.exports = function jobsRouter(app, supabase, { getUserFromToken } = {}) {
 
   // GET /api/jobs — list all jobs
   app.get('/api/jobs', async (req, res) => {
     try {
-      const { data, error } = await supabase
+      // Try filtering by status (Active or null) — falls back to all jobs if column doesn't exist yet
+      let data, error;
+      const result = await supabase
         .from('jobs')
         .select('*')
+        .or('status.eq.Active,status.is.null')
         .order('created_at', { ascending: false });
+      
+      data = result.data;
+      error = result.error;
+
+      // If the status column doesn't exist yet, fetch all jobs
+      if (error && error.message && error.message.includes('status')) {
+        const fallback = await supabase
+          .from('jobs')
+          .select('*')
+          .order('created_at', { ascending: false });
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
@@ -27,8 +43,10 @@ module.exports = function jobsRouter(app, supabase) {
     }
   });
 
-  // POST /api/jobs — create a job
   app.post('/api/jobs', async (req, res) => {
+    const user = getUserFromToken ? await getUserFromToken(req) : null;
+    if (!user) return res.status(401).json({ error: 'Neautorizovaný prístup.' });
+
     const { 
       title, company, logo, color, location, rate, rateUnit, hours, type, 
       tags, schedule, description, requirements, lat, lng,
@@ -43,6 +61,7 @@ module.exports = function jobsRouter(app, supabase) {
       const { data, error } = await supabase
         .from('jobs')
         .insert([{ 
+          employer_id: user.id,
           title, company, logo, color, location, 
           rate, rate_unit: rateUnit, hours, type, 
           tags: tags || [], schedule, match_score: 95, 
@@ -63,7 +82,16 @@ module.exports = function jobsRouter(app, supabase) {
   // DELETE /api/jobs/:id
   app.delete('/api/jobs/:id', async (req, res) => {
     const { id } = req.params;
+    const user = getUserFromToken ? await getUserFromToken(req) : null;
+    if (!user) return res.status(401).json({ error: 'Neautorizovaný prístup.' });
+
     try {
+      // Verify ownership
+      const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', id).single();
+      if (!job || job.employer_id !== user.id) {
+        return res.status(403).json({ error: 'Nemáte oprávnenie na vymazanie tejto ponuky.' });
+      }
+
       const { error } = await supabase.from('jobs').delete().eq('id', id);
       if (error) throw error;
       res.json({ success: true });

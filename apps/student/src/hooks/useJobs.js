@@ -12,6 +12,7 @@ export function useJobs() {
         const { data, error: sbError } = await supabase
           .from('jobs')
           .select('*')
+          .eq('status', 'Active')
           .order('created_at', { ascending: false });
 
         if (sbError) throw sbError;

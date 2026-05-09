@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAppState } from './contexts';
+import { useAppState, useI18n } from './contexts';
 import SideNav from './components/SideNav';
+import NotificationBell from './components/NotificationBell';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Listings from './pages/Listings';
@@ -15,10 +16,54 @@ import { supabase } from './supabase';
 const AppLayout = () => {
   const location = useLocation();
   const isSetup = location.pathname === '/setup';
+  const { lang } = useI18n();
+  const [bellVisible, setBellVisible] = useState(true);
+  const lastY = useRef(0);
+
+  // Capture-phase scroll listener — catches scroll on ANY element
+  useEffect(() => {
+    const onScroll = (e) => {
+      const el = e.target;
+      if (!el || el === document) return;
+      const y = el.scrollTop;
+      if (y == null || isNaN(y)) return;
+
+      if (y > lastY.current + 5 && y > 80) {
+        setBellVisible(false);
+      } else if (y < lastY.current - 5 || y <= 80) {
+        setBellVisible(true);
+      }
+      lastY.current = y;
+    };
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', onScroll, { capture: true });
+  }, []);
+
+  // Reset on page change
+  useEffect(() => {
+    setBellVisible(true);
+    lastY.current = 0;
+  }, [location.pathname]);
+
   return (
     <div className="main-app">
       {!isSetup && <SideNav />}
-      <main className="app-content">
+      {/* Notification Bell — fixed top-right, hides on scroll down */}
+      {!isSetup && (
+        <div style={{
+          position: 'fixed',
+          top: 28,
+          right: 32,
+          zIndex: 200,
+          opacity: bellVisible ? 1 : 0,
+          transform: bellVisible ? 'translateY(0)' : 'translateY(-20px)',
+          pointerEvents: bellVisible ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        }}>
+          <NotificationBell lang={lang} />
+        </div>
+      )}
+      <main className="app-content" style={{ position: 'relative' }}>
         <Routes>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />

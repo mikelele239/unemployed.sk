@@ -3,6 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 
+
 const SideNav = () => {
   const { t, lang, setLang } = useI18n();
   const { companyProfile } = useAppState();
@@ -59,6 +60,8 @@ const SideNav = () => {
           </span>
         </Link>
       </div>
+
+
 
       {/* Main Nav */}
       <nav className="mobile-nav-container">

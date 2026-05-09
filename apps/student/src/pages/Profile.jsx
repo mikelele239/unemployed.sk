@@ -1,11 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { Settings, LogOut, CheckCircle, Shield } from 'lucide-react';
-import { supabase, getAccessToken } from '../supabase';
+import { supabase, getAccessToken, getAccessTokenAsync } from '../supabase';
 import { useTranslation } from '../I18nContext';
+
+// Helper: parse bilingual JSON strings {sk,en} — returns the right language
+function biLang(val, lang) {
+  if (!val) return '';
+  if (typeof val === 'object' && (val.sk || val.en)) return val[lang] || val.en || val.sk || '';
+  if (typeof val !== 'string') return String(val);
+  try {
+    const parsed = JSON.parse(val);
+    if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) return parsed[lang] || parsed.en || parsed.sk || '';
+    return val;
+  } catch { return val; }
+}
+function biLangArr(arr, lang) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => biLang(item, lang)).filter(Boolean);
+}
 
 export default function Profile() {
   const { lang, setLang, theme, setTheme, t } = useTranslation();
-  const [profile, setProfile] = useState({ name: '', edu: '', loc: '', bio: '', skills: [] });
+  const [profile, setProfile] = useState({ name: '', edu: '', loc: '', bio: '', skills: [], email: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [cvs, setCvs] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -15,6 +31,7 @@ export default function Profile() {
   const skillInputRef = useRef(null);
   const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState(null);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [aiProfile, setAiProfile] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -33,9 +50,10 @@ export default function Profile() {
             name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
             edu: data.education || '',
             loc: data.location || '',
-            bio: '',
+            bio: data.bio || '',
             skills: data.skills || [],
             avatar_url: data.avatar_url || '',
+            email: session.user.email || data.email || '',
           });
         }
 
@@ -58,6 +76,24 @@ export default function Profile() {
       }
     };
     fetchProfile();
+  }, []);
+
+  // Load AI profile
+  useEffect(() => {
+    const loadAiProfile = async () => {
+      try {
+        const token = await getAccessTokenAsync() || getAccessToken();
+        if (!token) return;
+        const res = await fetch('/api/ai-profile', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) setAiProfile(data.profile);
+        }
+      } catch (e) { console.warn('AI profile fetch:', e.message); }
+    };
+    loadAiProfile();
   }, []);
 
   // Load CVs on mount
@@ -100,6 +136,7 @@ export default function Profile() {
           last_name: nameParts.slice(1).join(' ') || '',
           education: profile.edu,
           location: profile.loc,
+          bio: profile.bio || '',
           skills: profile.skills,
         }, { onConflict: 'user_id' });
       if (!error) setIsEditing(false);
@@ -112,51 +149,69 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.name.toLowerCase().match(/\.(pdf|doc|docx)$/)) {
+      alert(lang === 'en' ? 'Only PDF and DOC/DOCX files are accepted' : 'Akceptujeme len PDF a DOC/DOCX súbory');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert(lang === 'en' ? 'File too large (max 10 MB)' : 'Súbor je príliš veľký (max 10 MB)');
+      return;
+    }
+
     try {
       setUploading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const uid = session.user.id;
-
-      // Delete existing CV files first (keep only 1 CV)
-      const { data: existingFiles } = await supabase.storage
-        .from('cvs')
-        .list(uid, { limit: 20 });
-      const oldCvFiles = (existingFiles || []).filter(f => {
-        const name = f.name.toLowerCase();
-        return !name.startsWith('avatar.') && !name.startsWith('logo.');
-      });
-      if (oldCvFiles.length > 0) {
-        await supabase.storage.from('cvs').remove(oldCvFiles.map(f => `${uid}/${f.name}`));
+      const token = await getAccessTokenAsync() || getAccessToken();
+      if (!token) {
+        alert(lang === 'en' ? 'Authentication error — please log in again.' : 'Chyba overenia — prihláste sa znova.');
+        return;
       }
 
-      const fileName = `${uid}/${Date.now()}_${file.name}`;
+      // Upload via server endpoint — this triggers AI parsing automatically
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { data, error } = await supabase.storage
-        .from('cvs')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type || 'application/pdf',
-        });
+      const res = await fetch('/api/cvs/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
 
-      if (error) {
-        console.error('Upload error:', error);
-      } else {
-        // Update profile with CV path
-        await supabase.from('profiles').update({
-          cv_id: data.path,
-          original_filename: file.name,
-        }).eq('user_id', uid);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Upload error:', err);
+        alert(err.error || 'Upload failed');
+        return;
+      }
 
-        // Replace CVs list with just the new one
+      const result = await res.json();
+      console.log('[Profile] CV uploaded + AI parsed:', result.parse_status, result.extraction_source);
+
+      // Update local CV list
+      if (result.cv?.id) {
         setCvs([{
-          id: data.path,
-          path: data.path,
-          original_filename: file.name,
+          id: result.cv.id,
+          path: result.cv.id,
+          original_filename: result.cv.original_filename || file.name,
           created_at: new Date().toISOString(),
         }]);
       }
+
+      // Refresh AI profile — use response first, then re-fetch from server as fallback
+      if (result.ai_profile) {
+        setAiProfile(result.ai_profile);
+      }
+      // Always re-fetch after a short delay to get the latest saved state
+      setTimeout(async () => {
+        try {
+          const freshToken = await getAccessTokenAsync() || getAccessToken();
+          const aiRes = await fetch('/api/ai-profile', { headers: { 'Authorization': `Bearer ${freshToken}` } });
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            if (aiData.profile) setAiProfile(aiData.profile);
+          }
+        } catch (e) { console.warn('AI profile re-fetch:', e.message); }
+      }, 1000);
+
     } catch (err) { console.error('Upload error:', err); }
     finally { setUploading(false); }
   };
@@ -242,7 +297,7 @@ export default function Profile() {
 
   return (
     <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-      <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '16px 56px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400 }}>{t('nav.profile')}</h1>
         <button 
           onClick={() => setIsEditing(true)}
@@ -277,6 +332,12 @@ export default function Profile() {
             <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
               {profile.loc || (lang === 'en' ? 'Location not set' : 'Lokalita nenastavená')} {profile.edu ? `· ${profile.edu}` : ''}
             </div>
+            {profile.email && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                {profile.email}
+              </div>
+            )}
           </div>
         </div>
 
@@ -307,6 +368,236 @@ export default function Profile() {
           )}
         </div>
 
+        {/* AI Profile Summary Card */}
+        {aiProfile && aiProfile.parse_status !== 'failed' && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(255,92,0,0.04))',
+            border: '1px solid rgba(99,102,241,0.15)',
+            borderRadius: 20, padding: '20px', marginBottom: 24,
+            position: 'relative', overflow: 'hidden'
+          }}>
+            {/* Subtle glow */}
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, background: 'rgba(99,102,241,0.08)', borderRadius: '50%', filter: 'blur(40px)' }} />
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, position: 'relative' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{lang === 'sk' ? 'AI Profil' : 'AI Profile'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {aiProfile.parse_status === 'ready'
+                    ? (lang === 'sk' ? 'Extrahované z tvojho CV' : 'Extracted from your CV')
+                    : (lang === 'sk' ? 'Vyžaduje kontrolu' : 'Needs review')}
+                </div>
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                {aiProfile.ai_profile_approved && (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                    ✓ {lang === 'sk' ? 'Schválené' : 'Approved'}
+                  </span>
+                )}
+                {aiProfile.confidence_score && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                    background: aiProfile.confidence_score >= 0.6 ? 'rgba(34,197,94,0.1)' : 'rgba(255,170,0,0.1)',
+                    color: aiProfile.confidence_score >= 0.6 ? '#22c55e' : '#ffaa00' }}>
+                    {Math.round(aiProfile.confidence_score * 100)}%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* AI Headline */}
+            {aiProfile.ai_headline && (
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', marginBottom: 8, lineHeight: 1.3 }}>
+                {biLang(aiProfile.ai_headline, lang)}
+              </div>
+            )}
+
+            {/* AI Summary */}
+            {aiProfile.ai_summary && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5, fontStyle: 'italic' }}>
+                {biLang(aiProfile.ai_summary, lang)}
+              </div>
+            )}
+
+            {/* Stats Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
+                  {(aiProfile.hard_skills?.length || 0) + (aiProfile.soft_skills?.length || 0)}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  {lang === 'sk' ? 'Zručnosti' : 'Skills'}
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#6366f1', lineHeight: 1 }}>
+                  {aiProfile.languages?.length || 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  {lang === 'sk' ? 'Jazyky' : 'Languages'}
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#22c55e', lineHeight: 1 }}>
+                  {aiProfile.experience_years || 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  {lang === 'sk' ? 'Roky praxe' : 'Yrs exp'}
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '10px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#a855f7', lineHeight: 1 }}>
+                  {aiProfile.profile_completion_score || 0}%
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  {lang === 'sk' ? 'Kompletnosť' : 'Complete'}
+                </div>
+              </div>
+            </div>
+
+            {/* AI Strengths */}
+            {biLangArr(aiProfile.ai_strengths, lang).length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                  💪 {lang === 'sk' ? 'Silné stránky' : 'Strengths'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {biLangArr(aiProfile.ai_strengths, lang).map(s => (
+                    <span key={s} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: 'rgba(34,197,94,0.08)', color: '#22c55e',
+                      border: '1px solid rgba(34,197,94,0.12)'
+                    }}>{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Hard Skills */}
+            {aiProfile.hard_skills?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                  {lang === 'sk' ? 'Technické zručnosti' : 'Technical Skills'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {aiProfile.hard_skills.map(s => (
+                    <span key={s} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: 'rgba(255,92,0,0.08)', color: 'var(--accent)',
+                      border: '1px solid rgba(255,92,0,0.12)'
+                    }}>{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Suggested Roles */}
+            {aiProfile.ai_suggested_roles?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                  🎯 {lang === 'sk' ? 'Odporúčané pozície' : 'Suggested Roles'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {aiProfile.ai_suggested_roles.map(r => (
+                    <span key={r} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      background: 'rgba(99,102,241,0.08)', color: '#6366f1',
+                      border: '1px solid rgba(99,102,241,0.12)'
+                    }}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Languages */}
+            {aiProfile.languages?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                  🌐 {lang === 'sk' ? 'Jazyky' : 'Languages'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {aiProfile.languages.map((l, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    }}>
+                      <span style={{ color: 'var(--text)' }}>{l.lang}</span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
+                        background: l.level === 'C2' || l.level === 'C1' ? 'rgba(34,197,94,0.12)' : l.level === 'B2' || l.level === 'B1' ? 'rgba(99,102,241,0.12)' : 'rgba(255,170,0,0.12)',
+                        color: l.level === 'C2' || l.level === 'C1' ? '#22c55e' : l.level === 'B2' || l.level === 'B1' ? '#6366f1' : '#ffaa00',
+                      }}>{l.level}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Education */}
+            {aiProfile.education_level && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 12,
+                background: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)',
+                fontSize: 12, color: 'var(--text)'
+              }}>
+                <span>🎓</span>
+                <span style={{ fontWeight: 700 }}>
+                  {{
+                    high_school: lang === 'sk' ? 'Stredná škola' : 'High School',
+                    bachelors: lang === 'sk' ? 'Bakalár' : 'Bachelor\'s',
+                    masters: lang === 'sk' ? 'Magister / Inžinier' : 'Master\'s',
+                    phd: 'PhD',
+                  }[aiProfile.education_level] || aiProfile.education_level}
+                </span>
+                {aiProfile.education_field && (
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>· {aiProfile.education_field}</span>
+                )}
+              </div>
+            )}
+
+            {/* Missing Fields */}
+            {aiProfile.ai_missing_fields?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#ffaa00', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                  ⚠️ {lang === 'sk' ? 'Chýbajúce údaje' : 'Missing Fields'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {aiProfile.ai_missing_fields.map(f => (
+                    <span key={f} style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(255,170,0,0.08)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.12)' }}>{f}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Approve Button */}
+            {!aiProfile.ai_profile_approved && aiProfile.ai_headline && (
+              <button
+                onClick={async () => {
+                  try {
+                    const token = await getAccessToken();
+                    const res = await fetch('/api/ai-profile/approve', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({}),
+                    });
+                    if (res.ok) {
+                      setAiProfile(prev => ({ ...prev, ai_profile_approved: true }));
+                    }
+                  } catch (e) { console.warn('Approve error:', e); }
+                }}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff',
+                  fontSize: 13, fontWeight: 700, marginTop: 4,
+                }}
+              >
+                ✓ {lang === 'sk' ? 'Schváliť AI profil pre zamestnávateľov' : 'Approve AI profile for employers'}
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             {lang === 'en' ? 'Your strengths' : 'Tvoje silné stránky'}
@@ -318,7 +609,8 @@ export default function Profile() {
               </span>
             ))}
             {isEditing && (profile.skills || []).map(skill => (
-              <button key={`rm-${skill}`} onClick={() => handleRemoveSkill(skill)} style={{ position: 'relative' }} title={lang === 'en' ? 'Remove' : 'Odstrániť'}>
+              <button key={`rm-${skill}`} onClick={() => handleRemoveSkill(skill)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer', transition: 'all 0.2s' }} title={lang === 'en' ? 'Remove' : 'Odstrániť'}>
+                ✕ {skill}
               </button>
             ))}
             {addingSkill ? (
@@ -344,7 +636,7 @@ export default function Profile() {
 
 
 
-        <div style={{ marginBottom: 24, padding: '0 20px 24px' }}>
+        <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
             {lang === 'en' ? 'Your CV' : 'Tvoj životopis'}
           </h3>
@@ -392,7 +684,7 @@ export default function Profile() {
         </div>
 
         {/* Settings */}
-        <div style={{ marginBottom: 24, padding: '0 20px' }}>
+        <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>
             {lang === 'en' ? 'Settings' : 'Nastavenia'}
           </h3>
@@ -523,6 +815,14 @@ export default function Profile() {
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Vzdelanie' : 'Education'}</label>
               <input value={profile.edu || ''} onChange={e => setProfile({...profile, edu: e.target.value})} placeholder={lang === 'sk' ? 'napr. STU Bratislava' : 'e.g. STU Bratislava'}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* Bio / About */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'O mne' : 'About Me'}</label>
+              <textarea value={profile.bio || ''} onChange={e => setProfile({...profile, bio: e.target.value})} placeholder={lang === 'sk' ? 'Napíš niečo o sebe...' : 'Tell us about yourself...'}
+                rows={3}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 500, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             </div>
 
             {/* CV Upload */}

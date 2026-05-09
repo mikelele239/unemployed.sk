@@ -18,21 +18,45 @@ export default function Onboarding({ onComplete }) {
   const [phase, setPhase] = useState('upload'); 
   const [parsingProgress, setParsingProgress] = useState(0);
   const [climaxStep, setClimaxStep] = useState(0);
-  const [data, setData] = useState({ name: '', edu: '', loc: '', avail: [], jobType: [], skills: [], bio: '', cv_id: null });
+  const [data, setData] = useState({
+    name: '', edu: '', loc: '', avail: [], jobType: [], skills: [], bio: '', cv_id: null,
+    workModel: '', languages: [], availHours: '', salaryExpect: '',
+  });
   const [manualStep, setManualStep] = useState(0);
   const [addingSkillReview, setAddingSkillReview] = useState(false);
+  const [parseWarnings, setParseWarnings] = useState([]);
+  const [uploadError, setUploadError] = useState('');
 
   const MANUAL_STEPS = [
-    { id: 'name',    type: 'text',   title: 'Ako sa voláš?',  sub: 'Tvoje celé meno pre zamestnávateľov.', placeholder: 'Janko Hraško' },
-    { id: 'edu',     type: 'single', title: 'Dosiahnuté vzdelanie',   sub: 'Vyber tvoj aktuálny stav.',  options: lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent'] },
-    { id: 'loc',     type: 'single', title: 'Kde chceš pracovať?',   sub: 'Vyber preferovanú lokalitu.',  options: ['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra', 'Iné'] },
-    { id: 'jobType', type: 'multi',  title: 'Aký úväzok hľadáš?',  sub: 'Môžeš vybrať viac možností.', options: lang === 'en' ? ['Part-time', 'Internship', 'Full-time'] : ['Brigáda', 'Stáž', 'Plný úväzok'] },
+    { id: 'name',    type: 'text',   title: lang === 'en' ? 'What is your name?' : 'Ako sa voláš?',  sub: lang === 'en' ? 'Your full name for employers.' : 'Tvoje celé meno pre zamestnávateľov.', placeholder: 'Janko Hraško' },
+    { id: 'edu',     type: 'single', title: lang === 'en' ? 'Education level' : 'Dosiahnuté vzdelanie',   sub: lang === 'en' ? 'Select your current level.' : 'Vyber tvoj aktuálny stav.',  options: lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent'] },
+    { id: 'loc',     type: 'single', title: lang === 'en' ? 'Where do you want to work?' : 'Kde chceš pracovať?',   sub: lang === 'en' ? 'Select your preferred location.' : 'Vyber preferovanú lokalitu.',  options: ['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra', 'Iné'] },
+    { id: 'jobType', type: 'multi',  title: lang === 'en' ? 'What type of work?' : 'Aký úväzok hľadáš?',  sub: lang === 'en' ? 'You can pick multiple.' : 'Môžeš vybrať viac možností.', options: lang === 'en' ? ['Part-time', 'Internship', 'Full-time'] : ['Brigáda', 'Stáž', 'Plný úväzok'] },
+    { id: 'workModel', type: 'single', title: lang === 'en' ? 'Work model preference' : 'Preferovaný model práce', sub: lang === 'en' ? 'Where would you like to work?' : 'Kde by si chcel pracovať?', options: lang === 'en' ? ['On-site', 'Hybrid', 'Remote'] : ['Na mieste', 'Hybrid', 'Remote'] },
+    { id: 'languages', type: 'multi', title: lang === 'en' ? 'Languages you speak' : 'Jazyky, ktoré ovládaš', sub: lang === 'en' ? 'Select all that apply.' : 'Vyber všetky, ktoré ovládaš.', options: ['Slovenčina', 'Angličtina', 'Nemčina', 'Čeština', 'Maďarčina', 'Francúzština', 'Španielčina', 'Iné'] },
+    { id: 'availHours', type: 'single', title: lang === 'en' ? 'Weekly availability' : 'Koľko hodín týždenne?', sub: lang === 'en' ? 'How many hours per week can you work?' : 'Koľko hodín týždenne môžeš pracovať?', options: ['10', '20', '30', '40+'] },
+    { id: 'salaryExpect', type: 'single', title: lang === 'en' ? 'Salary expectation' : 'Platové očakávania', sub: lang === 'en' ? 'Monthly gross salary (€).' : 'Mesačná hrubá mzda (€).', options: lang === 'en' ? ['€400-600', '€600-900', '€900-1200', '€1200+'] : ['400-600€', '600-900€', '900-1200€', '1200+€'] },
+    { id: 'skills', type: 'multi', title: lang === 'en' ? 'Your top skills' : 'Tvoje silné stránky', sub: lang === 'en' ? 'Select skills that describe you best.' : 'Vyber zručnosti, ktoré ťa najlepšie opisujú.', options: lang === 'en' ? SKILLS_POOL_EN : SKILLS_POOL_SK },
   ];
 
-  // 1. Skip Welcome
+  // 1. Skip Welcome + pre-populate name from auth
   useEffect(() => {
     if (phase === 'welcome') setPhase('upload');
   }, [phase]);
+
+  useEffect(() => {
+    // Pre-populate name from Supabase auth metadata if available
+    const prefill = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const fullName = session?.user?.user_metadata?.full_name;
+        if (fullName && !data.name) {
+          setData(prev => ({ ...prev, name: fullName }));
+        }
+      } catch {}
+    };
+    prefill();
+  }, []);
 
   // 2. Actions
   const handleDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
@@ -47,27 +71,73 @@ export default function Onboarding({ onComplete }) {
   const startParsing = async (fileObj) => {
     setPhase('parsing');
     setParsingProgress(20);
-    try {
-      const cvData = await cvApi.uploadCV(fileObj);
-      setData(prev => ({ ...prev, cv_id: cvData.id }));
-    } catch (err) {
-      console.warn('CV api upload failed, bypassing for flow completion.', err);
-      setData(prev => ({ ...prev, cv_id: 'mock-id-' + Date.now() }));
-    }
+    setParseWarnings([]);
+    setUploadError('');
 
     try {
-      setParsingProgress(60);
-      let name = fileObj.name.replace(/\.[^/.]+$/, "").replace(/_|-|cv|resume/gi, " ").trim();
-      name = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      const skillsPool = lang === 'en' ? SKILLS_POOL_EN : SKILLS_POOL_SK;
-      const skills = [...skillsPool].sort(() => 0.5 - Math.random()).slice(0, 4);
-      const bio = lang === 'en' 
-        ? `${name} is a motivated student specializing in ${skills[0]}.`
-        : `${name} je motivovaný študent so zameraním na ${skills[0]}.`;
-      setData(prev => ({ ...prev, name, bio, skills, edu: 'Vysoká škola', loc: 'Bratislava', jobType: ['Brigáda'] }));
+      setParsingProgress(40);
+      const result = await cvApi.uploadCV(fileObj);
+      setData(prev => ({ ...prev, cv_id: result.id }));
+      setParsingProgress(80);
+
+      const ai = result.ai_profile;
+      if (ai && result.parse_status !== 'failed') {
+        // Map AI profile data to onboarding data format
+        const eduMap = { high_school: 'Stredná škola', bachelors: 'Vysoká škola', masters: 'Vysoká škola', phd: 'Vysoká škola' };
+        const eduMapEn = { high_school: 'High school', bachelors: 'University', masters: 'Graduate', phd: 'Graduate' };
+        const allSkills = [...(ai.hard_skills || []), ...(ai.soft_skills || [])].slice(0, 10);
+
+        // Map languages from AI
+        const aiLangs = (ai.languages || []).map(l => l.lang).filter(Boolean);
+
+        // Map work model from AI
+        const workModelMap = { 'on-site': lang === 'en' ? 'On-site' : 'Na mieste', 'hybrid': 'Hybrid', 'remote': 'Remote' };
+
+        const name = ai.full_name || data.name || '';
+        const bio = ai.ai_summary || (lang === 'en'
+          ? (name || 'Student') + ' — ' + allSkills.slice(0, 3).join(', ') + '.'
+          : (name || 'Študent') + ' — ' + allSkills.slice(0, 3).join(', ') + '.');
+
+        setData(prev => ({
+          ...prev,
+          name: name || prev.name,
+          bio: bio,
+          skills: allSkills.length > 0 ? allSkills : prev.skills,
+          edu: lang === 'en' ? (eduMapEn[ai.education_level] || '') : (eduMap[ai.education_level] || ''),
+          loc: ai.location || '',
+          jobType: prev.jobType,
+          workModel: workModelMap[ai.work_model_preference] || '',
+          languages: aiLangs.length > 0 ? aiLangs : prev.languages,
+          availHours: ai.availability_hours_per_week ? String(ai.availability_hours_per_week) : '',
+          salaryExpect: '',
+        }));
+
+        if (result.parse_status === 'needs_review') {
+          setParseWarnings([lang === 'sk'
+            ? 'AI profil má nízku istotu — skontroluj údaje a doplň chýbajúce.'
+            : 'AI profile has low confidence — review and fill in missing data.']);
+        }
+      } else {
+        // CV was uploaded but parse failed — still go to review so user can fill in manually
+        setParseWarnings([lang === 'sk'
+          ? 'CV bolo nahrané, ale nepodarilo sa extrahovať dáta — vyplň údaje nižšie.'
+          : 'CV uploaded but data extraction failed — please fill in below.']);
+      }
+
+      setParsingProgress(100);
+      // Always go to review — user can correct or fill in
+      setTimeout(() => setPhase('review'), 400);
+
+    } catch (err) {
+      console.error('CV upload error:', err);
+      // On error, still go to review so user isn't stuck — CV upload may have partially succeeded
+      setParseWarnings([
+        (lang === 'sk' ? 'Chyba pri nahrávaní: ' : 'Upload error: ') + (err.message || 'Unknown error'),
+        lang === 'sk' ? 'Vyplň údaje manuálne nižšie.' : 'Please fill in your details manually below.'
+      ]);
       setParsingProgress(100);
       setTimeout(() => setPhase('review'), 400);
-    } catch (err) { setPhase('upload'); }
+    }
   };
 
   const handleManualAction = (id, val, isMulti) => {
@@ -84,23 +154,50 @@ export default function Onboarding({ onComplete }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const nameParts = (data.name || '').trim().split(' ');
-        const { error } = await supabase
-          .from('profiles')
-          .upsert({
-            user_id: session.user.id,
-            first_name: nameParts[0] || '',
-            last_name: nameParts.slice(1).join(' ') || '',
-            education: data.edu || '',
-            location: data.loc || '',
-            skills: data.skills || [],
-            job_preferences: data.jobType || [],
-            ...(data.cv_id && !data.cv_id.startsWith('mock-') ? { cv_id: data.cv_id } : {}),
-          }, { onConflict: 'user_id' });
+        // Map work model back to DB format
+        const workModelDbMap = { 'Na mieste': 'on-site', 'On-site': 'on-site', 'Hybrid': 'hybrid', 'Remote': 'remote' };
+        // Parse salary from option string
+        const salaryMap = { '400-600€': 500, '€400-600': 500, '600-900€': 750, '€600-900': 750, '900-1200€': 1050, '€900-1200': 1050, '1200+€': 1400, '€1200+': 1400 };
 
-        if (!error) console.log('Profile saved via Supabase.');
-        else console.error('Profile save error:', error);
+        const profileData = {
+          user_id: session.user.id,
+          email: session.user.email,
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          education: data.edu || '',
+          location: data.loc || '',
+          skills: data.skills || [],
+          job_preferences: data.jobType || [],
+          work_model_preference: workModelDbMap[data.workModel] || null,
+          languages_spoken: data.languages || [],
+          availability_hours: parseInt(data.availHours) || null,
+          salary_expectation: salaryMap[data.salaryExpect] || null,
+          ...(data.cv_id && !data.cv_id.startsWith('mock-') ? { cv_id: data.cv_id } : {}),
+        };
+
+        // Try server-side API first (bypasses RLS)
+        try {
+          const token = (await supabase.auth.getSession()).data.session?.access_token;
+          const res = await fetch('/api/student/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(profileData),
+          });
+          if (res.ok) {
+            console.log('Profile saved via server API.');
+          } else {
+            throw new Error('Server API failed');
+          }
+        } catch {
+          // Fallback to direct Supabase upsert
+          const { error } = await supabase.from('profiles').upsert(profileData, { onConflict: 'user_id' });
+          if (!error) console.log('Profile saved via Supabase.');
+          else console.error('Profile save error:', error);
+        }
       }
-      // Also keep local copy as fallback
+      // Mark onboarding complete in localStorage
+      const uid = (await supabase.auth.getSession()).data.session?.user?.id;
+      if (uid) localStorage.setItem('unemployed_onboarding_complete', uid);
       localStorage.setItem('unemployed_profile', JSON.stringify(data));
     } catch (err) { console.error('Error during finalizeMatching:', err); }
 
@@ -139,9 +236,9 @@ export default function Onboarding({ onComplete }) {
         {phase === 'upload' && (
           <motion.div key="upload"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '80px 24px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 24px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505', minHeight: 'min-content' }}
           >
-            <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ 
                 fontFamily: 'var(--font-display)', 
                 fontSize: '1.4rem', 
@@ -150,7 +247,7 @@ export default function Onboarding({ onComplete }) {
                 alignItems: 'center',
                 cursor: 'default',
                 whiteSpace: 'nowrap',
-                marginBottom: 24,
+                marginBottom: 16,
                 opacity: 0.8
               }}>
                 <span style={{ position: 'relative' }}>
@@ -159,10 +256,10 @@ export default function Onboarding({ onComplete }) {
                 </span>
                 employed.sk
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '3.5rem', fontWeight: 400, letterSpacing: '-1.5px', lineHeight: 0.9, color: '#fff' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, letterSpacing: '-1.5px', lineHeight: 0.9, color: '#fff' }}>
                 Vytvor si profil.
               </h2>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 17, marginTop: 20, maxWidth: 420, margin: '20px auto 0', lineHeight: 1.6 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, marginTop: 12, maxWidth: 420, margin: '12px auto 0', lineHeight: 1.5 }}>
                 Nahraj svoje CV a nechaj našu AI <br/>extrahovať tvoju expertízu.
               </p>
             </div>
@@ -170,12 +267,12 @@ export default function Onboarding({ onComplete }) {
             <label
               onDragOver={handleDragOver} onDrop={handleDrop}
               style={{ 
-                width: '100%', maxWidth: 540, height: 360, 
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 48, 
+                width: '100%', maxWidth: 480, minHeight: 200, 
+                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 36, 
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
                 background: 'rgba(255,255,255,0.01)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
                 cursor: 'pointer', transition: 'all 0.5s cubic-bezier(0.2, 1, 0.2, 1)',
-                padding: '40px', textAlign: 'center', position: 'relative', overflow: 'hidden',
+                padding: '24px', textAlign: 'center', position: 'relative', overflow: 'hidden',
                 boxShadow: '0 40px 100px rgba(0,0,0,0.5)'
               }}
               onMouseEnter={(e) => { 
@@ -199,26 +296,26 @@ export default function Onboarding({ onComplete }) {
               />
 
               <div style={{ 
-                width: 90, height: 90, borderRadius: 32, 
+                width: 64, height: 64, borderRadius: 24, 
                 background: 'linear-gradient(135deg, var(--accent), #FF8C32)', color: '#fff', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                marginBottom: 28, boxShadow: '0 25px 50px rgba(255,92,0,0.4)', zIndex: 1 
+                marginBottom: 16, boxShadow: '0 16px 40px rgba(255,92,0,0.4)', zIndex: 1 
               }}>
-                <UploadCloud size={42} />
+                <UploadCloud size={32} />
               </div>
-              <h3 style={{ fontSize: 24, fontWeight: 800, marginBottom: 10, letterSpacing: '-0.5px', zIndex: 1, color: '#fff' }}>Presuň životopis sem</h3>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 15, zIndex: 1, fontWeight: 500 }}>PDF alebo DOCX (max 10MB)</p>
+              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.5px', zIndex: 1, color: '#fff' }}>Presuň životopis sem</h3>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, zIndex: 1, fontWeight: 500 }}>PDF alebo DOCX (max 10MB)</p>
             </label>
 
-            <div style={{ marginTop: 70, textAlign: 'center' }}>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 20 }}>Nemáš po ruke súbor?</p>
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>Nemáš po ruke súbor?</p>
               <motion.button 
                 whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.05)' }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setPhase('manual')}
                 style={{ 
                   background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', 
-                  color: '#fff', fontSize: 14, fontWeight: 700, padding: '16px 36px', 
+                  color: '#fff', fontSize: 13, fontWeight: 700, padding: '12px 28px', 
                   borderRadius: 100, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.3s' 
                 }}
               >
@@ -257,15 +354,27 @@ export default function Onboarding({ onComplete }) {
         {phase === 'review' && (
           <motion.div key="review"
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', overflowY: 'auto' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 20px', overflowY: 'auto' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 24, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 18, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CheckCircle2 size={24} />
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 400, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 32 }}>{t('ob.reviewSub')}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: parseWarnings.length > 0 ? 16 : 32 }}>{t('ob.reviewSub')}</p>
+
+            {parseWarnings.length > 0 && (
+              <div style={{
+                background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.25)',
+                borderRadius: 12, padding: '12px 16px', marginBottom: 24,
+                display: 'flex', alignItems: 'center', gap: 10,
+                fontSize: 13, color: '#ffaa00', fontWeight: 600
+              }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span>{parseWarnings[0]}</span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
@@ -277,12 +386,30 @@ export default function Onboarding({ onComplete }) {
               </div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewEdu')}</span>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 8 }}>{data.edu}</div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>{t('ob.reviewEdu')}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent']).map(opt => (
+                      <span key={opt} onClick={() => setData(prev => ({ ...prev, edu: opt }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: data.edu === opt ? 'var(--accent)' : 'var(--bg)', color: data.edu === opt ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${data.edu === opt ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    ))}
+                  </div>
                 </div>
                 <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewLoc')}</span>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 8 }}>{data.loc}</div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>{t('ob.reviewLoc')}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra'].map(opt => (
+                      <span key={opt} onClick={() => setData(prev => ({ ...prev, loc: opt }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: data.loc === opt ? 'var(--accent)' : 'var(--bg)', color: data.loc === opt ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${data.loc === opt ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    ))}
+                    <input value={!['Bratislava','Košice','Žilina','B. Bystrica','Nitra'].includes(data.loc) ? data.loc : ''} 
+                      onChange={e => setData(prev => ({ ...prev, loc: e.target.value }))}
+                      placeholder={lang === 'en' ? 'Other...' : 'Iné...'}
+                      style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', outline: 'none', width: 80 }} />
+                  </div>
                 </div>
               </div>
               <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
@@ -321,18 +448,18 @@ export default function Onboarding({ onComplete }) {
         {phase === 'manual' && (
           <motion.div key="manual"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 24px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505' }}
           >
             <div style={{ 
-              width: '100%', maxWidth: 540, minHeight: 480, 
-              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 48, 
+              width: '100%', maxWidth: 540, minHeight: 0, 
+              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 36, 
               display: 'flex', flexDirection: 'column', 
               background: 'rgba(255,255,255,0.01)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
               boxShadow: '0 40px 100px rgba(0,0,0,0.5)'
             }}>
-              <div style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', gap: 16, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <button onClick={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
-                  style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 12, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                  style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 10, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                 >←</button>
@@ -341,20 +468,20 @@ export default function Onboarding({ onComplete }) {
                 </div>
               </div>
 
-              <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <AnimatePresence mode="wait">
                   {(() => {
                     const s = MANUAL_STEPS[manualStep];
                     return (
                       <motion.div key={manualStep} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, marginBottom: 8, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{s.title}</h2>
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16, marginBottom: 32 }}>{s.sub}</p>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 400, marginBottom: 6, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{s.title}</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginBottom: 20 }}>{s.sub}</p>
 
                         {s.type === 'text' && (
                           <input type="text" placeholder={s.placeholder} value={data[s.id]}
                             onChange={e => setData({ ...data, [s.id]: e.target.value })}
                             onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : typeof finalizeMatching === 'function' && finalizeMatching())}
-                            style={{ width: '100%', padding: '20px 24px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 18, fontWeight: 600, outline: 'none', transition: 'border 0.2s' }}
+                            style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 16, fontWeight: 600, outline: 'none', transition: 'border 0.2s', boxSizing: 'border-box' }}
                             onFocus={e => e.target.style.borderColor = 'var(--accent)'}
                             onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
                             autoFocus
@@ -362,12 +489,12 @@ export default function Onboarding({ onComplete }) {
                         )}
 
                       {(s.type === 'single' || s.type === 'multi') && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {s.options.map(opt => {
                             const isSelected = s.type === 'multi' ? data[s.id].includes(opt) : data[s.id] === opt;
                             return (
                               <button key={opt} onClick={() => typeof handleManualAction === 'function' && handleManualAction(s.id, opt, s.type === 'multi')}
-                                style={{ padding: '14px 24px', borderRadius: 100, border: '1px solid', borderColor: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)', color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                                style={{ padding: '10px 18px', borderRadius: 100, border: '1px solid', borderColor: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)', color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
                               >{opt}</button>
                             );
                           })}
@@ -379,10 +506,10 @@ export default function Onboarding({ onComplete }) {
               </AnimatePresence>
             </div>
 
-            <div style={{ padding: '32px' }}>
+            <div style={{ padding: '20px 24px' }}>
               <button onClick={() => manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : typeof finalizeMatching === 'function' && finalizeMatching()}
                 disabled={MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()}
-                style={{ width: '100%', padding: '18px', fontSize: 16, fontWeight: 800, borderRadius: 20, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1, transition: 'transform 0.2s, opacity 0.2s' }}
+                style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 800, borderRadius: 16, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1, transition: 'transform 0.2s, opacity 0.2s' }}
                 onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
                 onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >

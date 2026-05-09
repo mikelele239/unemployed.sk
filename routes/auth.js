@@ -125,30 +125,134 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
     const { email, password, fullName } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     try {
+      // email_confirm: true auto-confirms via admin API without sending email
+      // This avoids Supabase's email rate limits on the free tier
       const { data: { user }, error: createError } = await supabase.auth.admin.createUser({
         email, password,
-        email_confirm: false,
+        email_confirm: true,
         user_metadata: { role: 'candidate', full_name: fullName }
       });
       if (createError) {
+        const msg = (createError.message || '').toLowerCase();
+        if (createError.code === 'user_already_exists' || msg.includes('already') || msg.includes('exists')) {
+          return res.status(409).json({
+            error: 'Účet s týmto emailom už existuje.',
+            details: 'Užívateľ s týmto emailom už existuje. Prihláste sa namiesto registrácie.'
+          });
+        }
+        if (msg.includes('rate') || msg.includes('limit') || msg.includes('exceeded') || createError.status === 429) {
+          return res.status(429).json({
+            error: 'Dočasný limit registrácií.',
+            details: 'Skúste to prosím o niekoľko minút.'
+          });
+        }
         return res.status(createError.status || 500).json({
           error: createError.message,
-          details: createError.code === 'user_already_exists'
-            ? 'Užívateľ s týmto emailom už existuje.'
-            : createError.message
+          details: createError.message
         });
       }
       // Self-heal: ensure role + profile rows exist even if DB triggers failed
-      await supabase.from('user_roles').upsert({ user_id: user.id, role: 'candidate' });
-      await supabase.from('profiles').upsert({ user_id: user.id, first_name: fullName });
-      res.json({ success: true, message: 'Check your email for the confirmation link.' });
+      await supabase.from('user_roles').upsert({ user_id: user.id, role: 'candidate' }).catch(() => {});
+      await supabase.from('profiles').upsert({ user_id: user.id, first_name: fullName, email }).catch(() => {});
+      res.json({ success: true, message: 'Account created successfully.' });
     } catch (err) {
       console.error('Registration error:', err);
       res.status(500).json({ error: 'Interná chyba servera.', details: err.message });
     }
   });
 
+  // ── Forgot Password ─────────────────────────────────────────────────────
+
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    const { email, portal } = req.body;
+    if (!email) return res.status(400).json({ error: 'E-mail je povinný.' });
+
+    try {
+      // Determine redirect URL based on which portal requested the reset
+      const redirectBase = portal === 'employer' ? '/employer' : '/app';
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `https://unemployed.sk${redirectBase}#reset-password`,
+      });
+      if (error) throw error;
+
+      // Always return success to prevent email enumeration
+      res.json({ success: true, message: 'Ak existuje účet s týmto e-mailom, odoslali sme vám odkaz na obnovenie hesla.' });
+    } catch (err) {
+      console.error('Password reset error:', err);
+      // Still return success to prevent enumeration
+      res.json({ success: true, message: 'Ak existuje účet s týmto e-mailom, odoslali sme vám odkaz na obnovenie hesla.' });
+    }
+  });
+
+  app.post('/api/auth/update-password', async (req, res) => {
+    const { access_token, new_password } = req.body;
+    if (!access_token || !new_password) return res.status(400).json({ error: 'Token a nové heslo sú povinné.' });
+
+    try {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(access_token);
+      if (authErr || !user) return res.status(401).json({ error: 'Neplatný alebo expirovaný token.' });
+
+      const { error } = await supabase.auth.admin.updateUserById(user.id, {
+        password: new_password,
+      });
+      if (error) throw error;
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Update password error:', err);
+      res.status(500).json({ error: 'Nepodarilo sa zmeniť heslo.' });
+    }
+  });
+
   // ── Employer Auth ────────────────────────────────────────────────────────
+
+  app.post('/api/auth/employer/register', async (req, res) => {
+    const { email, password, companyName } = req.body;
+    if (!email || !password || !companyName) return res.status(400).json({ error: 'Všetky polia (email, heslo, názov firmy) sú povinné.' });
+
+    try {
+      // Use admin API to create user — email_confirm: true auto-confirms
+      // without sending a confirmation email (avoids Supabase email rate limits)
+      const { data, error: signUpError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { role: 'employer', company_name: companyName }
+      });
+
+      if (signUpError) {
+        // Handle specific Supabase errors with user-friendly messages
+        const msg = (signUpError.message || '').toLowerCase();
+        if (signUpError.code === 'user_already_exists' || msg.includes('already') || msg.includes('exists')) {
+          return res.status(409).json({ error: 'Účet s týmto e-mailom už existuje. Prihláste sa namiesto registrácie.' });
+        }
+        if (msg.includes('rate') || msg.includes('limit') || msg.includes('exceeded') || signUpError.status === 429) {
+          return res.status(429).json({ error: 'Dočasný limit registrácií bol dosiahnutý. Skúste to prosím o niekoľko minút.' });
+        }
+        throw signUpError;
+      }
+
+      const user = data.user;
+
+      // Ensure employer table entry exists
+      const { error: dbError } = await supabase.from('employers').upsert([{
+        id: user.id,
+        name: companyName,
+      }], { onConflict: 'id' });
+      if (dbError) {
+        console.warn('Employer profile creation non-fatal error:', dbError.message);
+      }
+
+      // Also ensure user_roles entry
+      await supabase.from('user_roles').upsert({ user_id: user.id, role: 'employer' }).catch(() => {});
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Employer registration error:', err);
+      const status = err.status || 500;
+      res.status(status).json({ error: err.message || 'Registrácia zlyhala. Skúste to znova.' });
+    }
+  });
 
   app.post('/api/auth/employer/login', async (req, res) => {
     const { email, password } = req.body;
@@ -190,9 +294,9 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const { data, error } = await supabase
-        .from('employer_profiles')
+        .from('employers')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single();
       if (error && error.code !== 'PGRST116') {
         console.warn('Employer profile DB error (falling back):', error);
@@ -208,33 +312,14 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     try {
-      const { data: profile } = await supabase
-        .from('employer_profiles').select('name').eq('user_id', user.id).single();
-      const companyName = profile?.name || '';
-      const { data: jobs } = await supabase.from('jobs').select('id').eq('company', companyName);
-      const jobIds = (jobs || []).map(j => j.id);
-      const { data: apps } = await supabase
-        .from('applications').select('*')
-        .in('job_id', jobIds.length > 0 ? jobIds : ['00000000-0000-0000-0000-000000000000']);
-
-      const allApps = apps || [];
-      const pipeline = { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 };
-      allApps.forEach(a => {
-        const s = a.status || 'Pending';
-        if (pipeline[s] !== undefined) pipeline[s]++;
-        else pipeline.Pending++;
-      });
-
-      res.json({
-        total_views: jobIds.length * 120,
-        total_applications: allApps.length,
-        active_jobs: jobIds.length,
-        avg_match_score: allApps.length > 0
-          ? Math.round(allApps.reduce((s, a) => s + (a.ai_score || 50), 0) / allApps.length) : 0,
-        pipeline_stats: pipeline,
-        recent_candidates: allApps.slice(0, 5),
-        recent_apps_trend: [0, 0, 0, 0, 0, 0, allApps.length]
-      });
+      const { data, error } = await supabase.rpc('get_employer_analytics', { target_employer_id: user.id });
+      
+      if (error) {
+        console.warn('Analytics RPC error, falling back to empty stats:', error.message);
+        throw error;
+      }
+      
+      res.json(data);
     } catch (err) {
       console.error('Analytics error:', err);
       res.json({

@@ -57,6 +57,23 @@ The platform uses a live tracking system with real data:
 - **Single CV Model**: Students maintain one CV at a time; uploads replace the previous file.
 - **Avatar Resolution**: Profile pictures are resolved from storage on mount with fresh signed URLs to handle expired/stale URLs gracefully.
 
+## 🤖 AI Matching Engine
+The platform uses a server-side matching engine to score candidate-job compatibility:
+
+- **CV Parsing**: On upload, `pdf-parse` extracts text from CVs. A rule-based NLP pipeline then extracts skills, languages, education, experience, and contact info into the `ai_profiles` table.
+- **Structured Job Criteria**: Employers fill in matching criteria per job (required/preferred skills, min education, languages, experience, culture fit) stored in `job_match_criteria`.
+- **Scoring Algorithm**: Multi-dimensional weighted scoring (0–100) across 5 dimensions: skills, education, experience, location, languages. Employers can adjust dimension weights (1–5).
+- **Match Scores**: Pre-computed and cached in `match_scores` table. Recalculated on CV upload, profile update, or job criteria change.
+- **API Routes** (`routes/ai-matching.js`):
+  - `POST /api/ai-profile/parse` — parse CV and create/update AI profile
+  - `GET /api/ai-profile` — get student's AI profile
+  - `PATCH /api/ai-profile` — student updates AI profile
+  - `GET /api/match-scores` — student's match scores for all jobs
+  - `GET /api/employer/match-scores/:jobId` — ranked candidates for a job
+  - `POST /api/job-criteria` — upsert job matching criteria
+  - `GET /api/job-criteria/:jobId` — read job criteria
+  - `POST /api/match/recalculate` — trigger recalculation
+
 ## 📂 Configuration
 - **Supabase**: Managed via central `supabase.js` files in each portal with dedicated storage keys.
 - **Server**: Uses service role key for all DB writes. CSP allows `https://*.supabase.co` and `wss://*.supabase.co`.

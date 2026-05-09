@@ -63,6 +63,18 @@ export function useApplications() {
 
       if (error && error.code !== '23505') { // 23505 = unique violation (already applied)
         console.error('[useApplications] Insert error:', error);
+      } else if (!error) {
+        // Notify employer about the new application (fire-and-forget)
+        try {
+          fetch('/api/notifications/application-received', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ job_id: job.id, job_title: job.title }),
+          }).catch(() => {}); // Non-blocking
+        } catch {}
       }
     } catch (err) {
       console.error('[useApplications] Sync error:', err);

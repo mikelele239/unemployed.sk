@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
-import { supabase } from '../supabase';
+import { supabase, getAccessToken } from '../supabase';
 import SwipeCard from '../components/SwipeCard';
 import JobDetail from '../components/JobDetail';
 import { useApplications } from '../hooks/useApplications';
@@ -19,16 +19,29 @@ export default function ForYou() {
   const [toast, setToast] = useState(false);
   const { addApplication, hasApplied, applications } = useApplications();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [matchScores, setMatchScores] = useState({});
+  const [showMatchDrawer, setShowMatchDrawer] = useState(false);
 
-  // Track ALL dismissed jobs (both liked and skipped) in localStorage
+  // Track ALL dismissed jobs (both liked and skipped) in localStorage — capped at 500
   const [dismissedIds, setDismissedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('unemployed_dismissed')) || []; } catch { return []; }
+    try {
+      const stored = JSON.parse(localStorage.getItem('unemployed_dismissed')) || [];
+      // Prune if over limit
+      if (stored.length > 500) {
+        const pruned = stored.slice(-500);
+        localStorage.setItem('unemployed_dismissed', JSON.stringify(pruned));
+        return pruned;
+      }
+      return stored;
+    } catch { return []; }
   });
 
   const dismissJob = (jobId) => {
     setDismissedIds(prev => {
       if (prev.includes(jobId)) return prev;
-      const next = [...prev, jobId];
+      // Keep only the last 499 + new one = 500 max
+      const trimmed = prev.length >= 500 ? prev.slice(-499) : prev;
+      const next = [...trimmed, jobId];
       try { localStorage.setItem('unemployed_dismissed', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -84,16 +97,53 @@ export default function ForYou() {
     };
   }, []);
 
+  // Fetch match scores once
+  useEffect(() => {
+    const fetchScores = async () => {
+      try {
+        const token = getAccessToken();
+        if (!token) return;
+        const res = await fetch('/api/match-scores', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const { scores } = await res.json();
+          const map = {};
+          (scores || []).forEach(s => { map[s.job_id] = s; });
+          setMatchScores(map);
+        }
+      } catch (e) { console.warn('[ForYou] Match scores fetch:', e.message); }
+    };
+    fetchScores();
+  }, []);
+
   useEffect(() => {
     if (!loading) {
       const filtered = jobs.filter(j => !dismissedIds.includes(j.id) && !hasApplied(j.id));
-      setCards([...filtered].reverse());
-      if (filtered.length > 0) {
-        logJobView(filtered[0]?.id);
-        trackPresence(filtered[0]?.id);
+
+      // Enrich with match scores and sort: eligible first, then by score desc
+      const enriched = filtered.map(j => ({
+        ...j,
+        match: matchScores[j.id] || null,
+      }));
+
+      enriched.sort((a, b) => {
+        const aE = a.match?.eligible !== false ? 1 : 0;
+        const bE = b.match?.eligible !== false ? 1 : 0;
+        if (aE !== bE) return bE - aE;
+        const aS = a.match?.overall_score || 0;
+        const bS = b.match?.overall_score || 0;
+        if (aS !== bS) return bS - aS;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      setCards([...enriched].reverse());
+      if (enriched.length > 0) {
+        logJobView(enriched[0]?.id);
+        trackPresence(enriched[0]?.id);
       }
     }
-  }, [loading, jobs, applications]);
+  }, [loading, jobs, applications, matchScores]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -118,6 +168,7 @@ export default function ForYou() {
   const handleSwipe = (direction, job) => {
     // Always dismiss the job so it never reappears
     dismissJob(job.id);
+    setShowMatchDrawer(false);
 
     if (direction === 'right') {
       addApplication(job);
@@ -179,7 +230,7 @@ export default function ForYou() {
   // ═══════════════════════════════════════════════════════════════════════
   if (isDesktop) {
     return (
-      <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div style={{ padding: '24px 32px 16px', borderBottom: '1px solid var(--border)' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 400, letterSpacing: '-0.5px' }}>
             {t('foryou.title')}
@@ -211,10 +262,10 @@ export default function ForYou() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25 }}
-              style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 380px', gap: 0, overflow: 'hidden' }}
+              style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 340px)', gap: 0, overflow: 'hidden', maxWidth: '100%' }}
             >
               {/* ── LEFT COLUMN: Job Details ──────────────────── */}
-              <div style={{ overflowY: 'auto', padding: '32px', borderRight: '1px solid var(--border)' }}>
+              <div style={{ overflowY: 'auto', overflowX: 'hidden', padding: '32px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
                 {/* Company + Title */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
                   <div style={{
@@ -254,7 +305,7 @@ export default function ForYou() {
 
                 {/* Highlights Grid */}
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28,
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 12, marginBottom: 28,
                   background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)'
                 }}>
                   {[
@@ -277,7 +328,7 @@ export default function ForYou() {
                     <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 10 }}>
                       {lang === 'sk' ? 'Popis pozície' : 'Job Description'}
                     </h4>
-                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line' }}>
+                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {currentJob.description}
                     </p>
                   </div>
@@ -289,121 +340,101 @@ export default function ForYou() {
                     <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 10 }}>
                       {t('detail.requirements')}
                     </h4>
-                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line' }}>
+                    <p style={{ fontSize: 15, lineHeight: 1.75, color: 'var(--text)', whiteSpace: 'pre-line', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {currentJob.requirements}
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* ── RIGHT COLUMN: Map + Actions ──────────────── */}
-              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', overflow: 'hidden' }}>
-                {/* Map */}
-                <div style={{ height: 240, flexShrink: 0, position: 'relative' }}>
+              {/* ── RIGHT COLUMN: Compact, no scroll ──────────── */}
+              <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', overflow: 'hidden', minWidth: 0 }}>
+                {/* Map — compact */}
+                <div style={{ height: 160, flexShrink: 0, position: 'relative' }}>
                   {currentJob.lat && currentJob.lng ? (
-                    <MapContainer
-                      key={`desk-${currentJob.id}`}
-                      center={[Number(currentJob.lat), Number(currentJob.lng)]}
-                      zoom={13}
-                      style={{ height: '100%', width: '100%' }}
-                      zoomControl={false}
-                      dragging={false}
-                      scrollWheelZoom={false}
-                      attributionControl={false}
-                    >
-                      <TileLayer url={document.documentElement.getAttribute('data-theme') === 'light'
-                        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-                        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'} />
+                    <MapContainer key={`desk-${currentJob.id}`} center={[Number(currentJob.lat), Number(currentJob.lng)]} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false} dragging={false} scrollWheelZoom={false} attributionControl={false}>
+                      <TileLayer url={document.documentElement.getAttribute('data-theme') === 'light' ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'} />
                       <Marker position={[Number(currentJob.lat), Number(currentJob.lng)]} />
                     </MapContainer>
                   ) : (
-                    <div style={{ height: '100%', background: 'var(--bg-card-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                      {t('card.unknownLocation')}
-                    </div>
+                    <div style={{ height: '100%', background: 'var(--bg-card-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{t('card.unknownLocation')}</div>
                   )}
-                  {/* Location badge */}
-                  <div style={{
-                    position: 'absolute', bottom: 12, left: 12, zIndex: 10,
-                    background: 'var(--bg-card)', backdropFilter: 'blur(12px)',
-                    padding: '8px 14px', borderRadius: 12,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    fontSize: 13, fontWeight: 700, color: 'var(--text)',
-                    border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
+                  <div style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 10, background: 'var(--bg-card)', backdropFilter: 'blur(12px)', padding: '6px 10px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     {currentJob.location || 'Unknown'}
                   </div>
                 </div>
 
-                {/* Rate Card */}
-                <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>
-                    {lang === 'sk' ? 'Odmena' : 'Compensation'}
+                {/* Rate + Hours inline */}
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 26, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
+                      {currentJob.rate || '—'}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginLeft: 4 }}>{currentJob.rateUnit || ''}</span>
+                    </div>
                   </div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 32, fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
-                    {currentJob.rate || '—'}
-                    <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600, marginLeft: 6 }}>{currentJob.rateUnit || ''}</span>
-                  </div>
-                  {currentJob.hours && (
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{currentJob.hours}</div>
-                  )}
+                  {currentJob.hours && <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{currentJob.hours}</span>}
                 </div>
 
-                {/* Job stats quick info */}
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {currentJob.duration && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Trvanie' : 'Duration'}</span>
-                      <span style={{ fontWeight: 600 }}>{currentJob.duration}</span>
-                    </div>
-                  )}
-                  {currentJob.type && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Typ' : 'Type'}</span>
-                      <span style={{ fontWeight: 600 }}>{currentJob.type}</span>
-                    </div>
-                  )}
+                {/* Quick stats — inline row */}
+                {(currentJob.duration || currentJob.type) && (
+                  <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 16 }}>
+                    {currentJob.duration && <div style={{ fontSize: 12 }}><span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Trvanie: ' : 'Duration: '}</span><span style={{ fontWeight: 600 }}>{currentJob.duration}</span></div>}
+                    {currentJob.type && <div style={{ fontSize: 12 }}><span style={{ color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Typ: ' : 'Type: '}</span><span style={{ fontWeight: 600 }}>{currentJob.type}</span></div>}
+                  </div>
+                )}
 
-                </div>
+                {/* AI Match — summary pill with "Details" button */}
+                {currentJob.match && typeof currentJob.match.overall_score === 'number' && (
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        {lang === 'sk' ? 'AI Zhoda' : 'AI Match'}
+                      </div>
+                      {(currentJob.match.breakdown || currentJob.match.gaps?.length || currentJob.match.match_reasons?.length) && (
+                        <button onClick={() => setShowMatchDrawer(true)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--accent)'; }}
+                        >{lang === 'sk' ? 'Detail ›' : 'Details ›'}</button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 800, lineHeight: 1, color: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444' }}>{currentJob.match.overall_score}%</span>
+                      <div style={{ flex: 1, height: 5, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${currentJob.match.overall_score}%`, height: '100%', borderRadius: 3, background: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.5s ease' }} />
+                      </div>
+                    </div>
+                    {/* One-line summary */}
+                    {currentJob.match.match_reasons?.[0] && (
+                      <div style={{ fontSize: 11, color: 'var(--green)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flexShrink: 0 }}>✓</span> {currentJob.match.match_reasons[0]}
+                      </div>
+                    )}
+                    {currentJob.match.gaps?.[0] && (
+                      <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flexShrink: 0 }}>✕</span> {currentJob.match.gaps[0]}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
                 {/* Action Buttons */}
-                <div style={{ padding: '24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={() => handleSwipe('left', currentJob)}
-                    style={{
-                      flex: 1, padding: '16px', borderRadius: 16,
-                      border: '1px solid var(--border)', background: 'transparent',
-                      color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600,
-                      cursor: 'pointer', transition: 'all 0.2s',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-                    }}
+                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0 }}>
+                  <button onClick={() => handleSwipe('left', currentJob)} style={{ flex: 1, padding: '14px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                     onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4747'; e.currentTarget.style.color = '#ff4747'; }}
                     onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     {lang === 'sk' ? 'Preskočiť' : 'Skip'}
                   </button>
-
-                  <button
-                    onClick={() => handleSwipe('right', currentJob)}
-                    style={{
-                      flex: 2, padding: '16px', borderRadius: 16,
-                      border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)',
-                      color: '#fff', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
-                      cursor: 'pointer', transition: 'all 0.2s',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 6px 24px rgba(255,92,0,0.35)'
-                    }}
-                    onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  <button onClick={() => handleSwipe('right', currentJob)} style={{ flex: 2, padding: '14px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 16px rgba(255,92,0,0.3)' }}
+                    onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}
                     onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                     {lang === 'sk' ? 'Mám záujem' : "I'm interested"}
                   </button>
                 </div>
@@ -411,6 +442,96 @@ export default function ForYou() {
             </motion.div>
           </AnimatePresence>
         )}
+        {/* ── AI Match Details Drawer ── */}
+        <AnimatePresence>
+          {showMatchDrawer && currentJob?.match && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMatchDrawer(false)}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, backdropFilter: 'blur(4px)' }} />
+              <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 380, maxWidth: '90vw', background: 'var(--bg-card)', zIndex: 501, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(0,0,0,0.25)', borderLeft: '1px solid var(--border)' }}>
+                {/* Header */}
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{lang === 'sk' ? 'AI Zhoda — Detail' : 'AI Match — Details'}</h3>
+                  </div>
+                  <button onClick={() => setShowMatchDrawer(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                {/* Content */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                  {/* Score */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, color: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444' }}>{currentJob.match.overall_score}%</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: 8, background: 'var(--bg-card-hover)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${currentJob.match.overall_score}%`, height: '100%', borderRadius: 4, background: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.5s' }} />
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{lang === 'sk' ? 'Celkové skóre zhody' : 'Overall match score'}</div>
+                    </div>
+                  </div>
+                  {/* Breakdown */}
+                  {currentJob.match.breakdown && (
+                    <div style={{ marginBottom: 24 }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 12 }}>{lang === 'sk' ? 'Rozklad skóre' : 'Score Breakdown'}</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {[
+                          { key: 'skills', label: lang === 'sk' ? 'Zručnosti' : 'Skills', max: 30 },
+                          { key: 'education', label: lang === 'sk' ? 'Vzdelanie' : 'Education', max: 10 },
+                          { key: 'experience_level', label: lang === 'sk' ? 'Skúsenosti' : 'Experience', max: 10 },
+                          { key: 'location', label: lang === 'sk' ? 'Lokalita' : 'Location', max: 15 },
+                          { key: 'language', label: lang === 'sk' ? 'Jazyky' : 'Languages', max: 5 },
+                          { key: 'job_type', label: lang === 'sk' ? 'Typ práce' : 'Job Type', max: 15 },
+                        ].map(d => {
+                          const val = currentJob.match.breakdown[d.key];
+                          if (typeof val !== 'number') return null;
+                          const pct = Math.round((val / d.max) * 100);
+                          return (
+                            <div key={d.key}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                                <span style={{ fontWeight: 600 }}>{d.label}</span>
+                                <span style={{ color: pct >= 70 ? 'var(--green)' : pct >= 40 ? '#ffaa00' : '#ef4444', fontWeight: 700 }}>{val}/{d.max} ({pct}%)</span>
+                              </div>
+                              <div style={{ height: 6, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: pct >= 70 ? 'var(--green)' : pct >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.4s' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {/* Match reasons */}
+                  {currentJob.match.match_reasons?.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--green)', marginBottom: 8 }}>{lang === 'sk' ? 'Prečo sa hodíš' : 'Why you match'}</h4>
+                      {currentJob.match.match_reasons.map((r, i) => (
+                        <div key={i} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', gap: 8, marginBottom: 6, lineHeight: 1.5 }}>
+                          <span style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }}>✓</span>
+                          <span style={{ wordBreak: 'break-word' }}>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Gaps */}
+                  {currentJob.match.gaps?.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ef4444', marginBottom: 8 }}>{lang === 'sk' ? 'Čo ti chýba' : "What you're missing"}</h4>
+                      {currentJob.match.gaps.map((g, i) => (
+                        <div key={i} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', gap: 8, marginBottom: 6, lineHeight: 1.5 }}>
+                          <span style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }}>✕</span>
+                          <span style={{ wordBreak: 'break-word' }}>{g}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Toast */}
         <AnimatePresence>

@@ -17,7 +17,7 @@ export const cvApi = {
         if (!token) throw new Error('Not authenticated');
 
         const formData = new FormData();
-        formData.append('cv', file); // 'cv' matches the multer .single('cv')
+        formData.append('file', file); // 'file' matches the multer .single('file')
 
         const res = await fetch('/api/cvs/upload', {
             method: 'POST',

@@ -83,7 +83,7 @@ export const AppStateProvider = ({ children }) => {
     pipeline_stats: { Pending: 0, Viewed: 0, Interview: 0, Hired: 0, Rejected: 0 },
     recent_candidates: [], recent_apps_trend: [0,0,0,0,0,0,0]
   });
-  const [liveViewers, setLiveViewers] = useState({});  // { jobId: count }
+
 
   // ── Fetch employer profile + listings + analytics ──────────────────────────
   const loadAll = async () => {
@@ -207,54 +207,42 @@ export const AppStateProvider = ({ children }) => {
     });
 
     // ── Realtime: listen for changes to the jobs table ──
-    // When total_views or total_likes change via triggers, update listings in place
-    const realtimeChannel = supabase
-      .channel('employer-jobs-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'jobs' },
-        (payload) => {
-          const updated = payload.new;
-          if (!updated) return;
-          // Update the specific listing in state
-          setListings(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
-          // Re-derive analytics from current listings with the update applied
-          setAnalytics(prev => {
-            // We recalculate totals inline for speed
-            return prev; // loadAll will pick it up on next refresh
+    // Only subscribe after confirming a valid session
+    let realtimeChannel = null;
+    const setupRealtime = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        realtimeChannel = supabase
+          .channel('employer-jobs-realtime')
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'jobs' },
+            (payload) => {
+              const updated = payload.new;
+              if (!updated) return;
+              setListings(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+              loadAll();
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+              console.warn('[Realtime] Channel error, will retry on next data refresh');
+            }
           });
-          // Trigger a full refresh to recalculate analytics correctly
-          loadAll();
-        }
-      )
-      .subscribe();
+      } catch (err) {
+        console.warn('[Realtime] Setup failed:', err.message);
+      }
+    };
+    setupRealtime();
 
     return () => {
       if (subscription) subscription.unsubscribe();
-      supabase.removeChannel(realtimeChannel);
+      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
-  // ── Presence: subscribe to job rooms for live viewer counts ──
-  useEffect(() => {
-    if (!listings || listings.length === 0) return;
 
-    const channels = [];
-    listings.forEach(job => {
-      const channel = supabase.channel(`job_room:${job.id}`);
-      channel.on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const count = Object.keys(state).length;
-        setLiveViewers(prev => ({ ...prev, [job.id]: count }));
-      });
-      channel.subscribe();
-      channels.push(channel);
-    });
-
-    return () => {
-      channels.forEach(ch => supabase.removeChannel(ch));
-    };
-  }, [listings.length]); // Re-subscribe when listing count changes
 
   useEffect(() => { localStorage.setItem('employer_invited', JSON.stringify(invitedIds)); }, [invitedIds]);
   useEffect(() => { localStorage.setItem('employer_accepted', JSON.stringify(acceptedIds)); }, [acceptedIds]);
@@ -266,7 +254,6 @@ export const AppStateProvider = ({ children }) => {
       listings, setListings,
       companyProfile, setCompanyProfile,
       analytics,
-      liveViewers,
       refreshAnalytics: loadAll,
     }}>
       {children}

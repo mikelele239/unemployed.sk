@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
+import { useApplications } from '../hooks/useApplications';
 import JobDetail from '../components/JobDetail';
 import { useTranslation } from '../I18nContext';
 
@@ -12,11 +13,13 @@ const RATE_OPTIONS = [
   { label: '10€+', min: 10 },
 ];
 
-const FOCUS_AREAS = ['Marketing', 'IT & Tech', 'Gastro', 'Retail', 'Administratíva', 'Sklad'];
+const FOCUS_AREAS_SK = ['Marketing', 'IT & Tech', 'Gastro', 'Retail', 'Administratíva', 'Sklad'];
+const FOCUS_AREAS_EN = ['Marketing', 'IT & Tech', 'Gastro', 'Retail', 'Admin', 'Warehouse'];
 
 export default function Search() {
   const { t, lang } = useTranslation();
   const { jobs, loading } = useJobs();
+  const { addApplication, hasApplied } = useApplications();
   const [filterQuery, setFilterQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Všetky');
   const [showFilters, setShowFilters] = useState(false);
@@ -62,9 +65,9 @@ export default function Search() {
   }, [employers, filterQuery]);
 
   const filteredJobs = jobs.filter(job => {
-    if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'Brigáda') return false;
-    if (activeTab === (t('search.internships') || 'Stáže') && job.type !== 'Stáž') return false;
-    if (activeTab === (t('search.gigs') || 'Jednorázovky') && job.type !== 'Jednorázovka') return false;
+    if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'part-time') return false;
+    if (activeTab === (t('search.internships') || 'Stáže') && job.type !== 'internship') return false;
+    if (activeTab === (t('search.gigs') || 'Jednorázovky') && job.type !== 'gig') return false;
     if (filterQuery && !job.title.toLowerCase().includes(filterQuery.toLowerCase()) && !job.company.toLowerCase().includes(filterQuery.toLowerCase())) return false;
     
     // Min rate filter
@@ -281,8 +284,8 @@ export default function Search() {
         job={selectedJob} 
         isOpen={!!selectedJob} 
         onClose={() => setSelectedJob(null)}
-        onApply={() => { setSelectedJob(null); }}
-        hasApplied={false}
+        onApply={() => { if (selectedJob) addApplication(selectedJob); setSelectedJob(null); }}
+        hasApplied={selectedJob ? hasApplied(selectedJob.id) : false}
       />
 
       {/* Filter Drawer */}
@@ -335,7 +338,7 @@ export default function Search() {
               <div style={{ marginBottom: 32 }}>
                 <h4 style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{t('search.focus') || 'Zameranie'}</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {FOCUS_AREAS.map(area => {
+                  {(lang === 'en' ? FOCUS_AREAS_EN : FOCUS_AREAS_SK).map(area => {
                     const isActive = selectedFocus.includes(area);
                     return (
                       <button 

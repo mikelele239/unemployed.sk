@@ -87,7 +87,7 @@ const Profile = () => {
   const readOnlyStyle = { ...inputStyle, background: 'transparent', border: '1px solid transparent', cursor: 'default', padding: '8px 0' };
 
   return (
-    <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
+    <div style={{ animation: 'tabSlideIn 0.4s ease', paddingTop: '12px' }}>
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: '400', letterSpacing: '-0.5px' }}>

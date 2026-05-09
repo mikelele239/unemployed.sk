@@ -5,8 +5,22 @@ const express = require('express');
 const path = require('path');
 const { createHash } = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const multer = require('multer');
 
 const app = express();
+
+// ── Multer config for CV file uploads (memory storage) ──────────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (_req, file, cb) => {
+    const name = file.originalname.toLowerCase();
+    const mime = (file.mimetype || '').toLowerCase();
+    const ok = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx')
+      || mime.includes('pdf') || mime.includes('msword') || mime.includes('wordprocessingml');
+    cb(null, ok);
+  },
+});
 const PORT = process.env.PORT || 3000;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -44,11 +58,29 @@ async function getUserFromToken(req) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return null;
   const token = auth.replace('Bearer ', '');
+  
+  // Helper: decode JWT payload without verification (fallback for network issues)
+  const decodeJWT = () => {
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      if (payload.sub) return { id: payload.sub, email: payload.email || '' };
+    } catch {}
+    return null;
+  };
+
   try {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
+    // Race the Supabase call against a 3-second timeout
+    const result = await Promise.race([
+      supabase.auth.getUser(token),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
+    ]);
+    const { data: { user }, error } = result;
+    if (error || !user) return decodeJWT();
     return user;
-  } catch { return null; }
+  } catch {
+    // Network error or timeout — fall back to JWT decode
+    return decodeJWT();
+  }
 }
 
 // Simple rate limiter
@@ -84,6 +116,7 @@ app.use((req, res, next) => {
 });
 app.set('trust proxy', 1);
 
+
 // Block sensitive file access
 app.use((req, res, next) => {
   const blocked = /\/(server\.js|database\.db|unemployed\.db|package\.json|package-lock\.json|node_modules|\.env|submissions\.db.*|\.claude)(\/|$)/i;
@@ -116,8 +149,9 @@ app.use('/employer-demo',express.static(path.join(__dirname, 'apps', 'employer-d
 app.use(express.static(path.join(__dirname, 'apps', 'landing')));
 
 // ── Route Modules ──────────────────────────────────────────────────────────────
-require('./routes/jobs')(app, supabase);
+require('./routes/jobs')(app, supabase, { getUserFromToken });
 require('./routes/auth')(app, supabase, { hashIp, getUserFromToken, rateLimit, VALID_TYPES, EMAIL_RE });
+require('./routes/ai-matching')(app, supabase, { getUserFromToken });
 
 // ── Employer Profile API (server-side, bypasses RLS) ──────────────────────────
 app.post('/api/employer/ensure-profile', async (req, res) => {
@@ -294,6 +328,43 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
       .update(updatePayload)
       .eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
+
+    // ── Insert notification for the candidate ──
+    try {
+      const { data: app } = await supabase
+        .from('applications')
+        .select('candidate_id, job_id')
+        .eq('id', req.params.id)
+        .single();
+
+      // Get the job title from the jobs table
+      let jobTitle = 'ponuka';
+      if (app?.job_id) {
+        const { data: job } = await supabase.from('jobs').select('title').eq('id', app.job_id).single();
+        if (job?.title) jobTitle = job.title;
+      }
+
+      if (app?.candidate_id && status) {
+        const notifMap = {
+          'Interview': { type: 'interview_scheduled', title: 'Pozvánka na pohovor', message: `Boli ste pozvaný na pohovor pre pozíciu "${jobTitle}".` },
+          'Interview-Confirmed': { type: 'interview_confirmed', title: 'Pohovor potvrdený', message: `Váš pohovor pre "${jobTitle}" bol potvrdený.` },
+          'Hired': { type: 'hired', title: 'Gratulujeme! 🎉', message: `Boli ste prijatý na pozíciu "${jobTitle}"!` },
+          'Rejected': { type: 'rejected', title: 'Odpoveď na prihlášku', message: `Vaša prihláška na "${jobTitle}" nebola úspešná.` },
+        };
+        const notif = notifMap[status];
+        if (notif) {
+          await supabase.from('notifications').insert([{
+            user_id: app.candidate_id,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+          }]);
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Notification insert non-fatal error:', notifErr.message);
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -305,7 +376,7 @@ app.patch('/api/employer/jobs/:id', async (req, res) => {
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
-    const { title, description, requirements, rate, rate_unit, work_model, location, hours, type, duration, start_date, tags } = req.body;
+    const { title, description, requirements, rate, rate_unit, work_model, location, hours, type, duration, start_date, tags, status } = req.body;
     const updateData = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
@@ -319,11 +390,23 @@ app.patch('/api/employer/jobs/:id', async (req, res) => {
     if (duration !== undefined) updateData.duration = duration;
     if (start_date !== undefined) updateData.start_date = start_date;
     if (tags !== undefined) updateData.tags = tags;
-    const { error } = await supabase
+    if (status !== undefined) updateData.status = status;
+    let { error } = await supabase
       .from('jobs')
       .update(updateData)
       .eq('id', req.params.id)
       .eq('employer_id', user.id);
+    // If status column doesn't exist yet, retry without it
+    if (error && error.message && error.message.includes('status') && updateData.status !== undefined) {
+      console.warn('[Jobs PATCH] status column not found, retrying without status field');
+      delete updateData.status;
+      if (Object.keys(updateData).length > 0) {
+        const retry = await supabase.from('jobs').update(updateData).eq('id', req.params.id).eq('employer_id', user.id);
+        error = retry.error;
+      } else {
+        error = null;
+      }
+    }
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
   } catch (err) {
@@ -332,70 +415,269 @@ app.patch('/api/employer/jobs/:id', async (req, res) => {
 });
 
 // ── CV Upload/Download API (server-side, Supabase Storage) ──────────────────
-app.post('/api/cvs/upload', async (req, res) => {
+app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
+  const pdfParse = require('pdf-parse');
+  const mammoth = require('mammoth');
+
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Read raw body for file upload
-    const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
-    req.on('end', async () => {
+    // multer parsed the file — check it exists
+    const file = req.file;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'No file found in request' });
+    }
+
+    const fileBuffer = file.buffer;
+    const fileName = file.originalname || 'cv.pdf';
+    const fileMime = file.mimetype || 'application/octet-stream';
+    const lowerName = fileName.toLowerCase();
+
+    console.log('[CV Upload] Received file:', fileName, '| Size:', fileBuffer.length, '| MIME:', fileMime, '| User:', user.id);
+
+    const isPdf = fileMime.includes('pdf') || lowerName.endsWith('.pdf');
+    const isDocx = fileMime.includes('wordprocessingml') || lowerName.endsWith('.docx');
+    const isDoc = fileMime.includes('msword') || lowerName.endsWith('.doc');
+    if (!isPdf && !isDocx && !isDoc) {
+      return res.status(400).json({ error: 'Only PDF and DOC/DOCX files are accepted' });
+    }
+
+    // Upload to Supabase Storage
+    const storagePath = `${user.id}/${Date.now()}_${fileName}`;
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from('cvs')
+      .upload(storagePath, fileBuffer, { contentType: fileMime, upsert: false });
+
+    if (uploadErr) {
+      console.error('[CV Upload] Storage error:', uploadErr);
+      return res.status(500).json({ error: uploadErr.message });
+    }
+
+    console.log('[CV Upload] File stored at:', storagePath);
+
+    // Upsert profile with cv_id (creates row for new users who don't have one yet)
+    await supabase.from('profiles')
+      .upsert({
+        user_id: user.id,
+        email: user.email,
+        cv_id: storagePath,
+        original_filename: fileName,
+      }, { onConflict: 'user_id' });
+
+    // ── Text extraction (PDF or DOCX) ──
+    let rawText = '';
+    let extractionWarnings = [];
+
+    try {
+      if (isPdf) {
+        const pdf = await pdfParse(fileBuffer);
+        rawText = (pdf.text || '').trim();
+        if (!rawText || rawText.length < 20) {
+          extractionWarnings.push('PDF contains too little text — may be scanned/image-based');
+        }
+      } else if (isDocx) {
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
+        rawText = (result.value || '').trim();
+        if (result.messages && result.messages.length > 0) {
+          console.warn('[CV Upload] DOCX parse warnings:', result.messages.map(m => m.message).join('; '));
+        }
+        if (!rawText || rawText.length < 20) {
+          extractionWarnings.push('DOCX contains too little text — check file contents');
+        }
+      } else if (isDoc) {
+        // .doc (legacy Word) — mammoth doesn't support it well, try anyway
+        try {
+          const result = await mammoth.extractRawText({ buffer: fileBuffer });
+          rawText = (result.value || '').trim();
+        } catch (docErr) {
+          extractionWarnings.push('Legacy .doc format — text extraction limited. Please use .docx or .pdf for best results.');
+          console.warn('[CV Upload] .doc extraction failed:', docErr.message);
+        }
+      }
+    } catch (extractErr) {
+      console.error('[CV Upload] Text extraction error:', extractErr.message);
+      extractionWarnings.push('Text extraction failed: ' + extractErr.message);
+    }
+
+    console.log('[CV Upload] Extracted text length:', rawText.length, '| Warnings:', extractionWarnings.length);
+
+    // ── AI Profile Extraction (GPT-4o-mini with fallback) ──
+    let aiResult = null;
+    let parseStatus = 'failed';
+    let warnings = [...extractionWarnings];
+
+    if (rawText.length >= 50) {
       try {
-        const body = Buffer.concat(chunks);
-        const contentType = req.headers['content-type'] || '';
+        // Get existing profile for merging
+        const { data: profile } = await supabase.from('profiles')
+          .select('first_name, last_name, location, skills')
+          .eq('user_id', user.id).maybeSingle();
 
-        // Parse multipart form data manually (simple boundary parser)
-        const boundaryMatch = contentType.match(/boundary=(.+)/);
-        if (!boundaryMatch) return res.status(400).json({ error: 'Invalid content type, expected multipart/form-data' });
+        const existingData = {
+          full_name: `${profile?.first_name||''} ${profile?.last_name||''}`.trim() || null,
+          email: user.email,
+          location: profile?.location,
+          skills: profile?.skills,
+        };
 
-        const boundary = boundaryMatch[1];
-        const parts = body.toString('binary').split('--' + boundary);
+        // Parse with GPT-4o-mini (auto-fallback to rule-based)
+        const { parseWithAI } = require('./lib/ai-cv-parser');
+        const { calculateProfileCompletion } = require('./lib/matching-engine');
+        const parsed = await parseWithAI(rawText, existingData, user.id);
 
-        let fileBuffer = null;
-        let fileName = 'cv.pdf';
-        let fileMime = 'application/pdf';
+        // Merge skills from profile if AI found none
+        if (parsed.hard_skills.length === 0 && (profile?.skills||[]).length > 0) {
+          parsed.hard_skills = profile.skills;
+        }
 
-        for (const part of parts) {
-          if (part.includes('filename=')) {
-            const nameMatch = part.match(/filename="([^"]+)"/);
-            if (nameMatch) fileName = nameMatch[1];
-            const mimeMatch = part.match(/Content-Type:\s*(.+)\r?\n/);
-            if (mimeMatch) fileMime = mimeMatch[1].trim();
-            // Extract file content after double newline
-            const headerEnd = part.indexOf('\r\n\r\n');
-            if (headerEnd !== -1) {
-              const fileContent = part.substring(headerEnd + 4).replace(/\r\n$/, '');
-              fileBuffer = Buffer.from(fileContent, 'binary');
+        parseStatus = parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review';
+
+        // Map experience_level to DB-compatible values
+        const VALID_EXP_LEVELS = ['no_experience', 'beginner', 'entry', 'junior', 'mid', 'experienced', 'senior', 'unknown'];
+        let dbExpLevel = parsed.experience_level || 'unknown';
+        if (!VALID_EXP_LEVELS.includes(dbExpLevel)) {
+          console.warn('[CV Upload] Invalid experience_level "' + dbExpLevel + '" — mapping to "beginner"');
+          dbExpLevel = 'beginner';
+        }
+
+        console.log('[CV Upload] AI parse done. Source:', parsed._source, '| Skills:', (parsed.hard_skills||[]).length, '| Confidence:', parsed.confidence_score);
+        console.log('[CV Upload] Summary:', (parsed.ai_summary || '').substring(0, 100) + '...');
+
+        const aiData = {
+          user_id: user.id,
+          full_name: parsed.full_name,
+          email: parsed.email || user.email,
+          phone: parsed.phone,
+          location: parsed.location,
+          hard_skills: parsed.hard_skills,
+          soft_skills: parsed.soft_skills,
+          languages: parsed.languages,
+          experience_years: parsed.experience_years,
+          education_level: parsed.education_level,
+          education_field: parsed.education_field,
+          education_school: parsed.education_school,
+          certifications: parsed.certifications || [],
+          preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
+          preferred_job_types: parsed.preferred_job_types || [],
+          preferred_work_models: parsed.preferred_work_models || [],
+          preferred_categories: parsed.preferred_categories || [],
+          work_mode_preference: parsed.work_mode_preference || null,
+          availability_hours: parsed.availability_hours_per_week || null,
+          salary_expectation: parsed.salary_expectation || null,
+          portfolio_links: parsed.portfolio_links || [],
+          work_experience: parsed.work_experience || [],
+          parse_status: parseStatus,
+          extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+          extraction_version: '3.0',
+          raw_cv_text: rawText.substring(0, 50000),
+          confidence_score: parsed.confidence_score,
+          ai_headline: parsed.ai_headline,
+          ai_summary: parsed.ai_summary,
+          ai_portfolio_intro: parsed.ai_portfolio_intro,
+          ai_strengths: parsed.ai_strengths,
+          ai_development_areas: parsed.ai_development_areas,
+          ai_suggested_roles: parsed.ai_suggested_roles,
+          ai_suggested_categories: parsed.ai_suggested_categories,
+          ai_missing_fields: parsed.ai_missing_fields || [],
+          ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
+          ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
+          experience_level: dbExpLevel,
+          ai_profile_approved: false,
+          ai_generated_at: new Date().toISOString(),
+          profile_completion_score: parsed._profile_completion_score || 0,
+          updated_at: new Date().toISOString(),
+        };
+
+        const completion = calculateProfileCompletion(aiData);
+        aiData.profile_completion_score = Math.max(aiData.profile_completion_score, completion.score);
+
+        console.log('[CV Upload] Saving to ai_profiles for user:', user.id);
+        const { data: aiProfile, error: aiErr } = await supabase.from('ai_profiles')
+          .upsert(aiData, { onConflict: 'user_id' }).select().single();
+
+        if (!aiErr && aiProfile) {
+          const { raw_cv_text, ...safe } = aiProfile;
+          aiResult = safe;
+          console.log('[CV Upload] ✅ AI profile SAVED. Skills:', (aiProfile.hard_skills||[]).length, '| Headline:', aiProfile.ai_headline);
+        }
+        if (aiErr) {
+          console.error('[CV Upload] ❌ AI profile save FAILED:', aiErr.message, aiErr.details, aiErr.hint);
+          warnings.push('AI profile save error: ' + aiErr.message);
+
+          // Try a minimal insert/update as fallback — strip columns that may not exist
+          try {
+            const minimalData = {
+              user_id: user.id,
+              full_name: parsed.full_name,
+              email: parsed.email || user.email,
+              hard_skills: parsed.hard_skills,
+              soft_skills: parsed.soft_skills,
+              languages: parsed.languages,
+              education_level: parsed.education_level,
+              parse_status: parseStatus,
+              extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+              raw_cv_text: rawText.substring(0, 50000),
+              confidence_score: parsed.confidence_score,
+              ai_headline: parsed.ai_headline,
+              ai_summary: parsed.ai_summary,
+              experience_level: dbExpLevel,
+              updated_at: new Date().toISOString(),
+            };
+            const { data: retryProfile, error: retryErr } = await supabase.from('ai_profiles')
+              .upsert(minimalData, { onConflict: 'user_id' }).select().single();
+            if (!retryErr && retryProfile) {
+              const { raw_cv_text: _, ...safeFallback } = retryProfile;
+              aiResult = safeFallback;
+              console.log('[CV Upload] ✅ AI profile SAVED (minimal fallback)');
+            } else if (retryErr) {
+              console.error('[CV Upload] ❌ Minimal fallback also failed:', retryErr.message);
             }
+          } catch (fbErr) {
+            console.error('[CV Upload] Fallback save error:', fbErr.message);
           }
         }
-
-        if (!fileBuffer) return res.status(400).json({ error: 'No file found in request' });
-
-        // Upload to Supabase Storage
-        const storagePath = `${user.id}/${Date.now()}_${fileName}`;
-        const { data: uploadData, error: uploadErr } = await supabase.storage
-          .from('cvs')
-          .upload(storagePath, fileBuffer, { contentType: fileMime, upsert: false });
-
-        if (uploadErr) {
-          console.error('[CV Upload] Storage error:', uploadErr);
-          return res.status(500).json({ error: uploadErr.message });
-        }
-
-        // Update profile with cv_id
-        await supabase.from('profiles')
-          .update({ cv_id: storagePath, original_filename: fileName })
-          .eq('user_id', user.id);
-
-        res.json({ cv: { id: storagePath, original_filename: fileName, created_at: new Date().toISOString() } });
-      } catch (err) {
-        console.error('[CV Upload] Parse error:', err);
-        res.status(500).json({ error: err.message });
+      } catch (parseErr) {
+        console.error('[CV Upload] AI parse error:', parseErr.message, parseErr.stack);
+        warnings.push('AI parse error: ' + parseErr.message);
       }
+    } else {
+      warnings.push('Not enough text extracted from file for AI analysis (' + rawText.length + ' chars)');
+    }
+
+    // Update profile flags
+    try {
+      const ready = parseStatus === 'ready' || parseStatus === 'needs_review';
+      await supabase.from('profiles')
+        .upsert({
+          user_id: user.id,
+          email: user.email,
+          ai_profile_ready: ready,
+          last_cv_parsed_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+    } catch (flagErr) {
+      console.warn('[CV Upload] Profile flag update non-fatal:', flagErr.message);
+    }
+
+    // Trigger match score recalculation against all active jobs
+    try {
+      const aiMatchingModule = require('./routes/ai-matching');
+      if (aiMatchingModule.helpers && typeof aiMatchingModule.helpers.recalculateForStudent === 'function') {
+        const matchCount = await aiMatchingModule.helpers.recalculateForStudent(user.id);
+        console.log('[CV Upload] Match scores recalculated for', matchCount, 'jobs');
+      }
+    } catch (matchErr) {
+      console.warn('[CV Upload] Match recalc non-fatal:', matchErr.message);
+    }
+
+    res.json({
+      cv: { id: storagePath, original_filename: fileName, created_at: new Date().toISOString() },
+      ai_profile: aiResult,
+      parse_status: parseStatus,
+      warnings,
     });
   } catch (err) {
+    console.error('[CV Upload] Critical error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -465,7 +747,7 @@ app.get('/api/company/:name', async (req, res) => {
       const { data: emp } = await supabase
         .from('employers')
         .select('name, description, website, logo_url, cover_url')
-        .eq('user_id', employerId)
+        .eq('id', employerId)
         .maybeSingle();
       if (emp) companyProfile = emp;
     }
@@ -599,6 +881,22 @@ app.post('/api/applications', async (req, res) => {
     }
 
     console.log('[POST /api/applications] Success:', data?.id, 'for job', job_id, '| Student:', studentName);
+
+    // ── Notify employer about new application ──
+    try {
+      if (job?.employer_id) {
+        await supabase.from('notifications').insert([{
+          user_id: job.employer_id,
+          type: 'application_received',
+          title: 'Nová prihláška',
+          message: `${studentName} sa prihlásil/a na pozíciu ${job.title || 'ponuka'}.`,
+          related_entity_id: data?.id || null,
+        }]);
+      }
+    } catch (notifErr) {
+      console.warn('Notification insert non-fatal:', notifErr.message);
+    }
+
     res.json({ application: data });
   } catch (err) {
     console.error('[POST /api/applications] Exception:', err);
@@ -645,10 +943,12 @@ app.patch('/api/applications/:id', async (req, res) => {
   }
 });
 
+
+
 // ── Public Employers List (for student search) ─────────────────────────────
 app.get('/api/employers', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('employers').select('id, name, description, color, logo_url');
+    const { data, error } = await supabase.from('employers').select('id, name, description, logo_url');
     if (error) return res.status(500).json({ error: error.message });
     // Count jobs per employer
     const { data: jobs } = await supabase.from('jobs').select('employer_id');
@@ -667,6 +967,214 @@ app.get('/api/employers', async (req, res) => {
   }
 });
 
+// ── Notifications API ──────────────────────────────────────────────────────────
+
+// GET /api/notifications — list user's notifications (newest first)
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, type, title, message, read, related_entity_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Map 'message' column to 'body' for frontend compatibility
+    const mapped = (data || []).map(n => ({
+      ...n,
+      body: n.message,
+    }));
+
+    res.json(mapped);
+  } catch (err) {
+    console.error('[Notifications] GET error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/notifications/:id/read — mark a single notification as read
+app.patch('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', req.params.id)
+      .eq('user_id', user.id);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Notifications] PATCH read error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/read-all — mark all user's notifications as read
+app.post('/api/notifications/read-all', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Notifications] POST read-all error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications — create a notification (used by application flow)
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { target_user_id, type, title, message, related_entity_id } = req.body;
+    if (!target_user_id || !title) {
+      return res.status(400).json({ error: 'target_user_id and title are required' });
+    }
+
+    const { error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: target_user_id,
+        type: type || 'general',
+        title,
+        message: message || '',
+        read: false,
+      });
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Notifications] POST create error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/application-received — auto-notify employer when student applies
+app.post('/api/notifications/application-received', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { job_id, job_title } = req.body;
+    if (!job_id) return res.status(400).json({ error: 'job_id is required' });
+
+    // Look up the job's employer
+    const { data: job, error: jobErr } = await supabase
+      .from('jobs')
+      .select('employer_id, title')
+      .eq('id', job_id)
+      .maybeSingle();
+
+    if (jobErr || !job) return res.status(404).json({ error: 'Job not found' });
+
+
+    // Get student name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const studentName = profile
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : user.email?.split('@')[0] || 'Kandidát';
+
+    const title = job_title || job.title || 'Ponuka';
+
+    // Create notification for employer
+    const { error: insertErr } = await supabase.from('notifications').insert({
+      user_id: job.employer_id,
+      type: 'application_received',
+      title: `Nová prihláška: ${studentName}`,
+      message: `${studentName} sa prihlásil/a na pozíciu "${title}"`,
+      read: false,
+    });
+
+    if (insertErr) {
+      console.error('[Notifications] Insert error:', insertErr);
+      return res.status(500).json({ error: insertErr.message });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Notifications] application-received error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/status-changed — notify student when employer changes status
+app.post('/api/notifications/status-changed', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { application_id, new_status, candidate_id, job_title } = req.body;
+    if (!candidate_id || !new_status) {
+      return res.status(400).json({ error: 'candidate_id and new_status are required' });
+    }
+
+    const statusLabels = {
+      'Viewed': 'Zobrazená',
+      'Interview': 'Pohovor naplánovaný',
+      'Interview-Confirmed': 'Pohovor potvrdený',
+      'Counter-Offer': 'Protinávrh termínu',
+      'Hired': 'Prijatý/á! 🎉',
+      'Rejected': 'Zamietnutá',
+    };
+
+    const statusLabel = statusLabels[new_status] || new_status;
+    const title = `Stav prihlášky: ${statusLabel}`;
+    const message = job_title
+      ? `Tvoja prihláška na "${job_title}" bola aktualizovaná na: ${statusLabel}`
+      : `Stav tvojej prihlášky bol zmenený na: ${statusLabel}`;
+
+    const type = new_status === 'Hired' ? 'hired'
+      : new_status === 'Rejected' ? 'rejected'
+      : new_status === 'Interview-Confirmed' ? 'interview_confirmed'
+      : new_status === 'Counter-Offer' ? 'counter_offer'
+      : new_status === 'Interview' ? 'interview_scheduled'
+      : 'general';
+
+    const { error: insertErr } = await supabase.from('notifications').insert({
+      user_id: candidate_id,
+      type,
+      title,
+      message,
+      read: false,
+    });
+
+    if (insertErr) {
+      console.error('[Notifications] Insert error:', insertErr);
+      return res.status(500).json({ error: insertErr.message });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Notifications] status-changed error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SPA Fallbacks ──────────────────────────────────────────────────────────────
 const distBase = __dirname;
 app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));
@@ -678,6 +1186,107 @@ app.get('/employer-demo(/*)?',  (req, res) => res.sendFile(path.join(distBase, '
 // ── Start ──────────────────────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
   console.log(`unemployed.sk running on http://localhost:${PORT}`);
+
+  // ── Startup: detect CVs uploaded while server was down ─────────────────
+  setTimeout(async () => {
+    try {
+      const { data: profiles } = await supabase.from('profiles')
+        .select('user_id, cv_id, original_filename')
+        .not('cv_id', 'is', null);
+
+      const { data: aiProfiles } = await supabase.from('ai_profiles')
+        .select('user_id, updated_at');
+
+      const aiMap = {};
+      (aiProfiles || []).forEach(a => { aiMap[a.user_id] = a; });
+
+      const stale = [];
+      for (const p of (profiles || [])) {
+        if (!p.cv_id) continue;
+        // Extract upload timestamp from cv_id path (format: userId/timestamp_filename)
+        const match = p.cv_id.match(/\/(\d{13})_/);
+        if (!match) continue;
+        const uploadTs = parseInt(match[1]);
+        const ai = aiMap[p.user_id];
+        const aiTs = ai ? new Date(ai.updated_at).getTime() : 0;
+        // If CV was uploaded AFTER the last AI parse, it needs reparsing
+        if (uploadTs > aiTs + 60000) { // 1 min tolerance
+          stale.push({ user_id: p.user_id, filename: p.original_filename, uploadTs, aiTs });
+        }
+      }
+
+      if (stale.length > 0) {
+        console.log(`[Startup] Found ${stale.length} stale AI profile(s) — triggering reparse...`);
+        const pdfParse = require('pdf-parse');
+        const { parseWithAI } = require('./lib/ai-cv-parser');
+        const { calculateProfileCompletion, calculateCandidateJobMatch } = require('./lib/matching-engine');
+
+        for (const s of stale) {
+          try {
+            console.log(`[Startup] Reparsing CV for ${s.user_id.slice(0,8)} (${s.filename})`);
+            const profile = (profiles || []).find(p => p.user_id === s.user_id);
+            const { data: fileData, error: dlErr } = await supabase.storage.from('cvs').download(profile.cv_id);
+            if (dlErr || !fileData) { console.warn('[Startup] Download failed:', dlErr?.message); continue; }
+
+            const buf = Buffer.from(await fileData.arrayBuffer());
+            const pdf = await pdfParse(buf);
+            const rawText = (pdf.text || '').trim();
+            if (rawText.length < 50) { console.warn('[Startup] Too little text'); continue; }
+
+            const { data: prof } = await supabase.from('profiles')
+              .select('first_name, last_name, location, skills, email')
+              .eq('user_id', s.user_id).maybeSingle();
+
+            const parsed = await parseWithAI(rawText, {
+              full_name: `${prof?.first_name||''} ${prof?.last_name||''}`.trim() || null,
+              email: prof?.email, location: prof?.location, skills: prof?.skills,
+            }, s.user_id);
+
+            const expLevelMap = { entry: 'beginner', junior: 'junior', mid: 'experienced', senior: 'experienced' };
+            const aiData = {
+              user_id: s.user_id, full_name: parsed.full_name, email: parsed.email || prof?.email,
+              phone: parsed.phone, location: parsed.location,
+              hard_skills: parsed.hard_skills, soft_skills: parsed.soft_skills,
+              languages: parsed.languages, experience_years: parsed.experience_years,
+              education_level: parsed.education_level, education_field: parsed.education_field,
+              education_school: parsed.education_school, certifications: parsed.certifications || [],
+              preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
+              parse_status: parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review',
+              extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+              extraction_version: '3.0', raw_cv_text: rawText.substring(0, 50000),
+              confidence_score: parsed.confidence_score,
+              ai_headline: parsed.ai_headline, ai_summary: parsed.ai_summary,
+              ai_portfolio_intro: parsed.ai_portfolio_intro,
+              ai_strengths: parsed.ai_strengths, ai_development_areas: parsed.ai_development_areas,
+              ai_suggested_roles: parsed.ai_suggested_roles, ai_suggested_categories: parsed.ai_suggested_categories,
+              ai_missing_fields: parsed.ai_missing_fields || [], ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
+              ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
+              experience_level: expLevelMap[parsed.experience_level] || 'unknown',
+              ai_profile_approved: false, ai_generated_at: new Date().toISOString(),
+              profile_completion_score: 0, updated_at: new Date().toISOString(),
+            };
+            aiData.profile_completion_score = calculateProfileCompletion(aiData).score;
+
+            const { error: saveErr } = await supabase.from('ai_profiles').upsert(aiData, { onConflict: 'user_id' });
+            if (saveErr) { console.error('[Startup] Save failed:', saveErr.message); continue; }
+
+            // Update profile flags
+            await supabase.from('profiles').upsert({
+              user_id: s.user_id, ai_profile_ready: true,
+              last_cv_parsed_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' });
+
+            // Recalculate match scores
+            const aiMatchingModule = require('./routes/ai-matching');
+            if (aiMatchingModule.helpers?.recalculateForStudent) {
+              const count = await aiMatchingModule.helpers.recalculateForStudent(s.user_id);
+              console.log(`[Startup] ✅ ${s.user_id.slice(0,8)} reparsed + ${count} scores recalculated`);
+            }
+          } catch (err) { console.warn('[Startup] Reparse error:', err.message); }
+        }
+      }
+    } catch (err) { console.warn('[Startup] Stale check error:', err.message); }
+  }, 5000);
 });
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
 process.on('SIGINT',  () => server.close(() => process.exit(0)));

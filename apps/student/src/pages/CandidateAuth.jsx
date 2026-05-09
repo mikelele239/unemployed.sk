@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 
 export default function CandidateAuth({ onLoginSuccess }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,6 +24,28 @@ export default function CandidateAuth({ onLoginSuccess }) {
 
   const handleCandidateSubmit = async (e) => {
     e.preventDefault();
+
+    if (mode === 'forgot') {
+      if (!email) return;
+      try {
+        setLoading(true);
+        setError('');
+        setMessage('');
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, portal: 'student' }),
+        });
+        const result = await res.json();
+        setMessage(result.message || 'Odkaz na obnovenie hesla bol odoslaný.');
+      } catch (err) {
+        setMessage('Odkaz na obnovenie hesla bol odoslaný.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!email || !password) return;
     if (mode === 'register' && !fullName) return setError('Prosím zadajte svoje meno.');
 
@@ -40,22 +62,27 @@ export default function CandidateAuth({ onLoginSuccess }) {
       setMessage('');
 
       if (mode === 'register') {
-        // Register directly via Supabase Auth — no Express server needed
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { role: 'candidate', full_name: fullName }
-          }
+        // Register via server-side admin API to avoid Supabase email rate limits
+        const res = await fetch('/api/auth/student/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, fullName }),
         });
-        if (signUpError) throw signUpError;
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.details || result.error || 'Registrácia zlyhala.');
+        }
 
-        // If email confirmation is disabled in Supabase, session is returned immediately
-        if (data.session) {
-          if (onLoginSuccess) onLoginSuccess(data.session);
-        } else {
-          setMessage('Váš účet bol vytvorený! Skontrolujte si e-mail a potvrďte registráciu.');
+        // Auto-login after successful registration
+        const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginErr) {
+          // Account created but auto-login failed — prompt manual login
+          setMessage('Účet bol vytvorený! Prihláste sa pomocou svojich údajov.');
           setMode('login');
+          return;
+        }
+        if (loginData.session) {
+          if (onLoginSuccess) onLoginSuccess(loginData.session);
         }
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -71,12 +98,12 @@ export default function CandidateAuth({ onLoginSuccess }) {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       background: '#0a0a0a',
-      padding: 20,
+      padding: '16px',
       position: 'relative',
       overflow: 'hidden'
     }}>
@@ -99,34 +126,34 @@ export default function CandidateAuth({ onLoginSuccess }) {
         animate={{ opacity: 1, y: 0 }}
         style={{
           width: '100%',
-          maxWidth: 440,
+          maxWidth: 420,
           background: 'rgba(20, 20, 20, 0.7)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: 32,
+          borderRadius: 28,
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '48px 40px',
+          padding: '28px 28px 24px',
           boxShadow: '0 32px 100px rgba(0,0,0,0.5)',
           zIndex: 1
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 64, height: 64, borderRadius: 20,
+              width: 48, height: 48, borderRadius: 16,
               background: 'linear-gradient(135deg, var(--accent), #ff8c00)',
-              marginBottom: 20, fontSize: 32,
+              marginBottom: 12, fontSize: 24,
               boxShadow: '0 8px 24px rgba(255, 92, 0, 0.3)',
             }}>
             🎓
           </motion.div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, margin: 0, letterSpacing: '-0.03em', color: '#fff' }}>
-            {mode === 'login' ? 'Vitaj späť' : 'Začni svoju cestu'}
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 400, margin: 0, letterSpacing: '-0.03em', color: '#fff' }}>
+            {mode === 'forgot' ? 'Zabudnuté heslo' : mode === 'login' ? 'Vitaj späť' : 'Začni svoju cestu'}
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, marginTop: 10, lineHeight: 1.5 }}>
-            {mode === 'login' ? 'Tvoj dream job je na dosah ruky.' : 'Vytvor si účet a získaj prístup k top ponukám.'}
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 6, lineHeight: 1.4 }}>
+            {mode === 'forgot' ? 'Zadajte e-mail a pošleme vám odkaz na obnovenie.' : mode === 'login' ? 'Tvoj dream job je na dosah ruky.' : 'Vytvor si účet a získaj prístup k top ponukám.'}
           </p>
         </div>
 
@@ -135,7 +162,7 @@ export default function CandidateAuth({ onLoginSuccess }) {
           background: 'rgba(255,255,255,0.03)',
           borderRadius: 16,
           padding: 6,
-          marginBottom: 32,
+          marginBottom: 16,
           gap: 6,
           border: '1px solid rgba(255,255,255,0.05)'
         }}>
@@ -144,10 +171,10 @@ export default function CandidateAuth({ onLoginSuccess }) {
               key={m}
               onClick={() => reset(m)}
               style={{
-                flex: 1, padding: '12px', borderRadius: 12, border: 'none',
+                flex: 1, padding: '10px', borderRadius: 10, border: 'none',
                 background: mode === m ? 'var(--accent)' : 'transparent',
                 color: mode === m ? '#fff' : 'rgba(255,255,255,0.4)',
-                fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                fontWeight: 600, fontSize: 13, cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
@@ -165,52 +192,57 @@ export default function CandidateAuth({ onLoginSuccess }) {
             transition={{ duration: 0.2 }}
           >
             {error && (
-              <div style={{ color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '14px 18px', borderRadius: 16, marginBottom: 24, fontSize: 14, border: '1px solid rgba(255, 77, 77, 0.2)' }}>
+              <div style={{ color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '10px 14px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid rgba(255, 77, 77, 0.2)' }}>
                 {error}
               </div>
             )}
             {message && (
-              <div style={{ color: '#00e676', background: 'rgba(0, 230, 118, 0.1)', padding: '14px 18px', borderRadius: 16, marginBottom: 24, fontSize: 14, border: '1px solid rgba(0, 230, 118, 0.2)' }}>
+              <div style={{ color: '#00e676', background: 'rgba(0, 230, 118, 0.1)', padding: '10px 14px', borderRadius: 12, marginBottom: 12, fontSize: 13, border: '1px solid rgba(0, 230, 118, 0.2)' }}>
                 {message}
               </div>
             )}
 
-            <form onSubmit={handleCandidateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <form onSubmit={handleCandidateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {mode === 'register' && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Meno a priezvisko</label>
+                  <label style={{ display: 'block', marginBottom: 5, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Meno a priezvisko</label>
                   <input type="text" placeholder="Janko Hraško" value={fullName}
                     onChange={(e) => setFullName(e.target.value)} required 
-                    style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 15, outline: 'none' }} 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} 
                   />
                 </motion.div>
               )}
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>E-mailová adresa</label>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>E-mailová adresa</label>
                 <input type="email" placeholder="meno@priklad.sk" value={email}
                   onChange={(e) => setEmail(e.target.value)} required 
-                  style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 15, outline: 'none', transition: 'all 0.2s' }} 
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }} 
                   onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Heslo</label>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Heslo</label>
                 <input type="password" placeholder="••••••••" value={password}
                   onChange={(e) => setPassword(e.target.value)} required 
-                  style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 15, outline: 'none', transition: 'all 0.2s' }}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
                   onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
                 />
               </div>
               {mode === 'register' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Potvrdenie hesla</label>
+                  <label style={{ display: 'block', marginBottom: 5, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Potvrdenie hesla</label>
                   <input type="password" placeholder="••••••••" value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)} required 
-                    style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 15, outline: 'none' }} 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} 
                   />
                 </motion.div>
+              )}
+              {mode === 'login' && (
+                <div style={{ textAlign: 'right', marginTop: -8 }}>
+                  <span onClick={() => reset('forgot')} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>Zabudli ste heslo?</span>
+                </div>
               )}
               <motion.button 
                 whileHover={{ scale: 1.02 }}
@@ -218,20 +250,25 @@ export default function CandidateAuth({ onLoginSuccess }) {
                 type="submit" 
                 disabled={loading} 
                 style={{
-                  width: '100%', padding: '18px', borderRadius: 16, border: 'none',
+                  width: '100%', padding: '16px', borderRadius: 14, border: 'none',
                   background: loading ? 'rgba(255,255,255,0.1)' : 'var(--accent)',
                   color: '#fff', fontWeight: 700, fontSize: 16,
-                  cursor: loading ? 'not-allowed' : 'pointer', marginTop: 12, 
+                  cursor: loading ? 'not-allowed' : 'pointer', marginTop: 4, 
                   boxShadow: loading ? 'none' : '0 12px 32px rgba(255, 92, 0, 0.2)',
                   transition: 'all 0.3s',
                 }}>
-                {loading ? 'Pracujem...' : (mode === 'login' ? 'Prihlásiť sa' : 'Vytvoriť účet')}
+                {loading ? 'Pracujem...' : (mode === 'forgot' ? 'Odoslať odkaz' : mode === 'login' ? 'Prihlásiť sa' : 'Vytvoriť účet')}
               </motion.button>
+              {mode === 'forgot' && (
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <span onClick={() => reset('login')} style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>← Späť na prihlásenie</span>
+                </div>
+              )}
             </form>
           </motion.div>
         </AnimatePresence>
 
-        <div style={{ marginTop: 40, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 24 }}>
+        <div style={{ marginTop: 16, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 14 }}>
           <a href="/login" style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = '#fff'} onMouseLeave={(e) => e.target.style.color = 'rgba(255,255,255,0.4)'}>
             ← Späť na výber portálu
           </a>

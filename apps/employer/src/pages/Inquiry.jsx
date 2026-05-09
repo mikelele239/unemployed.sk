@@ -7,6 +7,7 @@ import { supabase } from '../supabase';
 export default function Inquiry() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -14,22 +15,27 @@ export default function Inquiry() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !companyName) return;
+    if (!email || !companyName || !password) return;
+
+    if (password.length < 6) {
+      setError('Heslo musí mať aspoň 6 znakov.');
+      return;
+    }
 
     try {
       setLoading(true);
       setError('');
-      
-      const { error: sbError } = await supabase.from('submissions').insert([{
-        email,
-        company_name: companyName,
-        user_type: 'Zamestnávateľ',
-        consented: true
-      }]);
 
-      if (sbError) {
-        if (sbError.code === '23505') throw new Error('Tento e-mail už je zaregistrovaný.');
-        throw new Error(sbError.message || 'Nepodarilo sa odoslať záujem.');
+      const res = await fetch('/api/auth/employer/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, companyName }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Registrácia zlyhala.');
       }
 
       setSuccess(true);
@@ -53,11 +59,11 @@ export default function Inquiry() {
            variants={containerVariants} initial="hidden" animate="visible"
            style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: '48px 40px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}
         >
-          <div style={{ fontSize: 48, marginBottom: 20 }}>📬</div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>Záujem bol odoslaný!</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 32 }}>Ďakujeme za záujem. Budeme vás čoskoro kontaktovať ohľadom vytvorenia prístupu.</p>
-          <button onClick={() => navigate('/')} style={{ width: '100%', padding: '16px', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>
-             Späť na prihlásenie
+          <div style={{ fontSize: 48, marginBottom: 20 }}>🎉</div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>Účet bol vytvorený!</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 32 }}>Vaša registrácia prebehla úspešne. Teraz sa môžete prihlásiť do portálu.</p>
+          <button onClick={() => navigate('/')} style={{ width: '100%', padding: '16px', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: 16 }}>
+             Prihlásiť sa
           </button>
         </motion.div>
       </div>
@@ -75,10 +81,10 @@ export default function Inquiry() {
               🏢
             </div>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-              Chcem sa registrovať
+              Registrácia zamestnávateľa
             </h2>
             <p style={{ color: 'var(--text-muted)', marginTop: 8, fontSize: 14 }}>
-              Zanechajte nám kontakt a my sa ozveme.
+              Vytvorte si účet a začnite hľadať talenty.
             </p>
           </div>
 
@@ -93,7 +99,7 @@ export default function Inquiry() {
               <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Názov Firmy</label>
               <input 
                 type="text" placeholder="Vaša firma, s.r.o." value={companyName} onChange={(e) => setCompanyName(e.target.value)} required
-                style={{ width: '100%', padding: '16px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }}
+                style={{ width: '100%', padding: '16px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -101,7 +107,15 @@ export default function Inquiry() {
               <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>E-mail</label>
               <input 
                 type="email" placeholder="hr@firma.sk" value={email} onChange={(e) => setEmail(e.target.value)} required
-                style={{ width: '100%', padding: '16px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }}
+                style={{ width: '100%', padding: '16px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Heslo</label>
+              <input 
+                type="password" placeholder="Minimálne 6 znakov" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+                style={{ width: '100%', padding: '16px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -109,7 +123,7 @@ export default function Inquiry() {
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={loading}
               style={{ width: '100%', padding: '18px', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 800, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 12 }}
             >
-              {loading ? 'Spracovávam...' : 'Odoslať záujem'}
+              {loading ? 'Vytváram účet...' : 'Vytvoriť účet'}
             </motion.button>
           </form>
 

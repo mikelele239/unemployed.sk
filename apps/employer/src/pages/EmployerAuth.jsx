@@ -7,14 +7,39 @@ export default function EmployerAuth({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [mode, setMode] = useState('login'); // 'login' | 'forgot'
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (mode === 'forgot') {
+      if (!email) return;
+      try {
+        setLoading(true);
+        setError('');
+        setMessage('');
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, portal: 'employer' }),
+        });
+        const result = await res.json();
+        setMessage(result.message || 'Odkaz na obnovenie hesla bol odoslaný.');
+      } catch (err) {
+        setMessage('Odkaz na obnovenie hesla bol odoslaný.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!email || !password) return;
 
     try {
       setLoading(true);
       setError('');
+      setMessage('');
 
       // Direct Supabase auth — no Express needed
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -125,6 +150,12 @@ export default function EmployerAuth({ onLoginSuccess }) {
           )}
         </AnimatePresence>
 
+        {message && (
+          <div style={{ color: '#00e676', background: 'rgba(0, 230, 118, 0.1)', padding: '16px 20px', borderRadius: 18, marginBottom: 28, fontSize: 14, border: '1px solid rgba(0, 230, 118, 0.2)' }}>
+            {message}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 10, fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Pracovný E-mail</label>
@@ -136,15 +167,20 @@ export default function EmployerAuth({ onLoginSuccess }) {
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', marginBottom: 10, fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Heslo</label>
-            <input 
-              type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required
-              style={{ width: '100%', padding: '18px 22px', borderRadius: 18, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 15, outline: 'none', transition: 'all 0.3s' }}
-              onFocus={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.3)'; e.target.style.background = 'rgba(255,255,255,0.05)'; }}
-              onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.background = 'rgba(255,255,255,0.03)'; }}
-            />
-          </div>
+          {mode === 'login' && (
+            <div>
+              <label style={{ display: 'block', marginBottom: 10, fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Heslo</label>
+              <input 
+                type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required
+                style={{ width: '100%', padding: '18px 22px', borderRadius: 18, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 15, outline: 'none', transition: 'all 0.3s' }}
+                onFocus={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.3)'; e.target.style.background = 'rgba(255,255,255,0.05)'; }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.background = 'rgba(255,255,255,0.03)'; }}
+              />
+              <div style={{ textAlign: 'right', marginTop: 10 }}>
+                <span onClick={() => { setMode('forgot'); setError(''); setMessage(''); }} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>Zabudli ste heslo?</span>
+              </div>
+            </div>
+          )}
 
           <motion.button 
             whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(255, 92, 0, 0.2)' }}
@@ -153,8 +189,13 @@ export default function EmployerAuth({ onLoginSuccess }) {
             disabled={loading}
             style={{ width: '100%', padding: '20px', borderRadius: 18, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer', marginTop: 12, transition: 'all 0.3s' }}
           >
-            {loading ? 'Overovanie...' : 'Vstúpiť do centrály'}
+            {loading ? 'Overovanie...' : (mode === 'forgot' ? 'Odoslať odkaz na obnovenie' : 'Vstúpiť do centrály')}
           </motion.button>
+          {mode === 'forgot' && (
+            <div style={{ textAlign: 'center' }}>
+              <span onClick={() => { setMode('login'); setError(''); setMessage(''); }} style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>← Späť na prihlásenie</span>
+            </div>
+          )}
         </form>
 
         <div style={{ marginTop: 48, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 36 }}>

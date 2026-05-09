@@ -1,20 +1,50 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search as SearchIcon, FileText, User } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../I18nContext';
+import NotificationBell from './NotificationBell';
 
 export default function MainLayout() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [bellVisible, setBellVisible] = useState(true);
+  const lastY = useRef(0);
+  const hideTimer = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Capture-phase scroll listener — catches scroll on ANY element
+  useEffect(() => {
+    const onScroll = (e) => {
+      const el = e.target;
+      if (!el || el === document) return;
+      const y = el.scrollTop;
+      if (y == null || isNaN(y)) return;
+
+      if (y > lastY.current + 5 && y > 80) {
+        setBellVisible(false);
+      } else if (y < lastY.current - 5 || y <= 80) {
+        setBellVisible(true);
+      }
+      lastY.current = y;
+    };
+
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', onScroll, { capture: true });
+  }, []);
+
+  // Reset on page change
+  useEffect(() => {
+    setBellVisible(true);
+    lastY.current = 0;
+  }, [location.pathname]);
 
   const navItems = [
     { path: '/foryou', label: t('nav.foryou'), icon: Home },
@@ -154,9 +184,24 @@ export default function MainLayout() {
         </div>
       </nav>
 
+      {/* Notification Bell — fixed top-right, hides on scroll down */}
+      <div style={{
+        position: 'fixed',
+        top: isDesktop ? 24 : 12,
+        right: isDesktop ? 32 : 16,
+        zIndex: 200,
+        opacity: bellVisible ? 1 : 0,
+        transform: bellVisible ? 'translateY(0)' : 'translateY(-20px)',
+        pointerEvents: bellVisible ? 'auto' : 'none',
+        transition: 'opacity 0.2s ease, transform 0.2s ease',
+      }}>
+        <NotificationBell lang={lang} />
+      </div>
+
       <div style={{ 
         flex: 1, 
-        overflowY: 'auto', 
+        overflowY: 'auto',
+        overflowX: 'hidden',
         paddingBottom: isDesktop ? '0' : 'calc(60px + env(safe-area-inset-bottom, 0px))',
         position: 'relative'
       }}>

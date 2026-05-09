@@ -47,23 +47,67 @@ const Candidates = () => {
 
         const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
         let profilesMap = {};
+        let aiProfilesMap = {};
         if (candidateIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('user_id', candidateIds);
+          const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', candidateIds);
           (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
+
+          // Fetch AI profiles via server proxy (bypasses RLS)
+          try {
+            const aiRes = await fetch('/api/employer/ai-profiles', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+              body: JSON.stringify({ candidate_ids: candidateIds }),
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              aiProfilesMap = aiData.profiles || {};
+              console.log('[Candidates] AI profiles loaded:', Object.keys(aiProfilesMap).length);
+            } else {
+              console.error('[Candidates] AI profiles error:', aiRes.status, await aiRes.text());
+            }
+          } catch (aiErr) { console.error('[Candidates] AI profiles fetch failed:', aiErr.message); }
         }
+
+        // Fetch match scores via server proxy (bypasses RLS)
+        let matchScoresMap = {};
+        try {
+          const msRes = await fetch('/api/employer/match-scores-bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ candidate_ids: candidateIds, job_ids: jobIds }),
+          });
+          if (msRes.ok) {
+            const msData = await msRes.json();
+            matchScoresMap = msData.scores || {};
+            console.log('[Candidates] Match scores loaded:', Object.keys(matchScoresMap).length);
+          } else {
+            console.error('[Candidates] Match scores error:', msRes.status, await msRes.text());
+          }
+        } catch (msErr) { console.error('[Candidates] Match scores fetch failed:', msErr.message); }
+        console.log('[Candidates] AI profiles received:', Object.keys(aiProfilesMap).length, aiProfilesMap);
+        console.log('[Candidates] Match scores received:', Object.keys(matchScoresMap).length, matchScoresMap);
+        console.log('[Candidates] Candidate IDs:', candidateIds);
 
         const enrichedCandidates = (apps || []).map(app => {
           const profile = profilesMap[app.candidate_id] || {};
+          const ai = aiProfilesMap[app.candidate_id] || {};
           const job = jobsMap[app.job_id] || {};
+          const matchKey = `${app.candidate_id}_${app.job_id}`;
+          const matchData = matchScoresMap[matchKey] || {};
           return {
             ...app,
             student_name: (profile.first_name || profile.last_name)
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
               : app.student_name,
             student_profile: { ...(app.student_profile || {}), ...profile },
+            ai_profile: ai,
+            ai_reasoning: ai.ai_summary || null,
+            ai_headline: ai.ai_headline || null,
+            ai_score: matchData.overall_score || 0,
+            score_breakdown: matchData.breakdown || {},
+            match_reasons: matchData.match_reasons || [],
+            match_gaps: matchData.gaps || [],
             job_title: job.title || '—',
             job_location: job.location || '',
             interviewInfo: {
@@ -92,12 +136,17 @@ const Candidates = () => {
       const body = { status };
       if (interviewDates) body.interview_dates = interviewDates;
 
-      const { error } = await supabase
-        .from('applications')
-        .update(body)
-        .eq('id', id);
+      // Use the server-side API endpoint — it handles notification insertion for the candidate
+      const res = await fetch(`/api/employer/candidates/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
 
-      if (!error) {
+      if (res.ok) {
         if (status === 'Interview' && !invitedIds.includes(id)) {
           setInvitedIds([...invitedIds, id]);
         }
@@ -109,6 +158,8 @@ const Candidates = () => {
         setToastMsg(status === 'Hired' ? 'Kandidát bol úspešne prijatý!' : t('toastInvite'));
         setShowToast(true);
         refreshAnalytics();
+      } else {
+        console.error('Status update failed:', await res.text());
       }
     } catch (err) {
       console.error('Update status error:', err);

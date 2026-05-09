@@ -3,9 +3,27 @@ import { useI18n } from '../contexts';
 import { supabase } from '../supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernDatePicker from './ModernDatePicker';
+import CandidateAvatar from './CandidateAvatar';
+
+// Helper: parse bilingual JSON strings {sk,en} — returns the right language
+function biLang(val, lang) {
+  if (!val) return '';
+  if (typeof val === 'object' && (val.sk || val.en)) return val[lang] || val.en || val.sk || '';
+  if (typeof val !== 'string') return String(val);
+  try {
+    const parsed = JSON.parse(val);
+    if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) return parsed[lang] || parsed.en || parsed.sk || '';
+    return val;
+  } catch { return val; }
+}
+// Helper for bilingual arrays (each element may be a JSON string)
+function biLangArr(arr, lang) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => biLang(item, lang)).filter(Boolean);
+}
 
 const CandidateCard = ({ candidate, onInvite }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showCV, setShowCV] = useState(false);
@@ -14,38 +32,11 @@ const CandidateCard = ({ candidate, onInvite }) => {
   const [localSuccess, setLocalSuccess] = useState(null);
   const [cvUrl, setCvUrl] = useState(null);
   const [fullscreenCV, setFullscreenCV] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [avatarFailed, setAvatarFailed] = useState(false);
+
 
   const profile = candidate.student_profile || {};
+  const ai = candidate.ai_profile || {};
   const cvId = profile.cv_id;
-
-  // Resolve avatar: try to get a fresh signed URL from storage
-  useEffect(() => {
-    const resolveAvatar = async () => {
-      const uid = candidate.candidate_id;
-      if (!uid) return;
-      try {
-        // List files in the user's storage folder to find their avatar
-        const { data: files } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
-        const avatarFile = (files || []).find(f => f.name.toLowerCase().startsWith('avatar.'));
-        if (avatarFile) {
-          const { data } = await supabase.storage.from('cvs').createSignedUrl(`${uid}/${avatarFile.name}`, 3600);
-          if (data?.signedUrl) {
-            setAvatarUrl(data.signedUrl);
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('Avatar resolve error:', err);
-      }
-      // If storage lookup fails, try the stored avatar_url as-is
-      if (profile.avatar_url) {
-        setAvatarUrl(profile.avatar_url);
-      }
-    };
-    resolveAvatar();
-  }, [candidate.candidate_id, profile.avatar_url]);
 
   useEffect(() => {
     if (expanded && cvId && !cvUrl) {
@@ -63,7 +54,6 @@ const CandidateCard = ({ candidate, onInvite }) => {
       fetchCvUrl();
     }
   }, [expanded, cvId, cvUrl]);
-  const initials = (candidate.student_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
   const status = (candidate.status || 'pending').toLowerCase();
 
   const getStatusDisplay = () => {
@@ -88,22 +78,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
     }} onClick={() => setExpanded(!expanded)}>
       {/* Main Header */}
       <div className="flex-responsive" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '18px 20px' }}>
-        <div style={{
-          width: '46px', height: '46px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: '700', fontSize: '16px', color: '#fff', flexShrink: 0, position: 'relative', overflow: 'hidden',
-          background: 'linear-gradient(135deg, #1a1a1a, #000)', border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-          {avatarUrl && !avatarFailed ? (
-            <img 
-              src={avatarUrl} 
-              alt="" 
-              onError={() => setAvatarFailed(true)}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '50%' }} 
-            />
-          ) : (
-            initials
-          )}
-        </div>
+        <CandidateAvatar userId={candidate.candidate_id} avatarUrl={profile.avatar_url} name={candidate.student_name} size={46} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
             <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '12px', letterSpacing: '-0.2px' }}>
@@ -114,6 +89,11 @@ const CandidateCard = ({ candidate, onInvite }) => {
                 </span>
               )}
             </h4>
+          {ai.ai_headline && (
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '4px', fontStyle: 'italic' }}>
+              {biLang(ai.ai_headline, lang)}
+            </div>
+          )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <div style={{ 
@@ -122,9 +102,9 @@ const CandidateCard = ({ candidate, onInvite }) => {
             }}>
               {candidate.job_title || candidate.jobs?.title || '—'}
             </div>
-            {(candidate.student_email || profile.education || profile.school) && (
+            {(ai.education_field || ai.education_school || profile.education) && (
               <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600' }}>
-                <span style={{ opacity: 0.3, margin: '0 4px' }}>•</span> {candidate.student_email || profile.education || profile.school}
+                <span style={{ opacity: 0.3, margin: '0 4px' }}>•</span> {ai.education_field || ai.education_school || profile.education}
               </div>
             )}
           </div>
@@ -224,21 +204,71 @@ const CandidateCard = ({ candidate, onInvite }) => {
                    </motion.div>
                  )}
                </AnimatePresence>
-            </div>
+                </div>
 
             <div className="grid-responsive cols-2" style={{ display: 'grid', gap: '48px' }}>
               <div>
-                <h5 style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 900, letterSpacing: '1.5px' }}>Výkonné zhrnutie (AI Analysis)</h5>
+                <h5 style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '16px', fontWeight: 900, letterSpacing: '1.5px' }}>{lang === 'sk' ? 'Výkonné zhrnutie (AI Analýza)' : 'Executive Summary (AI Analysis)'}</h5>
                 <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '6px', border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)' }}>
                   <p style={{ fontSize: '15px', lineHeight: '1.7', color: 'var(--text)', opacity: 0.9 }}>
-                    {candidate.ai_reasoning || candidate.reason_sk || 'Tento kandidát vykazuje silný potenciál v oblasti technických zručností a tímovej spolupráce.'}
+                    {biLang(candidate.ai_reasoning, lang) || (lang === 'sk' ? 'AI analýza ešte nebola vygenerovaná.' : 'AI analysis not yet generated.')}
                   </p>
-                  <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
-                    <div style={{ padding: '12px 20px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  
+                  {/* Match Score + Breakdown */}
+                  <div style={{ marginTop: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div style={{ padding: '12px 20px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', minWidth: '100px' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 700, textTransform: 'uppercase' }}>Index zhody</div>
-                      <div style={{ fontWeight: 900, color: 'var(--text)', fontSize: '20px' }}>{candidate.ai_score || candidate.match || candidate.score || 0}%</div>
+                      <div style={{ fontWeight: 900, fontSize: '24px', color: (candidate.ai_score || 0) >= 70 ? '#22c55e' : (candidate.ai_score || 0) >= 50 ? '#f59e0b' : '#ef4444' }}>
+                        {candidate.ai_score || 0}%
+                      </div>
+                      {/* Mini progress bar */}
+                      <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '6px' }}>
+                        <div style={{ width: `${candidate.ai_score || 0}%`, height: '100%', borderRadius: '2px', background: (candidate.ai_score || 0) >= 70 ? '#22c55e' : (candidate.ai_score || 0) >= 50 ? '#f59e0b' : '#ef4444' }} />
+                      </div>
                     </div>
+                    
+                    {/* Score breakdown chips */}
+                    {candidate.score_breakdown && Object.keys(candidate.score_breakdown).length > 0 && (
+                      <div style={{ flex: 1, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {Object.entries(candidate.score_breakdown).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).map(([key, val]) => {
+                          const labels = { skills: 'Zručnosti', location: 'Lokácia', job_type: 'Typ', category: 'Kategória', education: 'Vzdelanie', experience_level: 'Skúsenosti', language: 'Jazyky', availability: 'Dostupnosť', salary: 'Plat', work_mode: 'Pracovný model' };
+                          const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5, availability: 7, salary: 3, work_mode: 2 };
+                          const maxVal = maxScores[key] || 10;
+                          const pct = Math.round((val / maxVal) * 100);
+                          const dimColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                          return (
+                            <span key={key} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '3px', background: 'var(--bg)', border: `1px solid ${dimColor}22`, color: dimColor, fontWeight: 600 }}>
+                              {labels[key] || key}: {val}/{maxVal}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Match reasons (strengths) */}
+                  {(candidate.match_reasons || []).length > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <div style={{ fontSize: '10px', color: '#22c55e', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>Silné stránky zhody</div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {candidate.match_reasons.slice(0, 6).map((r, i) => (
+                          <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: 'rgba(34,197,94,0.1)', color: '#22c55e', fontWeight: 600 }}>✓ {r}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Match gaps */}
+                  {(candidate.match_gaps || []).length > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>Medzery</div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {candidate.match_gaps.slice(0, 5).map((g, i) => (
+                          <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 600 }}>✗ {g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Executive Actions Panel */}
@@ -486,12 +516,24 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   <div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', fontWeight: 700 }}>ZRUČNOSTI A CERTIFIKÁCIE</div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {(profile.skills || []).map(skill => (
+                      {(ai.hard_skills || profile.skills || []).map(skill => (
                         <span key={skill} style={{ padding: '6px 14px', borderRadius: '2px', background: 'var(--bg-card)', fontSize: '12px', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600 }}>
                           {skill}
                         </span>
                       ))}
                     </div>
+                    {(ai.languages || []).length > 0 && (
+                      <div style={{ marginTop: '16px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 700 }}>JAZYKY</div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {ai.languages.map((l, i) => (
+                            <span key={i} style={{ padding: '6px 14px', borderRadius: '2px', background: 'var(--accent-light)', fontSize: '12px', border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 600 }}>
+                              {l.lang} {l.level}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

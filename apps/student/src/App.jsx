@@ -27,6 +27,7 @@ function App() {
       setSession(s);
       if (!s) {
         setProfileStarted(false);
+        localStorage.removeItem('unemployed_onboarding_complete');
         setLoading(false);
       }
     });
@@ -40,17 +41,38 @@ function App() {
 
     const checkProfile = async () => {
       try {
+        // Check localStorage first for instant load (prevents flash of onboarding)
+        const onboardingDone = localStorage.getItem('unemployed_onboarding_complete');
+        if (onboardingDone === session.user.id) {
+          setProfileStarted(true);
+          setLoading(false);
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
-          .select('first_name, last_name')
+          .select('first_name, last_name, cv_id, skills')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        if (profile && (profile.first_name || profile.last_name)) {
+        // Consider onboarding complete if ANY of these exist:
+        // - has a name (from manual entry or CV parse)
+        // - has a cv_id (uploaded a CV)
+        // - has skills filled in
+        if (profile && (profile.first_name || profile.last_name || profile.cv_id || (profile.skills && profile.skills.length > 0))) {
+          setProfileStarted(true);
+          localStorage.setItem('unemployed_onboarding_complete', session.user.id);
+        } else if (onboardingDone === session.user.id) {
+          // localStorage says done but DB disagrees — trust localStorage
+          // (the profile save may have been deferred)
           setProfileStarted(true);
         }
       } catch (err) {
         console.error('[App] Profile check error:', err);
+        // On error, check localStorage fallback
+        const onboardingDone = localStorage.getItem('unemployed_onboarding_complete');
+        if (onboardingDone === session.user.id) {
+          setProfileStarted(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -59,7 +81,13 @@ function App() {
     checkProfile();
   }, [session]);
 
-  const completeOnboarding = () => setProfileStarted(true);
+  const completeOnboarding = () => {
+    // Persist to localStorage so page refreshes don't re-trigger onboarding
+    if (session?.user?.id) {
+      localStorage.setItem('unemployed_onboarding_complete', session.user.id);
+    }
+    setProfileStarted(true);
+  };
 
   if (loading) {
     return (

@@ -16,6 +16,8 @@ export default function Applications() {
   const [successId, setSuccessId] = useState(null);
   const [counterPickerId, setCounterPickerId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [withdrawConfirmId, setWithdrawConfirmId] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -134,6 +136,46 @@ export default function Applications() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>
                       {new Date(app.created_at || app.timestamp).toLocaleDateString('sk-SK')}
                     </div>
+                    {/* Withdraw button — only for Pending/Viewed apps */}
+                    {(app.status === 'Pending' || app.status === 'Viewed') && (
+                      withdrawConfirmId === (app.appId || app.id) ? (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
+                          <button
+                            disabled={withdrawing}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setWithdrawing(true);
+                              try {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (!session) return;
+                                await supabase.from('applications').delete().eq('id', app.appId || app.id);
+                                fetchApplications();
+                              } catch (err) { console.error(err); }
+                              setWithdrawConfirmId(null);
+                              setWithdrawing(false);
+                            }}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {withdrawing ? '...' : (lang === 'sk' ? 'Áno' : 'Yes')}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(null); }}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            {lang === 'sk' ? 'Nie' : 'No'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(app.appId || app.id); }}
+                          style={{ marginTop: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                        >
+                          {lang === 'sk' ? 'Stiahnuť' : 'Withdraw'}
+                        </button>
+                      )
+                    )}
                   </div>
                 </motion.div>
 
@@ -151,8 +193,8 @@ export default function Applications() {
                         style={{ textAlign: 'center', padding: '10px 0' }}
                       >
                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎉</div>
-                        <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--green)' }}>Potvrdené!</div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Termín bol pridaný do tvojho plánu.</div>
+                        <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--green)' }}>{lang === 'en' ? 'Confirmed!' : 'Potvrdené!'}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{lang === 'en' ? 'Date has been added to your schedule.' : 'Termín bol pridaný do tvojho plánu.'}</div>
                       </motion.div>
                     ) : confirmDeclineId === app.id ? (
                       <motion.div 
@@ -160,21 +202,21 @@ export default function Applications() {
                         style={{ background: 'rgba(239,68,68,0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}
                       >
                         <div style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444', marginBottom: '12px', textAlign: 'center' }}>
-                          Naozaj chceš odmietnuť toto pozvanie?
+                          {lang === 'en' ? 'Do you really want to decline this invitation?' : 'Naozaj chceš odmietnuť toto pozvanie?'}
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setConfirmDeclineId(null); }}
                             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
                           >
-                            Zrušiť
+                            {lang === 'en' ? 'Cancel' : 'Zrušiť'}
                           </button>
                           <button 
                             onClick={async (e) => {
                               e.stopPropagation();
                               const btn = e.currentTarget;
                               btn.disabled = true;
-                              btn.innerText = 'Spracovávam...';
+                              btn.innerText = lang === 'en' ? 'Processing...' : 'Spracovávam...';
                               try {
                                 const { data: { session } } = await supabase.auth.getSession();
                                 if (!session) return;
@@ -190,7 +232,7 @@ export default function Applications() {
                             }}
                             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
                           >
-                            Áno, odmietnuť
+                            {lang === 'en' ? 'Yes, decline' : 'Áno, odmietnuť'}
                           </button>
                         </div>
                       </motion.div>
@@ -199,7 +241,7 @@ export default function Applications() {
                         <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           🚫
                         </div>
-                        <div style={{ fontSize: '13px', fontWeight: '800' }}>Pozvanie na pohovor si odmietol/la.</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800' }}>{lang === 'en' ? 'You declined the interview invitation.' : 'Pozvanie na pohovor si odmietol/la.'}</div>
                       </div>
                     ) : app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -207,9 +249,9 @@ export default function Applications() {
                           ✅
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Potvrdený termín</div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{lang === 'en' ? 'Confirmed date' : 'Potvrdený termín'}</div>
                           <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
-                            {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                            {new Date(app.interviewInfo.selected_date).toLocaleString(lang === 'en' ? 'en-US' : 'sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                           </div>
                         </div>
                       </div>
@@ -219,9 +261,9 @@ export default function Applications() {
                           📅
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tvoj protinávrh — čaká sa na odpoveď</div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{lang === 'en' ? 'Your counter-offer — awaiting response' : 'Tvoj protinávrh — čaká sa na odpoveď'}</div>
                           <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
-                            {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                            {new Date(app.interviewInfo.selected_date).toLocaleString(lang === 'en' ? 'en-US' : 'sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                           </div>
                         </div>
                       </div>
@@ -231,9 +273,9 @@ export default function Applications() {
                           🗓️
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vybraný termín</div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{lang === 'en' ? 'Selected date' : 'Vybraný termín'}</div>
                           <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
-                            {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
+                            {new Date(app.interviewInfo.selected_date).toLocaleString(lang === 'en' ? 'en-US' : 'sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                           </div>
                         </div>
                       </div>
@@ -243,20 +285,20 @@ export default function Applications() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 2s infinite' }} />
                             <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Pozvánka na pohovor
+                              {lang === 'en' ? 'Interview invitation' : 'Pozvánka na pohovor'}
                             </div>
                           </div>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setConfirmDeclineId(app.id); }}
                             style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline' }}
                           >
-                            Odmietnuť
+                            {lang === 'en' ? 'Decline' : 'Odmietnuť'}
                           </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {(app.interviewInfo?.offered_dates || []).length === 0 ? (
                             <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                              Zamestnávateľ pripravuje termíny...
+                              {lang === 'en' ? 'Employer is preparing dates...' : 'Zamestnávateľ pripravuje termíny...'}
                             </div>
                           ) : (
                             app.interviewInfo.offered_dates.map(date => (
@@ -298,8 +340,8 @@ export default function Applications() {
                                   fontFamily: 'var(--font-body)'
                                 }}
                               >
-                                <span>{new Date(date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                <span style={{ fontSize: '11px', fontWeight: '900' }}>VYBRAŤ →</span>
+                                <span>{new Date(date).toLocaleString(lang === 'en' ? 'en-US' : 'sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                <span style={{ fontSize: '11px', fontWeight: '900' }}>{lang === 'en' ? 'SELECT →' : 'VYBRAŤ →'}</span>
                               </motion.button>
                             ))
                           )}
