@@ -1,58 +1,62 @@
 # Unemployed.sk — Complete Project Overview
 
-> **Last Updated**: 2026-05-06 (v2.4.0)  
+> **Version**: 3.0.0 | **Last Updated**: 2026-05-09
 > This document is the single source of truth for the platform's architecture, feature set, and API surface.
 
 ---
 
-## 🚀 Mission
+## Mission
 
-**Unemployed.sk** is a Tinder-style career platform for Gen Z in Slovakia. Students discover jobs through interactive swiping, AI-driven matching, and a mobile-first philosophy. Employers manage listings, track analytics, and evaluate candidates through a professional dashboard.
+**Unemployed.sk** is an AI-powered career platform for Gen Z in Slovakia. Students discover jobs through interactive swiping, AI-driven matching, and a mobile-first UX. Employers manage listings, track recruitment analytics, and evaluate AI-scored candidates through a professional dashboard.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Monorepo Structure
 
 ```
 Unemployed.sk/
-├── server.js                  # Express backend — API proxy, auth, static serving
-├── build.js                   # Build orchestrator for all 4 apps
+├── server.js                    # Express backend — API proxy, auth, CV parsing, AI matching
+├── build.js                     # Build orchestrator for all apps
+├── routes/                      # Modular API route handlers
+│   ├── auth.js                  # Authentication, registration, password reset
+│   ├── jobs.js                  # Job CRUD, employer search
+│   └── ai-matching.js           # AI profile parsing, match scoring, criteria
+├── lib/                         # AI & matching libraries
+│   ├── ai-cv-parser.js          # GPT-4o-mini CV parser with rule-based fallback
+│   ├── ai-extraction.js         # NLP text extraction pipeline
+│   ├── ai-profile-builder.js    # Structured AI profile construction
+│   ├── matching-engine.js       # Multi-dimensional candidate-job scoring
+│   └── matching-config.js       # Scoring weights, synonyms, category mappings
 ├── apps/
-│   ├── landing/               # Public marketing page (served at /)
-│   ├── student/               # Student portal (served at /app)
-│   ├── employer/              # Employer portal (served at /employer)
-│   ├── student-demo/          # Student demo — hardcoded data (served at /student-demo)
-│   └── employer-demo/         # Employer demo — hardcoded data (served at /employer-demo)
-├── database/
-│   └── scripts/               # SQL migration scripts (01–10)
-├── docs/                      # Technical documentation
-│   ├── PROJECT_OVERVIEW.md    # This file
-│   ├── DESIGN_SYSTEM.md       # Colors, typography, spacing tokens
-│   └── FONTS.md               # Font stack reference
-├── artifacts/                 # Feature-specific documentation
-├── CONTEXT.md                 # Production architecture context
-└── CONTEXT_VIEWS.md           # Data sync & debugging context
+│   ├── landing/                 # Public marketing page (served at /)
+│   ├── student/                 # Student portal (served at /app)
+│   ├── employer/                # Employer portal (served at /employer)
+│   ├── student-demo/            # Demo: hardcoded data, no auth (/student-demo)
+│   └── employer-demo/           # Demo: hardcoded data, no auth (/employer-demo)
+├── database/scripts/            # SQL migration scripts (02–16)
+├── scripts/                     # Maintenance utilities
+├── tests/                       # Test suites
+└── docs/                        # Technical documentation
 ```
 
 ### Technology Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + Vite (4 independent apps) |
-| Animations | Framer Motion (spring physics, layout transitions) |
-| Maps | Leaflet + React-Leaflet (CartoDB tiles) |
-| Backend | Node.js + Express (single `server.js`) |
-| Database | Supabase (PostgreSQL + Row Level Security) |
-| Storage | Supabase Storage (`cvs` bucket — private, signed URLs) |
-| Auth | Supabase Auth (JWT, session-based) |
-| Hosting | Netlify (static) + VPS/local (server) |
-| i18n | Custom context-based (SK/EN) |
+| Layer       | Technology                                                    |
+|-------------|---------------------------------------------------------------|
+| Frontend    | React 18 + Vite (4 independent apps)                          |
+| Animations  | Framer Motion (spring physics, layout transitions)            |
+| Maps        | Leaflet + React-Leaflet (CartoDB dark tiles)                  |
+| Backend     | Node.js + Express (`server.js` + modular routes)              |
+| Database    | Supabase (PostgreSQL + Row Level Security)                    |
+| Storage     | Supabase Storage (`cvs` bucket — private, signed URLs)        |
+| Auth        | Supabase Auth (JWT, admin API for registration)               |
+| AI/ML       | OpenAI GPT-4o-mini (CV parsing, bilingual profile generation) |
+| Hosting     | Netlify (static) + VPS (Express server)                       |
+| i18n        | Custom context-based (Slovak / English)                       |
 
 ### Portal Isolation
-
-Each portal uses its own Supabase storage key to prevent session conflicts:
 
 | Portal | Storage Key | Route |
 |--------|-------------|-------|
@@ -63,67 +67,69 @@ Each portal uses its own Supabase storage key to prevent session conflicts:
 
 ---
 
-## 📱 Student Portal (`/app`)
+## Student Portal (`/app`)
 
 ### Pages & Features
 
 | Page | File | Description | Status |
 |------|------|-------------|--------|
-| **Auth** | `CandidateAuth.jsx` | Email/password login & registration via Supabase | ✅ Live |
-| **Onboarding** | `Onboarding.jsx` | CV upload → AI parse → profile review → skill selection | ✅ Live |
-| **For You** | `ForYou.jsx` | Tinder swipe cards (mobile) + split-view (desktop) | ✅ Live |
-| **Search** | `Search.jsx` | Job search with text query + filter drawer + category tabs + employer search | ✅ Live |
+| **Auth** | `CandidateAuth.jsx` | Login & register via server-side admin API (avoids email rate limits) | ✅ Live |
+| **Onboarding** | `Onboarding.jsx` | CV upload → AI parse → profile review → skill selection → manual fallback | ✅ Live |
+| **For You** | `ForYou.jsx` | Tinder swipe cards (mobile) + split-view (desktop) with AI match scores | ✅ Live |
+| **Search** | `Search.jsx` | Text search + filter drawer + category tabs + employer search | ✅ Live |
 | **Applications** | `Applications.jsx` | Track applied jobs, interview scheduling (accept/decline/counter-offer) | ✅ Live |
-| **Profile** | `Profile.jsx` | Edit profile, single-CV management, avatar upload (signed URL), skills, profile strength meter | ✅ Live |
-| **Company Profile** | `CompanyProfile.jsx` | Instagram-style company page with listings + location display | ✅ Live |
+| **Profile** | `Profile.jsx` | Edit profile, single-CV management, avatar upload, skills, profile strength | ✅ Live |
+| **Company** | `CompanyProfile.jsx` | Instagram-style company page with listings, stats, location map | ✅ Live |
+| **Saved Jobs** | `SavedJobs.jsx` | Bookmarked job listings | ✅ Live |
 
 ### Components
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| `SwipeCard` | `components/SwipeCard.jsx` | Draggable Tinder-style job card with map hero |
-| `JobDetail` | `components/JobDetail.jsx` | Full-screen job detail overlay with map + apply CTA |
-| `MainLayout` | `components/MainLayout.jsx` | Bottom nav + page outlet |
-| `CVUploadExample` | `components/CVUploadExample.jsx` | Standalone CV upload widget |
+| `SwipeCard` | `SwipeCard.jsx` | Draggable Tinder-style job card with map hero |
+| `JobDetail` | `JobDetail.jsx` | Full-screen job detail overlay with map + apply CTA |
+| `MainLayout` | `MainLayout.jsx` | Bottom nav (mobile) + page outlet |
+| `ModernDatePicker` | `ModernDatePicker.jsx` | Custom date/time picker for interviews |
+| `NotificationBell` | `NotificationBell.jsx` | Real-time notifications with Supabase subscription |
 
-### Key Interactions
+### Services
 
-- **Swipe Right** → Creates application via `POST /api/applications`
-- **Company Name Click** → Navigates to `/company/:name`
-- **CV Upload** → Single-CV model: old CVs deleted, new one uploaded to Supabase Storage
-- **Avatar Upload** → Uploads to `{uid}/avatar.{ext}`, generates signed URL, saves via server proxy
-- **Search Filters** → Right-sliding drawer with min rate + focus area filters
-- **Interview Scheduling** → ModernDatePicker for counter-offer date selection
+| Service | File | Purpose |
+|---------|------|---------|
+| `cvApi` | `services/cvApi.js` | CV upload, download, delete via Supabase Storage |
 
 ---
 
-## 🏢 Employer Portal (`/employer`)
+## Employer Portal (`/employer`)
 
 ### Pages & Features
 
 | Page | File | Description | Status |
 |------|------|-------------|--------|
-| **Auth** | `EmployerAuth.jsx` | Email/password login for employers | ✅ Live |
-| **Onboarding** | `Onboarding.jsx` | Company setup quiz (name, industry, location, hiring needs) | ✅ Live |
-| **Dashboard** | `Dashboard.jsx` | 5-card analytics: active jobs, candidates, interviews, conversion, pipeline | ✅ Live |
-| **Listings** | `Listings.jsx` | CRUD for job postings with full edit modal | ✅ Live |
-| **Create Listing** | `CreateListing.jsx` | Full job creation form (title, rate, type, model, description, requirements) | ✅ Live |
-| **Candidates** | `Candidates.jsx` | Browse & evaluate candidates with avatars, CV preview, interview scheduling | ✅ Live |
-| **Profile** | `Profile.jsx` | Company info (name, desc, website, location), logo upload, theme/lang settings | ✅ Live |
-| **Inquiry** | `Inquiry.jsx` | Public access request form for new employers | ✅ Live |
+| **Auth** | `EmployerAuth.jsx` | Login via Supabase, role verification | ✅ Live |
+| **Registration** | `Inquiry.jsx` | Account creation (admin API, auto-confirm) | ✅ Live |
+| **Dashboard** | `Dashboard.jsx` | 5-card analytics with real-time metrics | ✅ Live |
+| **Listings** | `Listings.jsx` | Full CRUD for job postings with edit modal | ✅ Live |
+| **Create Listing** | `CreateListing.jsx` | Rich job creation form | ✅ Live |
+| **Candidates** | `Candidates.jsx` | Browse & evaluate with AI profiles, CV preview | ✅ Live |
+| **Profile** | `Profile.jsx` | Company info, logo, theme/language settings | ✅ Live |
+| **Onboarding** | `Onboarding.jsx` | Company setup quiz | ✅ Live |
 
 ### Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `SideNav` | `components/SideNav.jsx` | Sidebar navigation (desktop) + bottom nav (mobile) |
-| `Chart` | `components/Chart.jsx` | SVG bezier trend chart with animated reveal |
-| `StatCard` | `components/StatCard.jsx` | Metric card with label, value, change indicator |
-| `CandidateCard` | `components/CandidateCard.jsx` | Rich candidate card with avatar (signed URL), CV preview, interview scheduling |
-| `MatchCard` | `components/MatchCard.jsx` | AI match result card |
-| `ModernDatePicker` | `components/ModernDatePicker.jsx` | Custom date/time picker overlay for interview scheduling |
-| `Toast` | `components/Toast.jsx` | Notification toast |
-| `QuizStep` | `components/QuizStep.jsx` | Onboarding quiz step wrapper |
+| Component | Purpose |
+|-----------|---------|
+| `SideNav` | Sidebar (desktop) + bottom nav (mobile) |
+| `CandidateCard` | Rich candidate card with AI insights, CV preview, interview scheduling |
+| `CandidateAvatar` | Dynamic avatar resolution from Supabase Storage |
+| `Chart` | SVG bezier trend chart with animated reveal |
+| `StatCard` | Metric card with label, value, change indicator |
+| `MatchCard` | AI match result card |
+| `NotificationBell` | Real-time employer notifications |
+| `SkillChipInput` | Tag-style skill input for job requirements |
+| `ModernDatePicker` | Interview date/time picker overlay |
+| `Toast` | Notification toast |
+| `QuizStep` | Onboarding quiz step wrapper |
 
 ### State Management (`contexts.jsx`)
 
@@ -131,128 +137,105 @@ Each portal uses its own Supabase storage key to prevent session conflicts:
 |---------|------|
 | `I18nProvider` | Language (SK/EN), `t()` translation function |
 | `ThemeProvider` | Dark/Light theme |
-| `AppStateProvider` | `listings`, `companyProfile` (incl. location), `analytics`, `invitedIds`, `acceptedIds`, `refreshAnalytics()` |
+| `AppStateProvider` | `listings`, `companyProfile`, `analytics`, `invitedIds`, `acceptedIds` |
 
 ---
 
-## 🌐 Landing Page (`/`)
+## AI Matching Engine
+
+### Pipeline Overview
+
+1. **CV Upload** → Text extraction via `pdf-parse` (PDF) or `mammoth` (DOCX)
+2. **AI Parsing** → GPT-4o-mini extracts structured profile data; rule-based NLP fallback
+3. **Profile Storage** → Upserted into `ai_profiles` with bilingual content
+4. **Match Scoring** → Multi-dimensional weighted scoring (0–100)
+5. **Score Caching** → Pre-computed in `match_scores`, recalculated on changes
+6. **Startup Reparse** → Server detects stale AI profiles on boot
+
+### Scoring Dimensions
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Skills | 5 | Synonym-aware matching with transferable skill families |
+| Education | 3 | Level + field matching (exact, related, partial) |
+| Experience | 3 | Years + level compatibility |
+| Location | 2 | City/region overlap with work model consideration |
+| Languages | 2 | Required + preferred language matching |
+
+### Bilingual AI Content
+
+All AI-generated text produces bilingual JSON (`{sk: "...", en: "..."}`):
+- Headlines, summaries, strengths, development areas, suggested roles, portfolio intros
+
+### Rate Limits
+
+- Global: 50 AI parses/day
+- Per-user: 5 AI parses/day
+- Fallback: Rule-based NLP when limits reached
+
+---
+
+## Landing Page (`/`)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| Hero section | Full-screen hero with dual CTA (Students / Employers) | ✅ Live |
-| Lead capture | Email + phone signup form → Supabase `submissions` table | ✅ Live |
+| Hero section | Full-screen with dual CTA (Students / Employers) | ✅ Live |
+| Lead capture | Email + phone signup → `submissions` table | ✅ Live |
 | Demo iframes | Embedded student/employer demo portals | ✅ Live |
 | i18n | Slovak (default) + English toggle | ✅ Live |
 | Theme | Light (default) + Dark toggle | ✅ Live |
 
 ---
 
-## 🔌 API Reference (`server.js`)
+## Database Schema
 
-### Authentication & Profiles
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/employer/ensure-profile` | JWT | Create/update employer profile (name, desc, website, location) |
-| `GET` | `/api/employer/profile` | JWT | Get employer profile |
-| `POST` | `/api/student/profile` | JWT | Create/update student profile (name, skills, avatar_url, cv_id) |
-| `GET` | `/api/student/profile` | JWT | Get student profile |
-
-### CV & File Management
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/cvs/upload` | JWT | Upload CV (multipart → Supabase Storage) |
-| `GET` | `/api/cvs` | JWT | List user's uploaded CVs |
-| `GET` | `/api/cvs/download/:cvId` | JWT | Get signed download URL |
-| `DELETE` | `/api/cvs/:cvId` | JWT | Delete CV from storage + profile |
-| `GET` | `/api/employer/cv/:cvId/signed-url` | JWT | Employer access to candidate CVs |
-
-### Jobs & Applications
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/job-view` | No | Track job card impressions |
-| `POST` | `/api/applications` | JWT | Create application (student swipe right) |
-| `GET` | `/api/applications` | JWT | List user's applications |
-| `PATCH` | `/api/applications/:id` | JWT | Update status (accept/decline/interview/counter-offer) |
-
-### Employer Management
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `PATCH` | `/api/employer/jobs/:id` | JWT | Update job listing |
-| `GET` | `/api/employer/candidates` | JWT | List candidates with profiles (avatar_url, skills, CV) |
-| `PATCH` | `/api/employer/candidates/:id` | JWT | Update candidate status |
-| `GET` | `/api/employer/analytics` | JWT | Dashboard analytics |
-| `GET` | `/api/employers` | No | List all employers (for student search) |
-
-### Company Pages (Public)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/api/company/:name` | No | Company profile + stats + all job listings |
-
----
-
-## 🗄️ Database Schema (Supabase)
+### Core Tables
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `jobs` | Job listings | `id`, `employer_id`, `title`, `company`, `rate`, `tags`, `lat`, `lng`, `work_model`, `duration`, `start_date` |
-| `applications` | Student applications | `id`, `job_id`, `candidate_id`, `employer_id`, `status`, `interview_dates`, `selected_date` |
-| `profiles` | Student profiles | `user_id`, `first_name`, `last_name`, `skills`, `education`, `location`, `avatar_url`, `cv_id`, `original_filename` |
+| `profiles` | Student profiles | `user_id`, `first_name`, `last_name`, `skills[]`, `cv_id`, `avatar_url`, `ai_profile_ready` |
+| `ai_profiles` | AI-extracted profiles | `user_id`, `hard_skills[]`, `soft_skills[]`, `languages[]`, `ai_headline`, `ai_summary`, `confidence_score` |
 | `employers` | Employer profiles | `id`, `name`, `description`, `website`, `location`, `logo_url` |
-| `employer_members` | Employer team membership | `employer_id`, `user_id`, `role` |
-| `submissions` | Landing page leads | `email`, `phone`, `consented`, `company_name` |
-| `job_views` | View tracking | `job_id`, `user_id`, `employer_id` |
-| `user_roles` | Role enforcement | `user_id`, `role` (candidate/employer) |
-| `user_cvs` | CV metadata | `id`, `user_id`, `storage_path`, `original_filename` |
+| `jobs` | Job listings | `id`, `employer_id`, `title`, `company`, `rate`, `tags[]`, `lat`, `lng`, `work_model`, `views` |
+| `applications` | Student applications | `id`, `job_id`, `candidate_id`, `employer_id`, `status`, `interview_dates`, `selected_date` |
+| `match_scores` | Pre-computed scores | `user_id`, `job_id`, `overall_score`, `dimension_scores` |
+| `job_match_criteria` | Job matching criteria | `job_id`, `required_skills[]`, `min_education`, `weights` |
+| `notifications` | In-app notifications | `user_id`, `type`, `title`, `message`, `read` |
+| `submissions` | Landing page leads | `email`, `phone`, `user_type`, `company_name`, `consented` |
+| `user_roles` | Role enforcement | `user_id`, `role` |
+
+### Migration Scripts (`database/scripts/`)
+
+Scripts are numbered 02–16 and run sequentially. Key migrations:
+
+| Script | Purpose |
+|--------|---------|
+| `02_auth_roles_schema.sql` | Core auth tables + profiles |
+| `04_sync_schema.sql` | Employer tables, jobs FK, RLS policies |
+| `06_complete_schema.sql` | Full schema with analytics functions |
+| `12_notifications.sql` | Notification system |
+| `14_ai_matching.sql` | AI profiles + match scores tables |
+| `16_seed_test_jobs.sql` | Test job data seeding |
 
 ---
 
-## 📦 Storage Architecture
+## Security Model
 
-- **Bucket**: `cvs` (private)
-- **File Naming**: `{user_id}/avatar.{ext}`, `{user_id}/{timestamp}_{filename}.pdf`, `{user_id}/logo.{ext}`
-- **URL Strategy**: Always use **signed URLs** — the bucket is private, public URLs return 403
-- **Avatar Resolution**: Components resolve avatars on mount by listing storage files and generating fresh signed URLs
-- **Single CV Model**: One CV per student; old CVs are deleted before uploading a new one
-- **Cleanup**: Avatar and logo uploads delete previous files before uploading to prevent stale entries
-
----
-
-## 🔐 Security Model
-
-- **RLS Bypass**: All sensitive operations go through `server.js` using `SUPABASE_KEY` (service role)
-- **JWT Validation**: `getUserFromToken()` helper validates tokens on every protected request
-- **Portal Isolation**: Separate Supabase storage keys prevent cross-portal session conflicts
-- **CSP Headers**: Content Security Policy restricts connections to `*.supabase.co` (https + wss)
-- **File Access Control**: Server blocks access to `.env`, `package.json`, database files
+- **RLS Bypass**: All writes through `server.js` using service role key
+- **JWT Validation**: `getUserFromToken()` with 3s timeout + JWT decode fallback
+- **Admin Registration**: `admin.createUser()` auto-confirms without sending emails
+- **Portal Isolation**: Separate Supabase storage keys
+- **CSP Headers**: Restricts connections to `*.supabase.co`
+- **File Blocking**: Server blocks `.env`, `package.json`, `node_modules`, database files
 
 ---
 
-## 🌍 Localization
-
-Both portals support Slovak (SK) and English (EN):
+## Localization
 
 | Portal | Implementation | Files |
 |--------|---------------|-------|
-| Student | `I18nContext.jsx` with `useTranslation()` hook | Inline translation objects |
+| Student | `I18nContext.jsx` with `useTranslation()` | Inline translation objects |
 | Employer | `i18n.js` with `useI18n()` context | Centralized translation file |
+| Landing | Vanilla JS i18n | `landing.js` |
 
----
-
-## 📂 Feature Documentation
-
-Detailed per-feature documentation lives in `artifacts/`:
-
-| Document | Feature |
-|----------|---------|
-| `feature_security_production.md` | Security hardening & env management |
-| `feature_student_auth_onboarding.md` | Student registration & onboarding flow |
-| `feature_cv_management.md` | CV upload, preview, delete system |
-| `feature_company_pages.md` | Instagram-style company profiles |
-| `feature_search_filters.md` | Search filter drawer & filtering logic |
-| `feature_employer_dashboard.md` | Live analytics dashboard |
-| `feature_applications_interviews.md` | Application tracking & interview scheduling |
+AI content uses bilingual JSON, rendered via `biLang()` / `biLangArr()` helpers.

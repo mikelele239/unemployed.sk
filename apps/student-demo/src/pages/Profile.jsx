@@ -94,7 +94,7 @@ export default function Profile() {
       setUploading(true);
       const token = getAccessToken();
       const formData = new FormData();
-      formData.append('cv', file);
+      formData.append('file', file);
 
       const res = await fetch('/api/cvs/upload', {
         method: 'POST',

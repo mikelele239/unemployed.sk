@@ -1,80 +1,90 @@
-# Unemployed.sk - Live Production Context
+# Unemployed.sk — Production Context
 
-> **Last Updated**: 2026-05-06 (v2.4.0)
+> **Version**: 3.0.0 | **Last Updated**: 2026-05-09
 
-This document provides a comprehensive summary of the architecture, authentication, and logic implemented for the Unemployed.sk live production system.
+This document provides a concise summary of the production architecture for AI coding assistants and developers.
 
-## 🏗️ System Architecture
-The platform is built as a modular multi-app system served by a single centralized Node.js core.
+## System Architecture
 
-- **Root Server (`server.js`)**: Express backend handling API routes, authentication, file serving, and all database writes (bypasses RLS with service role key).
-- **Portals**:
-  - `apps/landing`: The public-facing marketing page (served at `/`).
-  - `apps/student`: The "Swipe" interface for candidates (served at `/app`).
-  - `apps/employer`: The management dashboard for firms (served at `/employer`).
-- **Database**: Supabase (PostgreSQL) with Row Level Security (RLS) enforcement.
-- **Storage**: Supabase Storage (`cvs` bucket, private) — stores CVs, avatars, and employer logos. All URLs are signed.
+- **Server**: Express backend (`server.js`) — API proxy, auth, CV parsing, AI matching, static file serving
+- **Route Modules**: `routes/auth.js`, `routes/jobs.js`, `routes/ai-matching.js`
+- **AI Libraries**: `lib/ai-cv-parser.js`, `lib/ai-extraction.js`, `lib/ai-profile-builder.js`, `lib/matching-engine.js`, `lib/matching-config.js`
+- **Database**: Supabase (PostgreSQL) with Row Level Security — all writes bypass RLS via service role key
+- **Storage**: Supabase Storage (`cvs` bucket, private) — signed URLs only
 
-## 🔐 Authentication & Session Management
-A critical "Portal Isolation" strategy is used to prevent session conflicts between Students and Employers.
+### Portals
 
-- **Storage Isolation**: 
-  - Student app uses `unemployed-student-auth` storage key.
-  - Employer app uses `unemployed-employer-auth` storage key.
-- **Admin Registration API**: User registration (student/employer) is handled via a backend Admin API (`supabaseAdmin`) to bypass email rate limits and ensure automatic user confirmation.
-- **Role Verification**: A `user_roles` table in the database strictly enforces access. Roles are assigned at the moment of registration via `raw_user_meta_data`.
+| Portal | Path | Auth Storage Key | Description |
+|--------|------|-------------------|-------------|
+| Landing | `/` | — | Static HTML marketing page |
+| Student | `/app` | `unemployed-student-auth` | Candidate job swiping interface |
+| Employer | `/employer` | `unemployed-employer-auth` | Recruitment management dashboard |
+| Student Demo | `/student-demo` | — | Hardcoded demo, no auth |
+| Employer Demo | `/employer-demo` | — | Hardcoded demo, no auth |
 
-## 🔄 Server Proxy Architecture
-All database writes are routed through `server.js` endpoints to bypass RLS:
+## Authentication
 
-| Operation | Endpoint | Reason |
-|-----------|----------|--------|
-| Student profile save | `POST /api/student/profile` | Upserts profile with avatar_url, skills, cv_id |
-| Employer profile save | `POST /api/employer/ensure-profile` | Upserts employer with name, description, website, location |
-| Application create | `POST /api/applications` | Resolves employer_id, creates application |
-| Candidate data | `GET /api/employer/candidates` | Enriches with profile data including avatar_url |
-| Employer search | `GET /api/employers` | Returns all employers (bypasses RLS for student search) |
+- **Registration**: Server-side `admin.createUser()` with `email_confirm: true` — auto-confirms without sending emails (bypasses Supabase email rate limits)
+- **Portal Isolation**: Separate Supabase storage keys prevent session conflicts
+- **Role Verification**: `user_roles` table + `user_metadata.role` enforced at login
+- **Token Validation**: `getUserFromToken()` with 3-second timeout and JWT decode fallback
 
-## 📦 File Storage Strategy
-- **Bucket**: `cvs` (private) — shared for CVs, avatars, and logos
-- **File naming**: `{uid}/avatar.{ext}`, `{uid}/{timestamp}_{filename}.pdf`, `{uid}/logo.{ext}`
-- **Signed URLs**: All file access uses `createSignedUrl()` — never `getPublicUrl()` (bucket is private)
-- **Dynamic resolution**: On page load, components list storage files and generate fresh signed URLs rather than relying on stale database values
-- **Cleanup on upload**: Old files (avatar/logo/CV) are deleted before new uploads to prevent accumulation
+## Server Proxy Architecture
 
-## 📈 Real-Time Analytics Engine
-The platform uses a live tracking system with real data:
+All database writes route through `server.js` to bypass RLS:
 
-- **Engagement Tracking**: Every job card view inserts a record into `job_views` with `employer_id`.
-- **Analytics API**: `/api/employer/analytics` aggregates views, applications, pipeline stats, and 7-day trends.
-- **Dashboard**: 5-card layout showing active jobs, total candidates, interview activity, conversion rate, and pipeline breakdown.
-- **Skill-Based Matching**: SQL matching engine calculates skill/location overlap between students and job requirements.
+| Operation | Endpoint | Purpose |
+|-----------|----------|---------|
+| Student profile | `POST /api/student/profile` | Upsert with avatar_url, skills, cv_id |
+| Employer profile | `POST /api/employer/ensure-profile` | Upsert with name, description, website, location |
+| Application | `POST /api/applications` | Resolves employer_id, enriches with profile data |
+| Candidate fetch | `GET /api/employer/candidates` | Enriches with profile + AI data |
+| Status update | `PATCH /api/employer/candidates/:id` | Updates status + sends notification |
+| CV upload | `POST /api/cvs/upload` | Storage upload + AI parse + match recalc |
 
-## 🛠️ Key Logic Refinements
-- **Self-Healing Membership**: When an employer posts a job, the server auto-creates missing company links.
-- **Pure Dashboard Flow**: New employers access the dashboard immediately upon registration (no mandatory onboarding).
-- **Auto-Login Sync**: After registration, hard session sync via `supabase.auth.setSession` + redirect.
-- **Single CV Model**: Students maintain one CV at a time; uploads replace the previous file.
-- **Avatar Resolution**: Profile pictures are resolved from storage on mount with fresh signed URLs to handle expired/stale URLs gracefully.
+## AI Matching Pipeline
 
-## 🤖 AI Matching Engine
-The platform uses a server-side matching engine to score candidate-job compatibility:
+1. **CV Upload** → `pdf-parse` (PDF) or `mammoth` (DOCX) extracts text
+2. **AI Parse** → GPT-4o-mini extracts structured profile (`lib/ai-cv-parser.js`), falls back to rule-based NLP
+3. **Profile Storage** → Upserted into `ai_profiles` table with bilingual content (`{sk: "...", en: "..."}`)
+4. **Match Scoring** → `lib/matching-engine.js` scores candidates against jobs (0–100) across 5 dimensions
+5. **Score Caching** → Pre-computed in `match_scores`, recalculated on CV upload, profile update, or criteria change
+6. **Startup Reparse** → Server detects stale AI profiles on boot and re-parses them
 
-- **CV Parsing**: On upload, `pdf-parse` extracts text from CVs. A rule-based NLP pipeline then extracts skills, languages, education, experience, and contact info into the `ai_profiles` table.
-- **Structured Job Criteria**: Employers fill in matching criteria per job (required/preferred skills, min education, languages, experience, culture fit) stored in `job_match_criteria`.
-- **Scoring Algorithm**: Multi-dimensional weighted scoring (0–100) across 5 dimensions: skills, education, experience, location, languages. Employers can adjust dimension weights (1–5).
-- **Match Scores**: Pre-computed and cached in `match_scores` table. Recalculated on CV upload, profile update, or job criteria change.
-- **API Routes** (`routes/ai-matching.js`):
-  - `POST /api/ai-profile/parse` — parse CV and create/update AI profile
-  - `GET /api/ai-profile` — get student's AI profile
-  - `PATCH /api/ai-profile` — student updates AI profile
-  - `GET /api/match-scores` — student's match scores for all jobs
-  - `GET /api/employer/match-scores/:jobId` — ranked candidates for a job
-  - `POST /api/job-criteria` — upsert job matching criteria
-  - `GET /api/job-criteria/:jobId` — read job criteria
-  - `POST /api/match/recalculate` — trigger recalculation
+### Scoring Dimensions
+Skills (weight 5), Education (3), Experience (3), Location (2), Languages (2)
 
-## 📂 Configuration
-- **Supabase**: Managed via central `supabase.js` files in each portal with dedicated storage keys.
-- **Server**: Uses service role key for all DB writes. CSP allows `https://*.supabase.co` and `wss://*.supabase.co`.
-- **Database Migrations**: Sequential SQL scripts in `database/scripts/` (01–10).
+### Rate Limits
+- Global: 50 AI parses/day
+- Per-user: 5 AI parses/day
+- Fallback: Rule-based NLP when limits reached or OpenAI unavailable
+
+## Notification System
+
+- **Table**: `notifications` (user_id, type, title, message, read)
+- **Real-time**: Supabase Realtime subscription on `notifications` table
+- **Triggers**: Status changes, interview invites, hiring decisions
+- **UI**: `NotificationBell` component in both portals with scroll-hide behavior
+
+## File Storage
+
+- **Bucket**: `cvs` (private)
+- **Naming**: `{uid}/avatar.{ext}`, `{uid}/{timestamp}_{filename}.pdf`, `{uid}/logo.{ext}`
+- **Access**: All via `createSignedUrl()` (never `getPublicUrl()`)
+- **Cleanup**: Old files deleted before new uploads
+- **Single CV Model**: One CV per student, replacement on re-upload
+
+## Key Tables
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | Student profiles (name, skills, cv_id, avatar_url, ai_profile_ready) |
+| `ai_profiles` | AI-extracted structured data (skills, education, languages, AI summaries) |
+| `employers` | Company profiles (name, description, website, location) |
+| `jobs` | Job listings (title, rate, tags, lat/lng, work_model, views) |
+| `applications` | Student applications (status, interview_dates, selected_date) |
+| `match_scores` | Pre-computed match scores (user_id, job_id, overall_score) |
+| `job_match_criteria` | Employer-defined matching criteria per job |
+| `notifications` | In-app notification system |
+| `submissions` | Landing page lead capture |
+| `user_roles` | Role enforcement (candidate/employer) |

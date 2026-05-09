@@ -882,14 +882,26 @@ app.post('/api/applications', async (req, res) => {
 
     console.log('[POST /api/applications] Success:', data?.id, 'for job', job_id, '| Student:', studentName);
 
-    // ── Notify employer about new application ──
+    // ── Notify employer about new application (include AI match %) ──
     try {
       if (job?.employer_id) {
+        // Look up AI match score for this candidate + job
+        let matchPct = null;
+        try {
+          const { data: matchRow } = await supabase.from('match_scores')
+            .select('overall_score')
+            .eq('user_id', user.id)
+            .eq('job_id', job_id)
+            .maybeSingle();
+          if (matchRow) matchPct = matchRow.overall_score;
+        } catch {}
+
+        const matchTag = matchPct != null ? ` (AI Match: ${matchPct}%)` : '';
         await supabase.from('notifications').insert([{
           user_id: job.employer_id,
           type: 'application_received',
-          title: 'Nová prihláška',
-          message: `${studentName} sa prihlásil/a na pozíciu ${job.title || 'ponuka'}.`,
+          title: `Nová prihláška${matchTag}`,
+          message: `${studentName} sa prihlásil/a na pozíciu ${job.title || 'ponuka'}.${matchTag ? ' ' + matchTag : ''}`,
           related_entity_id: data?.id || null,
         }]);
       }
@@ -1101,12 +1113,25 @@ app.post('/api/notifications/application-received', async (req, res) => {
 
     const title = job_title || job.title || 'Ponuka';
 
-    // Create notification for employer
+    // Look up AI match score for this candidate + job
+    let matchPct = null;
+    try {
+      const { data: matchRow } = await supabase.from('match_scores')
+        .select('overall_score')
+        .eq('user_id', user.id)
+        .eq('job_id', job_id)
+        .maybeSingle();
+      if (matchRow) matchPct = matchRow.overall_score;
+    } catch {}
+
+    const matchTag = matchPct != null ? ` (AI Match: ${matchPct}%)` : '';
+
+    // Create notification for employer with AI match %
     const { error: insertErr } = await supabase.from('notifications').insert({
       user_id: job.employer_id,
       type: 'application_received',
-      title: `Nová prihláška: ${studentName}`,
-      message: `${studentName} sa prihlásil/a na pozíciu "${title}"`,
+      title: `Nová prihláška: ${studentName}${matchTag}`,
+      message: `${studentName} sa prihlásil/a na pozíciu "${title}"${matchTag ? ' ' + matchTag : ''}`,
       read: false,
     });
 

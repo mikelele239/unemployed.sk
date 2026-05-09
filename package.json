@@ -1,7 +1,7 @@
 {
   "name": "unemployed-sk",
-  "version": "2.0.0",
-  "description": "unemployed.sk — Tinder-style career platform for Gen Z in Slovakia",
+  "version": "3.0.0",
+  "description": "unemployed.sk — AI-powered career platform for Gen Z in Slovakia",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
-    "better-sqlite3": "^12.9.0",
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
     "mammoth": "^1.12.0",

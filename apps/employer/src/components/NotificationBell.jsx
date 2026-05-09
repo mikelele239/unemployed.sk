@@ -235,7 +235,20 @@ export default function NotificationBell({ lang }) {
           </div>
         ) : (
           <div>
-            {notifications.map(n => (
+            {notifications.map(n => {
+              // Extract AI Match % from title if present
+              const matchRegex = /\(AI Match:\s*(\d+)%\)/;
+              const matchResult = matchRegex.exec(n.title);
+              const matchPct = matchResult ? parseInt(matchResult[1]) : null;
+              const cleanTitle = matchResult ? n.title.replace(matchRegex, '').trim() : n.title;
+              const cleanBody = matchResult && n.body ? n.body.replace(matchRegex, '').trim() : n.body;
+
+              // Badge color based on score
+              const badgeColor = matchPct != null
+                ? matchPct >= 70 ? '#22c55e' : matchPct >= 40 ? '#f59e0b' : '#ef4444'
+                : null;
+
+              return (
               <div
                 key={n.id}
                 onClick={() => { if (!n.read) markAsRead(n.id); }}
@@ -250,12 +263,25 @@ export default function NotificationBell({ lang }) {
               >
                 <div style={{ fontSize: 20, flexShrink: 0 }}>{getIcon(n.type)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: n.read ? 500 : 700, color: 'var(--text)', lineHeight: 1.4, margin: 0 }}>
-                    {n.title}
-                  </p>
-                  {n.body && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <p style={{ fontSize: 13, fontWeight: n.read ? 500 : 700, color: 'var(--text)', lineHeight: 1.4, margin: 0 }}>
+                      {cleanTitle}
+                    </p>
+                    {matchPct != null && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        background: `${badgeColor}18`, color: badgeColor,
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                        borderRadius: 20, border: `1px solid ${badgeColor}30`,
+                        whiteSpace: 'nowrap', lineHeight: 1.4,
+                      }}>
+                        <span style={{ fontSize: 10 }}>🤖</span> {matchPct}%
+                      </span>
+                    )}
+                  </div>
+                  {cleanBody && (
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {n.body}
+                      {cleanBody}
                     </p>
                   )}
                   <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -266,7 +292,8 @@ export default function NotificationBell({ lang }) {
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </motion.div>
