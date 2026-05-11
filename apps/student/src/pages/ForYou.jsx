@@ -107,13 +107,11 @@ export default function ForYou() {
     if (!jobId || viewedJobsRef.current.has(jobId)) return;
     viewedJobsRef.current.add(jobId);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await supabase.from('job_views').insert({
-          job_id: jobId,
-          viewer_id: session.user.id,
-        });
-      }
+      await fetch('/api/job-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+      });
     } catch {}
   };
 
