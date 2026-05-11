@@ -97,12 +97,17 @@ export default function Applications() {
                   }}
                 >
                   <div style={{ 
-                    width: 52, height: 52, borderRadius: 14, background: app.color, 
+                    width: 52, height: 52, borderRadius: 14, background: app.color || '#6366f1', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center', 
                     color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0,
-                    boxShadow: `0 8px 16px ${app.color}33`
+                    boxShadow: `0 8px 16px ${(app.color || '#6366f1')}33`,
+                    overflow: 'hidden'
                   }}>
-                    {app.logo}
+                    {app.logo_url ? (
+                      <img src={app.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      app.logo || (app.company || '?').charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.title}</h3>

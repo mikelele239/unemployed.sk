@@ -90,32 +90,49 @@ export function useApplications() {
         return;
       }
 
-      // Fetch applications with the associated job data
+      // Fetch applications with the associated job + employer data
       const { data: apps, error } = await supabase
         .from('applications')
-        .select('*, jobs(*)')
+        .select('*, jobs(*, employer:employer_id(name, logo_url))')
         .eq('candidate_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // Generate a consistent color from company name
+      const companyColor = (name) => {
+        if (!name) return '#6366f1';
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        const h = Math.abs(hash) % 360;
+        return `hsl(${h}, 65%, 45%)`;
+      };
+
       // Flatten: merge job fields into application for UI compatibility
-      const enriched = (apps || []).map(app => ({
-        ...(app.jobs || {}),
-        ...app,
-        id: app.job_id,
-        appId: app.id,
-        status: app.status || 'Pending',
-        job_title: app.jobs?.title || '',
-        rateUnit: app.jobs?.rate_unit || '',
-        startDate: app.jobs?.start_date || '',
-        workModel: app.jobs?.work_model || '',
-        interviewInfo: {
-          offered_dates: app.interview_dates || [],
-          selected_date: app.selected_date || null,
-          declined: app.status === 'Declined',
-        },
-      }));
+      const enriched = (apps || []).map(app => {
+        const employer = app.jobs?.employer || {};
+        const company = app.jobs?.company || employer.name || '';
+        return {
+          ...(app.jobs || {}),
+          ...app,
+          id: app.job_id,
+          appId: app.id,
+          status: app.status || 'Pending',
+          job_title: app.jobs?.title || '',
+          rateUnit: app.jobs?.rate_unit || '',
+          startDate: app.jobs?.start_date || '',
+          workModel: app.jobs?.work_model || '',
+          company: company,
+          logo_url: employer.logo_url || '',
+          logo: (company || '?').charAt(0).toUpperCase(),
+          color: companyColor(company),
+          interviewInfo: {
+            offered_dates: app.interview_dates || [],
+            selected_date: app.selected_date || null,
+            declined: app.status === 'Declined',
+          },
+        };
+      });
 
       setApplications(enriched);
       try { localStorage.setItem(storageKey, JSON.stringify(enriched)); } catch {}
