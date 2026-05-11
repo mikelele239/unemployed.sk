@@ -244,9 +244,13 @@ export default function Search() {
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '16px', cursor: 'pointer' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, background: job.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
-                        {job.logo}
-                      </div>
+                      {job.logo_url ? (
+                        <img src={job.logo_url} alt={job.company} style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: job.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                          {job.logo || job.company?.charAt(0) || '?'}
+                        </div>
+                      )}
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>{job.title}</h3>

@@ -34,11 +34,26 @@ function getScoreBand(score) {
   return 'E';
 }
 const BAND_CONFIG = {
-  A: { sk: 'Silná zhoda', en: 'Strong fit', color: '#22c55e', icon: '🟢' },
-  B: { sk: 'Dobrá zhoda', en: 'Good fit', color: '#3b82f6', icon: '🔵' },
-  C: { sk: 'Potenciálna zhoda', en: 'Potential fit', color: '#f59e0b', icon: '🟡' },
-  D: { sk: 'Čiastočná zhoda', en: 'Partial fit', color: '#f97316', icon: '🟠' },
-  E: { sk: 'Nízka zhoda', en: 'Low fit', color: '#ef4444', icon: '🔴' },
+  A: { sk: 'Silná zhoda', en: 'Strong fit', color: '#22c55e', icon: '🟢', gradient: 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))' },
+  B: { sk: 'Dobrá zhoda', en: 'Good fit', color: '#3b82f6', icon: '🔵', gradient: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04))' },
+  C: { sk: 'Potenciálna zhoda', en: 'Potential fit', color: '#f59e0b', icon: '🟡', gradient: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))' },
+  D: { sk: 'Čiastočná zhoda', en: 'Partial fit', color: '#f97316', icon: '🟠', gradient: 'linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04))' },
+  E: { sk: 'Nízka zhoda', en: 'Low fit', color: '#ef4444', icon: '🔴', gradient: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))' },
+};
+
+const ELIGIBILITY_CONFIG = {
+  eligible:      { sk: 'Spĺňaš požiadavky', en: 'You qualify', icon: '✅', color: '#22c55e' },
+  near_miss:     { sk: 'Takmer spĺňaš',     en: 'Almost there', icon: '🔶', color: '#f59e0b' },
+  not_eligible:  { sk: 'Nespĺňaš',          en: 'Not eligible', icon: '❌', color: '#ef4444' },
+};
+
+const INSIGHT_ICONS = {
+  strength:  { icon: '💪', color: '#22c55e' },
+  moderate:  { icon: '📊', color: '#f59e0b' },
+  gap:       { icon: '📉', color: '#ef4444' },
+  transfer:  { icon: '🔄', color: '#8b5cf6' },
+  trainable: { icon: '🎓', color: '#3b82f6' },
+  info:      { icon: '💡', color: 'var(--text-muted)' },
 };
 
 export default function ForYou() {
@@ -300,12 +315,19 @@ export default function ForYou() {
               <div style={{ overflowY: 'auto', overflowX: 'hidden', padding: '32px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
                 {/* Company + Title */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 16, background: currentJob.color || 'var(--accent)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 850, color: '#fff', fontSize: 22, flexShrink: 0,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
-                  }}>{currentJob.logo || currentJob.company?.charAt(0)}</div>
+                  {currentJob.logo_url ? (
+                    <img src={currentJob.logo_url} alt={currentJob.company} style={{
+                      width: 56, height: 56, borderRadius: 16, objectFit: 'cover', flexShrink: 0,
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: 56, height: 56, borderRadius: 16, background: currentJob.color || 'var(--accent)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 850, color: '#fff', fontSize: 22, flexShrink: 0,
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                    }}>{currentJob.logo || currentJob.company?.charAt(0) || '?'}</div>
+                  )}
                   <div>
                     <div 
                       onClick={() => navigate(`/company/${encodeURIComponent(currentJob.company)}`)}
@@ -415,16 +437,21 @@ export default function ForYou() {
                   </div>
                 )}
 
-                {/* AI Match — summary pill with "Details" button */}
+                {/* AI Match — Enhanced V3 section with insights, eligibility, and summary */}
                 {currentJob.match && typeof currentJob.match.overall_score === 'number' && (
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
                     {(() => {
                       const score = currentJob.match.overall_score;
-                      const band = getScoreBand(score);
-                      const bc = BAND_CONFIG[band];
+                      const band = currentJob.match.match_band || getScoreBand(score);
+                      const bc = BAND_CONFIG[band] || BAND_CONFIG['C'];
+                      const tier = currentJob.match.eligibility_tier || (currentJob.match.eligible !== false ? 'eligible' : 'not_eligible');
+                      const tierCfg = ELIGIBILITY_CONFIG[tier] || ELIGIBILITY_CONFIG.eligible;
+                      const insights = currentJob.match.insights || [];
+                      const summary = currentJob.match.executive_summary;
                       return (
                         <>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          {/* Header + Details button */}
+                          <div style={{ padding: '14px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                               {lang === 'sk' ? 'AI Zhoda' : 'AI Match'}
@@ -436,24 +463,61 @@ export default function ForYou() {
                               >{lang === 'sk' ? 'Detail ›' : 'Details ›'}</button>
                             )}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div>
-                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 800, lineHeight: 1, color: bc.color }}>{score}%</span>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
+
+                          {/* Score + Band + Eligibility */}
+                          <div style={{ padding: '10px 20px 12px', background: bc.gradient, margin: '8px 12px', borderRadius: 14, border: `1px solid ${bc.color}22` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                              <div>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: 28, fontWeight: 800, lineHeight: 1, color: bc.color }}>{score}%</span>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ height: 6, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ width: `${score}%`, height: '100%', borderRadius: 3, background: `linear-gradient(90deg, ${bc.color}, ${bc.color}cc)`, transition: 'width 0.6s ease' }} />
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ flex: 1, height: 5, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
-                              <div style={{ width: `${score}%`, height: '100%', borderRadius: 3, background: bc.color, transition: 'width 0.5s ease' }} />
+                            {/* Eligibility tier badge */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 8, background: `${tierCfg.color}18`, border: `1px solid ${tierCfg.color}33`, fontSize: 10, fontWeight: 700, color: tierCfg.color }}>
+                              <span>{tierCfg.icon}</span> {tierCfg[lang] || tierCfg.en}
                             </div>
                           </div>
-                          {/* One-line summary — bilingual */}
-                          {currentJob.match.match_reasons?.[0] && (
-                            <div style={{ fontSize: 11, color: 'var(--green)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ flexShrink: 0 }}>✓</span> {biLang(currentJob.match.match_reasons[0], lang)}
+
+                          {/* Executive Summary */}
+                          {summary && (
+                            <div style={{ padding: '0 20px 10px', fontSize: 11, lineHeight: 1.55, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              "{biLang(summary, lang)}"
                             </div>
                           )}
-                          {currentJob.match.gaps?.[0] && (
-                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ flexShrink: 0 }}>✕</span> {biLang(currentJob.match.gaps[0], lang)}
+
+                          {/* AI Insights */}
+                          {insights.length > 0 && (
+                            <div style={{ padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {insights.slice(0, 3).map((ins, i) => {
+                                const cfg = INSIGHT_ICONS[ins.type] || INSIGHT_ICONS.info;
+                                return (
+                                  <div key={i} style={{ fontSize: 11, color: 'var(--text)', display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.45 }}>
+                                    <span style={{ flexShrink: 0, fontSize: 11 }}>{cfg.icon}</span>
+                                    <span style={{ color: cfg.color, fontWeight: 600 }}>{biLang(ins.text, lang)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Top reason + gap compact */}
+                          {(currentJob.match.match_reasons?.[0] || currentJob.match.gaps?.[0]) && (
+                            <div style={{ padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {currentJob.match.match_reasons?.[0] && (
+                                <div style={{ fontSize: 11, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ flexShrink: 0 }}>✓</span> {biLang(currentJob.match.match_reasons[0], lang)}
+                                </div>
+                              )}
+                              {currentJob.match.gaps?.[0] && (
+                                <div style={{ fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ flexShrink: 0 }}>✕</span> {biLang(currentJob.match.gaps[0], lang)}
+                                </div>
+                              )}
                             </div>
                           )}
                         </>
@@ -504,28 +568,70 @@ export default function ForYou() {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
-                {/* Content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                  {/* Score — with band label */}
+                  {/* Score — with band label + eligibility */}
                   {(() => {
                     const s = currentJob.match.overall_score;
-                    const band = getScoreBand(s);
-                    const bc = BAND_CONFIG[band];
+                    const band = currentJob.match.match_band || getScoreBand(s);
+                    const bc = BAND_CONFIG[band] || BAND_CONFIG['C'];
+                    const tier = currentJob.match.eligibility_tier || (currentJob.match.eligible !== false ? 'eligible' : 'not_eligible');
+                    const tierCfg = ELIGIBILITY_CONFIG[tier] || ELIGIBILITY_CONFIG.eligible;
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                        <div>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, color: bc.color }}>{s}%</span>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ height: 8, background: 'var(--bg-card-hover)', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ width: `${s}%`, height: '100%', borderRadius: 4, background: bc.color, transition: 'width 0.5s' }} />
+                      <div style={{ marginBottom: 24, padding: '16px', borderRadius: 16, background: bc.gradient, border: `1px solid ${bc.color}22` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                          <div>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, color: bc.color }}>{s}%</span>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
                           </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{lang === 'sk' ? 'Celkové skóre zhody' : 'Overall match score'}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ height: 8, background: 'var(--bg-card-hover)', borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{ width: `${s}%`, height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${bc.color}, ${bc.color}cc)`, transition: 'width 0.5s' }} />
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{lang === 'sk' ? 'Celkové skóre zhody' : 'Overall match score'}</div>
+                          </div>
+                        </div>
+                        {/* Eligibility tier badge */}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 14px', borderRadius: 10, background: `${tierCfg.color}18`, border: `1px solid ${tierCfg.color}33`, fontSize: 12, fontWeight: 700, color: tierCfg.color }}>
+                          <span>{tierCfg.icon}</span> {tierCfg[lang] || tierCfg.en}
                         </div>
                       </div>
                     );
                   })()}
+
+                  {/* Executive Summary */}
+                  {currentJob.match.executive_summary && (
+                    <div style={{ marginBottom: 24, padding: '14px 16px', borderRadius: 14, background: 'var(--bg-card-hover)', border: '1px solid var(--border)' }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        {lang === 'sk' ? 'Zhrnutie' : 'Summary'}
+                      </h4>
+                      <p style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--text)', margin: 0, fontStyle: 'italic' }}>
+                        "{biLang(currentJob.match.executive_summary, lang)}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* AI Insights */}
+                  {(currentJob.match.insights || []).length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        {lang === 'sk' ? 'AI Postrehy' : 'AI Insights'}
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {currentJob.match.insights.map((ins, i) => {
+                          const cfg = INSIGHT_ICONS[ins.type] || INSIGHT_ICONS.info;
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 10, background: `${cfg.color}0a`, border: `1px solid ${cfg.color}18` }}>
+                              <span style={{ flexShrink: 0, fontSize: 14, marginTop: 1 }}>{cfg.icon}</span>
+                              <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text)', fontWeight: 500, wordBreak: 'break-word' }}>{biLang(ins.text, lang)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Breakdown */}
                   {currentJob.match.breakdown && (
                     <div style={{ marginBottom: 24 }}>
@@ -536,8 +642,12 @@ export default function ForYou() {
                           { key: 'education', label: lang === 'sk' ? 'Vzdelanie' : 'Education', max: 10 },
                           { key: 'experience_level', label: lang === 'sk' ? 'Skúsenosti' : 'Experience', max: 10 },
                           { key: 'location', label: lang === 'sk' ? 'Lokalita' : 'Location', max: 15 },
+                          { key: 'category', label: lang === 'sk' ? 'Kategória' : 'Category', max: 8 },
                           { key: 'language', label: lang === 'sk' ? 'Jazyky' : 'Languages', max: 5 },
-                          { key: 'job_type', label: lang === 'sk' ? 'Typ práce' : 'Job Type', max: 15 },
+                          { key: 'job_type', label: lang === 'sk' ? 'Typ práce' : 'Job Type', max: 10 },
+                          { key: 'availability', label: lang === 'sk' ? 'Dostupnosť' : 'Availability', max: 7 },
+                          { key: 'salary', label: lang === 'sk' ? 'Plat' : 'Salary', max: 3 },
+                          { key: 'work_mode', label: lang === 'sk' ? 'Prac. model' : 'Work Mode', max: 2 },
                         ].map(d => {
                           const val = currentJob.match.breakdown[d.key];
                           if (typeof val !== 'number') return null;

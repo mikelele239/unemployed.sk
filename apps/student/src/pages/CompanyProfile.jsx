@@ -140,21 +140,35 @@ export default function CompanyProfile() {
             filter: 'blur(100px)', opacity: 0.12, borderRadius: '50%', zIndex: 0 
           }} />
 
-          {/* Company Logo */}
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            style={{ 
-              width: 80, height: 80, borderRadius: 24, margin: '0 auto 16px',
-              background: `linear-gradient(135deg, ${company.color || '#FF5C00'}cc, ${company.color || '#FF5C00'})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 32, fontWeight: 900, color: '#fff', position: 'relative', zIndex: 1,
-              boxShadow: `0 12px 40px ${company.color || '#FF5C00'}44`
-            }}
-          >
-            {company.logo || company.name.charAt(0).toUpperCase()}
-          </motion.div>
+          {company.logo_url ? (
+            <motion.img
+              src={company.logo_url}
+              alt={company.name}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              style={{
+                width: 80, height: 80, borderRadius: 24, margin: '0 auto 16px',
+                objectFit: 'cover', position: 'relative', zIndex: 1,
+                boxShadow: `0 12px 40px ${company.color || '#FF5C00'}44`
+              }}
+            />
+          ) : (
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              style={{ 
+                width: 80, height: 80, borderRadius: 24, margin: '0 auto 16px',
+                background: `linear-gradient(135deg, ${company.color || '#FF5C00'}cc, ${company.color || '#FF5C00'})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 32, fontWeight: 900, color: '#fff', position: 'relative', zIndex: 1,
+                boxShadow: `0 12px 40px ${company.color || '#FF5C00'}44`
+              }}
+            >
+              {company.name.charAt(0).toUpperCase()}
+            </motion.div>
+          )}
 
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 400, letterSpacing: '-0.5px', marginBottom: 6, position: 'relative', zIndex: 1 }}>
             {company.name}
@@ -259,14 +273,20 @@ export default function CompanyProfile() {
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ 
-                    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                    background: `linear-gradient(135deg, ${job.color || '#FF5C00'}cc, ${job.color || '#FF5C00'})`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    color: '#fff', fontSize: 16, fontWeight: 700 
-                  }}>
-                    {job.logo}
-                  </div>
+                  {company.logo_url ? (
+                    <img src={company.logo_url} alt={company.name} style={{
+                      width: 44, height: 44, borderRadius: 12, objectFit: 'cover', flexShrink: 0
+                    }} />
+                  ) : (
+                    <div style={{ 
+                      width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                      background: `linear-gradient(135deg, ${company.color || '#FF5C00'}cc, ${company.color || '#FF5C00'})`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                      color: '#fff', fontSize: 16, fontWeight: 700 
+                    }}>
+                      {company.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h4 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.title}</h4>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>

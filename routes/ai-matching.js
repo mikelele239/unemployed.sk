@@ -68,6 +68,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
+          insights: result.insights || [],
+          executive_summary: result.executive_summary || null,
           missing_required: result.gaps.filter(g => {
             try { const p = JSON.parse(g); return (p.en || '').startsWith('Missing required') && !(p.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
           }),
@@ -109,6 +111,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
+          insights: result.insights || [],
+          executive_summary: result.executive_summary || null,
           missing_required: result.gaps.filter(g => {
             try { const p2 = JSON.parse(g); return (p2.en || '').startsWith('Missing required') && !(p2.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
           }),
@@ -390,7 +394,7 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
       try {
         const { data, error } = await supabase.from('match_scores')
-          .select('job_id, eligible, overall_score, breakdown, match_reasons, gaps, missing_required, calculated_at')
+          .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required, calculated_at')
           .eq('user_id', user.id).order('overall_score', { ascending: false });
         if (error) throw error;
         res.json({ scores: data || [] });
@@ -414,7 +418,7 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         .order('created_at', { ascending: false });
 
       const { data: scores } = await supabase.from('match_scores')
-        .select('job_id, eligible, overall_score, breakdown, missing_required')
+        .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required')
         .eq('user_id', user.id);
 
       const scoreMap = {};

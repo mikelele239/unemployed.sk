@@ -154,11 +154,19 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12, background: job.color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 850, color: '#fff', fontSize: 18
-          }}>{job.logo}</div>
+          {job.logo_url ? (
+            <img src={job.logo_url} alt={job.company} style={{
+              width: 44, height: 44, borderRadius: 12, objectFit: 'cover', flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }} />
+          ) : (
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, background: job.color || 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 850, color: '#fff', fontSize: 18, flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>{job.logo || job.company?.charAt(0) || '?'}</div>
+          )}
           <div>
             <div 
               onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(job.company)}`); }}
@@ -185,6 +193,55 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick, onLike,
           ))}
         </div>
 
+        {/* ── AI Match compact row (mobile) ── */}
+        {job.match && typeof job.match.overall_score === 'number' && (() => {
+          const score = job.match.overall_score;
+          const bandKey = job.match.match_band || (score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : score >= 20 ? 'D' : 'E');
+          const bc = { A: { label: 'Strong fit', sk: 'Silná zhoda', color: '#22c55e', icon: '🟢' }, B: { label: 'Good fit', sk: 'Dobrá zhoda', color: '#3b82f6', icon: '🔵' }, C: { label: 'Potential', sk: 'Potenciálna', color: '#f59e0b', icon: '🟡' }, D: { label: 'Partial', sk: 'Čiastočná', color: '#f97316', icon: '🟠' }, E: { label: 'Low', sk: 'Nízka', color: '#ef4444', icon: '🔴' } }[bandKey] || { label: 'Match', color: '#f59e0b', icon: '🟡' };
+          const tier = job.match.eligibility_tier || (job.match.eligible !== false ? 'eligible' : 'not_eligible');
+          const tierEmoji = tier === 'eligible' ? '✅' : tier === 'near_miss' ? '🔶' : '❌';
+
+          // Pick the best insight or first reason to show
+          const insightText = (job.match.insights || []).find(i => i.type === 'strength' || i.type === 'moderate')?.text;
+          const displayText = insightText || (job.match.match_reasons || [])[0];
+
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px', borderRadius: 12,
+              background: `linear-gradient(135deg, ${bc.color}12, ${bc.color}06)`,
+              border: `1px solid ${bc.color}22`,
+              marginTop: 2,
+            }}>
+              {/* Score circle */}
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: `conic-gradient(${bc.color} ${score * 3.6}deg, var(--bg-card-hover) 0deg)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, position: 'relative',
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-card)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, color: bc.color,
+                }}>{score}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ color: bc.color }}>{bc.icon} {bc.sk || bc.label}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 9, marginLeft: 'auto' }}>{tierEmoji}</span>
+                </div>
+                {displayText && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {typeof displayText === 'string' ? (() => {
+                      try { const p = JSON.parse(displayText); return p.sk || p.en || displayText; } catch { return displayText; }
+                    })() : displayText}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
           <div style={{ fontFamily: 'var(--font-body)', fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent)' }}>
             {job.rate} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.rateUnit}</span>
