@@ -1,5 +1,10 @@
 'use strict';
-const { PDFParse } = require('pdf-parse');
+// Lazy-load pdf-parse to avoid DOMMatrix crash in serverless environments
+let _PDFParse = null;
+function getPDFParse() {
+  if (!_PDFParse) _PDFParse = require('pdf-parse').PDFParse;
+  return _PDFParse;
+}
 const {
   extractProfileFromText, normalizeText,
 } = require('../lib/ai-extraction');
