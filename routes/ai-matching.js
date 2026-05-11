@@ -1,5 +1,5 @@
 'use strict';
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 const {
   extractProfileFromText, normalizeText,
 } = require('../lib/ai-extraction');
@@ -20,8 +20,10 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   async function parseCvBuffer(buffer) {
-    const pdf = await pdfParse(buffer);
-    return (pdf.text || '').trim();
+    const parser = new PDFParse({ data: buffer });
+    const result = await parser.getText();
+    await parser.destroy().catch(() => {});
+    return (result.text || '').trim();
   }
 
   async function parseCvFromStorage(storagePath) {
@@ -60,10 +62,15 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           user_id: userId, job_id: job.id,
           eligible: result.eligible,
           overall_score: result.match_score,
+          match_band: result.match_band,
+          eligibility_tier: result.eligibility_tier,
+          criteria_version: result.criteria_version || 1,
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
-          missing_required: result.gaps.filter(g => g.startsWith('Missing required')),
+          missing_required: result.gaps.filter(g => {
+            try { const p = JSON.parse(g); return (p.en || '').startsWith('Missing required') && !(p.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
+          }),
           calculated_at: new Date().toISOString(),
         }, { onConflict: 'user_id,job_id' });
         count++;
@@ -96,10 +103,15 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           user_id: p.user_id, job_id: jobId,
           eligible: result.eligible,
           overall_score: result.match_score,
+          match_band: result.match_band,
+          eligibility_tier: result.eligibility_tier,
+          criteria_version: result.criteria_version || 1,
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
-          missing_required: result.gaps.filter(g => g.startsWith('Missing required')),
+          missing_required: result.gaps.filter(g => {
+            try { const p2 = JSON.parse(g); return (p2.en || '').startsWith('Missing required') && !(p2.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
+          }),
           calculated_at: new Date().toISOString(),
         }, { onConflict: 'user_id,job_id' });
         count++;
@@ -472,11 +484,11 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         return res.status(403).json({ error: 'Not your job' });
 
       const payload = { job_id };
-      const arrFields = ['required_skills','preferred_skills','preferred_fields'];
-      const intFields = ['min_experience_years','weight_skills','weight_education','weight_experience','weight_location','weight_languages'];
-      const strFields = ['min_education_level','work_model','team_size','pace','industry'];
+      const arrFields = ['required_skills','preferred_skills','preferred_fields','trainable_skills','nice_to_haves'];
+      const intFields = ['min_experience_years','weight_skills','weight_education','weight_experience','weight_location','weight_languages','criteria_version'];
+      const strFields = ['min_education_level','work_model','team_size','pace','industry','role_family','role_level'];
       const boolFields = ['location_strict'];
-      const jsonFields = ['required_languages'];
+      const jsonFields = ['required_languages','hard_gates','success_factors','calibration_snapshot'];
 
       for (const f of arrFields) if (criteria[f] !== undefined) payload[f] = Array.isArray(criteria[f]) ? criteria[f] : [];
       for (const f of intFields) if (criteria[f] !== undefined) payload[f] = parseInt(criteria[f]) || 0;
@@ -484,9 +496,25 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       for (const f of boolFields) if (criteria[f] !== undefined) payload[f] = !!criteria[f];
       for (const f of jsonFields) if (criteria[f] !== undefined) payload[f] = criteria[f];
 
+      // Auto-detect criteria version
+      if (Array.isArray(criteria.success_factors) && criteria.success_factors.length > 0) {
+        payload.criteria_version = 2;
+      } else if (!payload.criteria_version) {
+        payload.criteria_version = 1;
+      }
+
       const { data, error } = await supabase.from('job_match_criteria')
         .upsert(payload, { onConflict: 'job_id' }).select().single();
       if (error) return res.status(500).json({ error: error.message });
+
+      // Audit log
+      try {
+        await supabase.from('criteria_audit_log').insert({
+          job_id, employer_id: user.id,
+          action: 'updated',
+          criteria_snapshot: payload,
+        });
+      } catch (auditErr) { console.warn('[AI] Audit log non-fatal:', auditErr.message); }
 
       recalculateForJob(job_id).catch(e => console.warn('[AI] Recalc:', e.message));
       res.json({ criteria: data });
@@ -502,6 +530,13 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       if (error) return res.status(500).json({ error: error.message });
       res.json({ criteria: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── GET /api/role-templates — Return available role templates ─────────────
+
+  app.get('/api/role-templates', (req, res) => {
+    const { ROLE_TEMPLATES } = require('../lib/matching-config');
+    res.json({ templates: ROLE_TEMPLATES });
   });
 
   // ── POST /api/match/recalculate ──────────────────────────────────────────

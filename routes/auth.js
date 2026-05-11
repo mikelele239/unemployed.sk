@@ -152,8 +152,8 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
         });
       }
       // Self-heal: ensure role + profile rows exist even if DB triggers failed
-      await supabase.from('user_roles').upsert({ user_id: user.id, role: 'candidate' }).catch(() => {});
-      await supabase.from('profiles').upsert({ user_id: user.id, first_name: fullName, email }).catch(() => {});
+      try { await supabase.from('user_roles').upsert({ user_id: user.id, role: 'candidate' }); } catch (_) {}
+      try { await supabase.from('profiles').upsert({ user_id: user.id, first_name: fullName, email }); } catch (_) {}
       res.json({ success: true, message: 'Account created successfully.' });
     } catch (err) {
       console.error('Registration error:', err);
@@ -244,7 +244,7 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
       }
 
       // Also ensure user_roles entry
-      await supabase.from('user_roles').upsert({ user_id: user.id, role: 'employer' }).catch(() => {});
+      try { await supabase.from('user_roles').upsert({ user_id: user.id, role: 'employer' }); } catch (_) {}
 
       res.json({ success: true });
     } catch (err) {

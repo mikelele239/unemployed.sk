@@ -124,20 +124,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// Content Security Policy + CORS headers
+// Security headers
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https://*.supabase.co; " +
     "frame-src 'self' https://*.supabase.co blob: data:; " +
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: blob: https: https://*.supabase.co;"
   );
-  res.setHeader('X-Frame-Options', 'ALLOWALL');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // CORS — restrict to same origin in production
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('unemployed.sk') || origin.includes('localhost'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
   next();
 });
 
@@ -416,7 +427,13 @@ app.patch('/api/employer/jobs/:id', async (req, res) => {
 
 // ── CV Upload/Download API (server-side, Supabase Storage) ──────────────────
 app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
-  const pdfParse = require('pdf-parse');
+  const { PDFParse } = require('pdf-parse');
+  async function extractPdfText(buffer) {
+    const parser = new PDFParse({ data: buffer });
+    const result = await parser.getText();
+    await parser.destroy().catch(() => {});
+    return (result.text || '').trim();
+  }
   const mammoth = require('mammoth');
 
   try {
@@ -471,8 +488,7 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
 
     try {
       if (isPdf) {
-        const pdf = await pdfParse(fileBuffer);
-        rawText = (pdf.text || '').trim();
+        rawText = await extractPdfText(fileBuffer);
         if (!rawText || rawText.length < 20) {
           extractionWarnings.push('PDF contains too little text — may be scanned/image-based');
         }
@@ -1242,7 +1258,7 @@ const server = app.listen(PORT, () => {
 
       if (stale.length > 0) {
         console.log(`[Startup] Found ${stale.length} stale AI profile(s) — triggering reparse...`);
-        const pdfParse = require('pdf-parse');
+        const { PDFParse } = require('pdf-parse');
         const { parseWithAI } = require('./lib/ai-cv-parser');
         const { calculateProfileCompletion, calculateCandidateJobMatch } = require('./lib/matching-engine');
 
@@ -1254,8 +1270,10 @@ const server = app.listen(PORT, () => {
             if (dlErr || !fileData) { console.warn('[Startup] Download failed:', dlErr?.message); continue; }
 
             const buf = Buffer.from(await fileData.arrayBuffer());
-            const pdf = await pdfParse(buf);
-            const rawText = (pdf.text || '').trim();
+            const parser = new PDFParse({ data: buf });
+            const pdfResult = await parser.getText();
+            await parser.destroy().catch(() => {});
+            const rawText = (pdfResult.text || '').trim();
             if (rawText.length < 50) { console.warn('[Startup] Too little text'); continue; }
 
             const { data: prof } = await supabase.from('profiles')

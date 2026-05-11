@@ -22,6 +22,37 @@ function biLangArr(arr, lang) {
   return arr.map(item => biLang(item, lang)).filter(Boolean);
 }
 
+// Match band display config
+const BAND_DISPLAY = {
+  A: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '🟢' },
+  B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔵' },
+  C: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡' },
+  D: { color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: '🟠' },
+  E: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴' },
+};
+const BAND_LABELS = {
+  A: { sk: 'Silná zhoda', en: 'Strong fit' },
+  B: { sk: 'Dobrá zhoda', en: 'Good fit' },
+  C: { sk: 'Potenciálna zhoda', en: 'Potential fit' },
+  D: { sk: 'Čiastočná zhoda', en: 'Partial fit' },
+  E: { sk: 'Nízka zhoda', en: 'Low fit' },
+};
+
+function getScoreBand(score) {
+  if (score >= 80) return 'A';
+  if (score >= 60) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 20) return 'D';
+  return 'E';
+}
+
+// Eligibility tier display
+const ELIG_DISPLAY = {
+  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '✓' },
+  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '≈' },
+  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '✗' },
+};
+
 const CandidateCard = ({ candidate, onInvite }) => {
   const { t, lang } = useI18n();
   const [expanded, setExpanded] = useState(false);
@@ -214,18 +245,38 @@ const CandidateCard = ({ candidate, onInvite }) => {
                     {biLang(candidate.ai_reasoning, lang) || (lang === 'sk' ? 'AI analýza ešte nebola vygenerovaná.' : 'AI analysis not yet generated.')}
                   </p>
                   
-                  {/* Match Score + Breakdown */}
+                  {/* Match Band + Score + Eligibility */}
                   <div style={{ marginTop: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    <div style={{ padding: '12px 20px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', minWidth: '100px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 700, textTransform: 'uppercase' }}>Index zhody</div>
-                      <div style={{ fontWeight: 900, fontSize: '24px', color: (candidate.ai_score || 0) >= 70 ? '#22c55e' : (candidate.ai_score || 0) >= 50 ? '#f59e0b' : '#ef4444' }}>
-                        {candidate.ai_score || 0}%
-                      </div>
-                      {/* Mini progress bar */}
-                      <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '6px' }}>
-                        <div style={{ width: `${candidate.ai_score || 0}%`, height: '100%', borderRadius: '2px', background: (candidate.ai_score || 0) >= 70 ? '#22c55e' : (candidate.ai_score || 0) >= 50 ? '#f59e0b' : '#ef4444' }} />
-                      </div>
-                    </div>
+                    {(() => {
+                      const score = candidate.ai_score || 0;
+                      const band = candidate.match_band || getScoreBand(score);
+                      const bandStyle = BAND_DISPLAY[band] || BAND_DISPLAY.E;
+                      const bandLabel = BAND_LABELS[band] || BAND_LABELS.E;
+                      const eligTier = candidate.eligibility_tier || 'eligible';
+                      const eligStyle = ELIG_DISPLAY[eligTier] || ELIG_DISPLAY.eligible;
+                      return (
+                        <>
+                          <div style={{ padding: '12px 20px', borderRadius: '4px', background: bandStyle.bg, border: `1px solid ${bandStyle.color}22`, minWidth: '120px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 700, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Zhoda' : 'Match'}</div>
+                            <div style={{ fontWeight: 900, fontSize: '13px', color: bandStyle.color, marginBottom: '4px' }}>
+                              {bandStyle.icon} {bandLabel[lang] || bandLabel.sk}
+                            </div>
+                            <div style={{ fontWeight: 900, fontSize: '24px', color: bandStyle.color }}>
+                              {score}%
+                            </div>
+                            <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '6px' }}>
+                              <div style={{ width: `${score}%`, height: '100%', borderRadius: '2px', background: bandStyle.color }} />
+                            </div>
+                          </div>
+                          <div style={{ padding: '8px 14px', borderRadius: '4px', background: eligStyle.bg, border: `1px solid ${eligStyle.color}22`, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '14px' }}>{eligStyle.icon}</span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: eligStyle.color }}>
+                              {eligStyle[lang] || eligStyle.sk}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                     
                     {/* Score breakdown chips */}
                     {candidate.score_breakdown && Object.keys(candidate.score_breakdown).length > 0 && (
@@ -249,9 +300,9 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   {/* Match reasons (strengths) */}
                   {(candidate.match_reasons || []).length > 0 && (
                     <div style={{ marginTop: '16px' }}>
-                      <div style={{ fontSize: '10px', color: '#22c55e', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>Silné stránky zhody</div>
+                      <div style={{ fontSize: '10px', color: '#22c55e', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Silné stránky zhody' : 'Match strengths'}</div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {candidate.match_reasons.slice(0, 6).map((r, i) => (
+                        {biLangArr(candidate.match_reasons, lang).slice(0, 6).map((r, i) => (
                           <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: 'rgba(34,197,94,0.1)', color: '#22c55e', fontWeight: 600 }}>✓ {r}</span>
                         ))}
                       </div>
@@ -261,14 +312,26 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   {/* Match gaps */}
                   {(candidate.match_gaps || []).length > 0 && (
                     <div style={{ marginTop: '12px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>Medzery</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Medzery' : 'Gaps'}</div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {candidate.match_gaps.slice(0, 5).map((g, i) => (
-                          <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 600 }}>✗ {g}</span>
-                        ))}
+                        {biLangArr(candidate.match_gaps, lang).slice(0, 5).map((g, i) => {
+                          const isTrainable = g.includes('trénovateľné') || g.includes('trainable');
+                          return (
+                            <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: isTrainable ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)', color: isTrainable ? '#3b82f6' : '#ef4444', fontWeight: 600 }}>
+                              {isTrainable ? '⚡' : '✗'} {g}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* AI Decision Support Disclaimer */}
+                <div style={{ marginTop: '16px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.1)', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {lang === 'sk'
+                    ? '🤖 AI skóre je len pomôcka pre vaše rozhodovanie. Vždy si overte kandidáta na pohovore.'
+                    : '🤖 AI scores are decision support only. Always validate candidates through interviews.'}
                 </div>
 
                 {/* Executive Actions Panel */}

@@ -105,6 +105,8 @@ const Candidates = () => {
             ai_reasoning: ai.ai_summary || null,
             ai_headline: ai.ai_headline || null,
             ai_score: matchData.overall_score || 0,
+            match_band: matchData.match_band || null,
+            eligibility_tier: matchData.eligibility_tier || 'eligible',
             score_breakdown: matchData.breakdown || {},
             match_reasons: matchData.match_reasons || [],
             match_gaps: matchData.gaps || [],

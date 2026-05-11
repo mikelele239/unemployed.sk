@@ -5,6 +5,8 @@ import { supabase } from '../supabase';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import SkillChipInput from '../components/SkillChipInput';
+import SuccessFactorBudget from '../components/SuccessFactorBudget';
+import HardGates from '../components/HardGates';
 
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -56,6 +58,7 @@ const CreateListing = () => {
   const [criteria, setCriteria] = useState({
     required_skills: [],
     preferred_skills: [],
+    trainable_skills: [],
     min_education_level: 'none',
     preferred_fields: [],
     min_experience_years: 0,
@@ -64,12 +67,17 @@ const CreateListing = () => {
     team_size: '',
     pace: '',
     industry: '',
-    weight_skills: 3,
-    weight_education: 2,
-    weight_experience: 2,
-    weight_location: 3,
-    weight_languages: 2,
+    // V2 fields
+    success_factors: [],
+    hard_gates: [],
+    role_family: '',
   });
+
+  // Role template state
+  const [roleTemplates, setRoleTemplates] = useState({});
+  useEffect(() => {
+    fetch('/api/role-templates').then(r => r.json()).then(d => setRoleTemplates(d.templates || {})).catch(() => {});
+  }, []);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -329,7 +337,57 @@ const CreateListing = () => {
               </div>
             </div>
 
-            {/* Languages */}
+            {/* V2: Role Template + Success Factors + Hard Gates */}
+            <div style={{ padding: '20px', background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: '20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🎯 {lang === 'sk' ? 'Kalibrácia pozície' : 'Role Calibration'}
+              </div>
+
+              {/* Role Template Picker */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={LABEL}>{lang === 'sk' ? 'Štartovacia šablóna (voliteľné)' : 'Starting Template (optional)'}</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {Object.entries(roleTemplates).map(([key, tpl]) => (
+                    <button key={key} type="button" onClick={() => {
+                      setCriteria(prev => ({
+                        ...prev,
+                        success_factors: tpl.default_factors,
+                        hard_gates: tpl.default_gates || [],
+                        required_skills: [...new Set([...prev.required_skills, ...tpl.suggested_skills.slice(0, 3)])],
+                        preferred_skills: [...new Set([...prev.preferred_skills, ...tpl.suggested_skills.slice(3)])],
+                        role_family: key,
+                      }));
+                    }} style={{
+                      padding: '8px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 600,
+                      background: criteria.role_family === key ? 'var(--accent)' : 'transparent',
+                      color: criteria.role_family === key ? '#fff' : 'var(--text)',
+                      border: `1px solid ${criteria.role_family === key ? 'var(--accent)' : 'var(--border)'}`,
+                      cursor: 'pointer', transition: 'all 0.2s',
+                    }}>
+                      {tpl.label[lang] || tpl.label.sk}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Success Factor Budget */}
+              <div style={{ marginBottom: '24px' }}>
+                <SuccessFactorBudget
+                  factors={criteria.success_factors}
+                  onChange={v => setCriteria(prev => ({ ...prev, success_factors: v }))}
+                  lang={lang}
+                />
+              </div>
+
+              {/* Hard Gates */}
+              <HardGates
+                gates={criteria.hard_gates}
+                onChange={v => setCriteria(prev => ({ ...prev, hard_gates: v }))}
+                lang={lang}
+              />
+            </div>
+
+            {/* Languages (kept for V1 backward compat, auto-synced from hard gates) */}
             <div style={{ marginBottom: '20px' }}>
               <label style={LABEL}>{lang === 'sk' ? 'Jazykové požiadavky' : 'Language Requirements'}</label>
               {criteria.required_languages.map((l, idx) => (
@@ -357,15 +415,6 @@ const CreateListing = () => {
               <button onClick={addLanguage} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>
                 + {lang === 'sk' ? 'Pridať jazyk' : 'Add language'}
               </button>
-            </div>
-
-            {/* Location strict toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px 16px', background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-              <input type="checkbox" checked={criteria.location_strict} onChange={e => setCriteria({...criteria, location_strict: e.target.checked})} style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{lang === 'sk' ? 'Striktná lokalita' : 'Strict Location'}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Kandidát musí byť v rovnakom meste' : 'Candidate must be in the same city'}</div>
-              </div>
             </div>
 
             {/* Advanced toggle */}
@@ -408,23 +457,20 @@ const CreateListing = () => {
                   </div>
                 </div>
 
-                {/* Weights */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12 }}>
-                  {lang === 'sk' ? 'Váhy hodnotenia (1–5)' : 'Scoring Weights (1–5)'}
-                </div>
-                {[
-                  { key: 'weight_skills', label: lang === 'sk' ? 'Zručnosti' : 'Skills' },
-                  { key: 'weight_education', label: lang === 'sk' ? 'Vzdelanie' : 'Education' },
-                  { key: 'weight_experience', label: lang === 'sk' ? 'Skúsenosti' : 'Experience' },
-                  { key: 'weight_location', label: lang === 'sk' ? 'Lokalita' : 'Location' },
-                  { key: 'weight_languages', label: lang === 'sk' ? 'Jazyky' : 'Languages' },
-                ].map(w => (
-                  <div key={w.key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, width: 80, color: 'var(--text)' }}>{w.label}</span>
-                    <input type="range" min={1} max={5} value={criteria[w.key]} onChange={e => setCriteria({...criteria, [w.key]: parseInt(e.target.value)})} style={{ flex: 1, accentColor: 'var(--accent)' }} />
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent)', width: 20, textAlign: 'center' }}>{criteria[w.key]}</span>
+                {/* Trainable Skills */}
+                <div style={{ marginTop: '16px' }}>
+                  <SkillChipInput
+                    value={criteria.trainable_skills}
+                    onChange={v => setCriteria({ ...criteria, trainable_skills: v })}
+                    label={lang === 'sk' ? 'Trénovateľné zručnosti (ochotní naučiť)' : 'Trainable skills (willing to teach)'}
+                    placeholder={lang === 'sk' ? 'Zručnosti, ktoré kandidát môže získať...' : 'Skills you can train on the job...'}
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.4 }}>
+                    {lang === 'sk'
+                      ? '⚡ Kandidáti s chýbajúcimi trénovateľnými zručnosťami nebudú penalizovaní tak prísne.'
+                      : '⚡ Candidates missing trainable skills will receive a reduced penalty instead of full rejection.'}
                   </div>
-                ))}
+                </div>
               </div>
             )}
           </div>

@@ -4,7 +4,7 @@
 > Students discover jobs through Tinder-style swiping and AI matching.
 > Employers manage listings, evaluate candidates, and track recruitment analytics.
 >
-> **Version**: 3.0.0 | **Last Updated**: 2026-05-09
+> **Version**: 3.1.0 | **Last Updated**: 2026-05-11
 
 ---
 
@@ -28,10 +28,10 @@ Unemployed.sk/
 │   ├── ai-cv-parser.js          # GPT-4o-mini CV parser with rule-based fallback
 │   ├── ai-extraction.js         # NLP text extraction pipeline
 │   ├── ai-profile-builder.js    # Structured AI profile construction
-│   ├── matching-engine.js       # Multi-dimensional candidate-job scoring (0–100)
-│   └── matching-config.js       # Scoring weights, skill synonyms, category mappings
+│   ├── matching-engine.js       # V3 matching: bands (A–E), eligibility tiers, V2 criteria support
+│   └── matching-config.js       # Weights, skill families, role templates, success factor mappings
 ├── database/
-│   ├── scripts/                 # SQL migration scripts (02–16)
+│   ├── scripts/                 # SQL migration scripts (02–17)
 │   └── *.sql                    # RLS policies and schema patches
 ├── docs/
 │   ├── PROJECT_OVERVIEW.md      # Full architecture & feature reference
@@ -115,7 +115,7 @@ Unemployed.sk/
 | Component            | Purpose                                                     |
 |----------------------|-------------------------------------------------------------|
 | `SideNav`            | Sidebar navigation (desktop) + bottom nav (mobile)          |
-| `CandidateCard`      | Rich candidate card with AI insights, CV preview, scheduling|
+| `CandidateCard`      | Rich candidate card with AI insights, match bands, eligibility badges |
 | `CandidateAvatar`    | Dynamic avatar resolution from Supabase Storage             |
 | `Chart`              | SVG bezier trend chart with animated reveal                 |
 | `StatCard`           | Metric card with label, value, change indicator             |
@@ -123,6 +123,8 @@ Unemployed.sk/
 | `ModernDatePicker`   | Interview date/time picker overlay                          |
 | `NotificationBell`   | Real-time employer notifications                            |
 | `SkillChipInput`     | Tag-style skill input for job requirements                  |
+| `SuccessFactorBudget`| 100-point budget distribution across success factors        |
+| `HardGates`          | Structured hard requirements builder (max 4 gates)          |
 | `Toast`              | Notification toast                                          |
 
 ### State Management (`contexts.jsx`)
@@ -135,7 +137,7 @@ Unemployed.sk/
 
 ---
 
-## AI Matching Engine
+## AI Matching Engine (V3)
 
 ### Pipeline
 
@@ -145,25 +147,31 @@ Unemployed.sk/
 4. **Match Scoring** → Multi-dimensional weighted scoring (0–100) against all active jobs
 5. **Score Caching** → Pre-computed scores in `match_scores` table, recalculated on any change
 
-### Scoring Dimensions
+### Match Bands & Eligibility
 
-| Dimension    | Weight | Description                                                |
-|--------------|--------|------------------------------------------------------------|
-| Skills       | 5      | Synonym-aware matching with transferable skill families     |
-| Education    | 3      | Level + field matching (exact, related, or partial)        |
-| Experience   | 3      | Years + level compatibility                                |
-| Location     | 2      | City/region overlap with work model consideration          |
-| Languages    | 2      | Required + preferred language matching                     |
+| Band | Score Range | Meaning                    |
+|------|-------------|----------------------------|
+| A    | 85–100      | Strong Match               |
+| B    | 70–84       | Good Fit                   |
+| C    | 55–69       | Moderate                   |
+| D    | 40–54       | Weak Match                 |
+| E    | 0–39        | Poor Fit                   |
+
+**Three-tier eligibility**: `eligible`, `near_miss`, `not_eligible`
+
+### Criteria Versions
+
+**V1 (Legacy)**: Hardcoded `MATCH_WEIGHTS` — simple skill/education/location scoring.
+
+**V2 (Role Calibration)**: Employers distribute a 100-point budget across success factors:
+- `technical_skills`, `communication`, `education`, `portfolio`, `availability`, `location`, `language`, `industry_exp`
+- Points are converted to engine dimension weights via `SUCCESS_FACTOR_DIMENSION_MAP`
+- Hard gates (language, availability, location, education) enforce non-negotiable requirements
+- 5 pre-built role templates auto-fill factors + suggested skills
 
 ### AI-Generated Content (Bilingual)
 
-All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`):
-- `ai_headline` — Professional one-liner
-- `ai_summary` — Executive summary
-- `ai_strengths` — Top 3–5 strengths
-- `ai_development_areas` — Growth opportunities
-- `ai_suggested_roles` — Recommended job titles
-- `ai_portfolio_intro` — Portfolio introduction
+All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 
 ### API Routes (`routes/ai-matching.js`)
 
@@ -174,8 +182,9 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`):
 | `PATCH` | `/api/ai-profile`                 | Student updates AI profile fields        |
 | `GET`   | `/api/match-scores`               | Student's match scores for all jobs      |
 | `GET`   | `/api/employer/match-scores/:id`  | Ranked candidates for a specific job     |
-| `POST`  | `/api/job-criteria`               | Upsert job matching criteria             |
+| `POST`  | `/api/job-criteria`               | Upsert job matching criteria (V1+V2)     |
 | `GET`   | `/api/job-criteria/:jobId`        | Read job criteria                        |
+| `GET`   | `/api/role-templates`             | Available role templates                 |
 | `POST`  | `/api/match/recalculate`          | Trigger full recalculation               |
 
 ---
@@ -270,8 +279,9 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`):
 | Table              | Purpose                              | Key Columns                                                    |
 |--------------------|--------------------------------------|----------------------------------------------------------------|
 | `ai_profiles`      | AI-extracted student profiles        | `user_id`, `hard_skills[]`, `soft_skills[]`, `languages[]`, `ai_headline`, `ai_summary`, `confidence_score` |
-| `match_scores`     | Pre-computed match scores            | `user_id`, `job_id`, `overall_score`, `dimension_scores`       |
-| `job_match_criteria`| Employer-defined matching criteria  | `job_id`, `required_skills[]`, `min_education`, `weights`      |
+| `match_scores`     | Pre-computed match scores            | `user_id`, `job_id`, `overall_score`, `match_band`, `eligibility_tier`, `criteria_version` |
+| `job_match_criteria`| Employer-defined matching criteria  | `job_id`, `required_skills[]`, `success_factors`, `hard_gates`, `criteria_version` |
+| `criteria_audit_log`| Criteria change history             | `job_id`, `employer_id`, `action`, `criteria_snapshot` |
 
 ### Supporting Tables
 
@@ -335,7 +345,10 @@ cd apps/employer && npx vite build
 - **Admin Registration**: `admin.createUser()` with `email_confirm: true` auto-confirms without sending emails (avoids rate limits)
 - **Portal Isolation**: Separate Supabase storage keys (`unemployed-student-auth`, `unemployed-employer-auth`)
 - **CSP Headers**: Restricts connections to `*.supabase.co` (https + wss)
+- **Security Headers**: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `HSTS`, `Referrer-Policy`
+- **CORS**: Restricted to `unemployed.sk` and `localhost` origins (no wildcard)
 - **File Access Control**: Server blocks access to `.env`, `package.json`, `node_modules`, database files
+- **Rate Limiting**: IP-based rate limiter on signup endpoint (5 requests/minute)
 
 ---
 

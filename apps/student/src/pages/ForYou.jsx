@@ -9,6 +9,38 @@ import { useApplications } from '../hooks/useApplications';
 import { useTranslation } from '../I18nContext';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
+// ── Bilingual helpers ──
+function biLang(val, lang) {
+  if (!val) return '';
+  if (typeof val === 'object' && (val.sk || val.en)) return val[lang] || val.en || val.sk || '';
+  if (typeof val !== 'string') return String(val);
+  try {
+    const parsed = JSON.parse(val);
+    if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) return parsed[lang] || parsed.en || parsed.sk || '';
+    return val;
+  } catch { return val; }
+}
+function biLangArr(arr, lang) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => biLang(item, lang)).filter(Boolean);
+}
+
+// ── Match band helpers ──
+function getScoreBand(score) {
+  if (score >= 80) return 'A';
+  if (score >= 60) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 20) return 'D';
+  return 'E';
+}
+const BAND_CONFIG = {
+  A: { sk: 'Silná zhoda', en: 'Strong fit', color: '#22c55e', icon: '🟢' },
+  B: { sk: 'Dobrá zhoda', en: 'Good fit', color: '#3b82f6', icon: '🔵' },
+  C: { sk: 'Potenciálna zhoda', en: 'Potential fit', color: '#f59e0b', icon: '🟡' },
+  D: { sk: 'Čiastočná zhoda', en: 'Partial fit', color: '#f97316', icon: '🟠' },
+  E: { sk: 'Nízka zhoda', en: 'Low fit', color: '#ef4444', icon: '🔴' },
+};
+
 export default function ForYou() {
   const { t, lang } = useTranslation();
   const navigate = useNavigate();
@@ -386,35 +418,47 @@ export default function ForYou() {
                 {/* AI Match — summary pill with "Details" button */}
                 {currentJob.match && typeof currentJob.match.overall_score === 'number' && (
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        {lang === 'sk' ? 'AI Zhoda' : 'AI Match'}
-                      </div>
-                      {(currentJob.match.breakdown || currentJob.match.gaps?.length || currentJob.match.match_reasons?.length) && (
-                        <button onClick={() => setShowMatchDrawer(true)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--accent)'; }}
-                        >{lang === 'sk' ? 'Detail ›' : 'Details ›'}</button>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 800, lineHeight: 1, color: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444' }}>{currentJob.match.overall_score}%</span>
-                      <div style={{ flex: 1, height: 5, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${currentJob.match.overall_score}%`, height: '100%', borderRadius: 3, background: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.5s ease' }} />
-                      </div>
-                    </div>
-                    {/* One-line summary */}
-                    {currentJob.match.match_reasons?.[0] && (
-                      <div style={{ fontSize: 11, color: 'var(--green)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ flexShrink: 0 }}>✓</span> {currentJob.match.match_reasons[0]}
-                      </div>
-                    )}
-                    {currentJob.match.gaps?.[0] && (
-                      <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ flexShrink: 0 }}>✕</span> {currentJob.match.gaps[0]}
-                      </div>
-                    )}
+                    {(() => {
+                      const score = currentJob.match.overall_score;
+                      const band = getScoreBand(score);
+                      const bc = BAND_CONFIG[band];
+                      return (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              {lang === 'sk' ? 'AI Zhoda' : 'AI Match'}
+                            </div>
+                            {(currentJob.match.breakdown || currentJob.match.gaps?.length || currentJob.match.match_reasons?.length) && (
+                              <button onClick={() => setShowMatchDrawer(true)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+                                onMouseOut={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--accent)'; }}
+                              >{lang === 'sk' ? 'Detail ›' : 'Details ›'}</button>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div>
+                              <span style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 800, lineHeight: 1, color: bc.color }}>{score}%</span>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
+                            </div>
+                            <div style={{ flex: 1, height: 5, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ width: `${score}%`, height: '100%', borderRadius: 3, background: bc.color, transition: 'width 0.5s ease' }} />
+                            </div>
+                          </div>
+                          {/* One-line summary — bilingual */}
+                          {currentJob.match.match_reasons?.[0] && (
+                            <div style={{ fontSize: 11, color: 'var(--green)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ flexShrink: 0 }}>✓</span> {biLang(currentJob.match.match_reasons[0], lang)}
+                            </div>
+                          )}
+                          {currentJob.match.gaps?.[0] && (
+                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ flexShrink: 0 }}>✕</span> {biLang(currentJob.match.gaps[0], lang)}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -462,16 +506,26 @@ export default function ForYou() {
                 </div>
                 {/* Content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                  {/* Score */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, color: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444' }}>{currentJob.match.overall_score}%</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ height: 8, background: 'var(--bg-card-hover)', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{ width: `${currentJob.match.overall_score}%`, height: '100%', borderRadius: 4, background: currentJob.match.overall_score >= 70 ? 'var(--green)' : currentJob.match.overall_score >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.5s' }} />
+                  {/* Score — with band label */}
+                  {(() => {
+                    const s = currentJob.match.overall_score;
+                    const band = getScoreBand(s);
+                    const bc = BAND_CONFIG[band];
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                        <div>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 40, fontWeight: 800, color: bc.color }}>{s}%</span>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: bc.color, marginTop: 2 }}>{bc.icon} {bc[lang] || bc.sk}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: 8, background: 'var(--bg-card-hover)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${s}%`, height: '100%', borderRadius: 4, background: bc.color, transition: 'width 0.5s' }} />
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{lang === 'sk' ? 'Celkové skóre zhody' : 'Overall match score'}</div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{lang === 'sk' ? 'Celkové skóre zhody' : 'Overall match score'}</div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                   {/* Breakdown */}
                   {currentJob.match.breakdown && (
                     <div style={{ marginBottom: 24 }}>
@@ -503,11 +557,11 @@ export default function ForYou() {
                       </div>
                     </div>
                   )}
-                  {/* Match reasons */}
+                  {/* Match reasons — bilingual */}
                   {currentJob.match.match_reasons?.length > 0 && (
                     <div style={{ marginBottom: 24 }}>
                       <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--green)', marginBottom: 8 }}>{lang === 'sk' ? 'Prečo sa hodíš' : 'Why you match'}</h4>
-                      {currentJob.match.match_reasons.map((r, i) => (
+                      {biLangArr(currentJob.match.match_reasons, lang).map((r, i) => (
                         <div key={i} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', gap: 8, marginBottom: 6, lineHeight: 1.5 }}>
                           <span style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }}>✓</span>
                           <span style={{ wordBreak: 'break-word' }}>{r}</span>
@@ -515,11 +569,11 @@ export default function ForYou() {
                       ))}
                     </div>
                   )}
-                  {/* Gaps */}
+                  {/* Gaps — bilingual */}
                   {currentJob.match.gaps?.length > 0 && (
                     <div>
                       <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ef4444', marginBottom: 8 }}>{lang === 'sk' ? 'Čo ti chýba' : "What you're missing"}</h4>
-                      {currentJob.match.gaps.map((g, i) => (
+                      {biLangArr(currentJob.match.gaps, lang).map((g, i) => (
                         <div key={i} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', gap: 8, marginBottom: 6, lineHeight: 1.5 }}>
                           <span style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }}>✕</span>
                           <span style={{ wordBreak: 'break-word' }}>{g}</span>
