@@ -58,23 +58,31 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       let count = 0;
       for (const job of jobs) {
         const result = calculateCandidateJobMatch(profile, job, cMap[job.id] || {});
-        await supabase.from('match_scores').upsert({
+        const basePayload = {
           user_id: userId, job_id: job.id,
           eligible: result.eligible,
           overall_score: result.match_score,
-          match_band: result.match_band,
-          eligibility_tier: result.eligibility_tier,
-          criteria_version: result.criteria_version || 1,
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
-          insights: result.insights || [],
-          executive_summary: result.executive_summary || null,
           missing_required: result.gaps.filter(g => {
             try { const p = JSON.parse(g); return (p.en || '').startsWith('Missing required') && !(p.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
           }),
           calculated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,job_id' });
+        };
+        // Try V3 fields, fallback to basic if columns don't exist
+        const v3Payload = {
+          ...basePayload,
+          match_band: result.match_band,
+          eligibility_tier: result.eligibility_tier,
+          criteria_version: result.criteria_version || 1,
+          insights: result.insights || [],
+          executive_summary: result.executive_summary || null,
+        };
+        const { error: v3Err } = await supabase.from('match_scores').upsert(v3Payload, { onConflict: 'user_id,job_id' });
+        if (v3Err) {
+          await supabase.from('match_scores').upsert(basePayload, { onConflict: 'user_id,job_id' });
+        }
         count++;
       }
       return count;
@@ -101,23 +109,30 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       let count = 0;
       for (const p of profiles) {
         const result = calculateCandidateJobMatch(p, job, criteria || {});
-        await supabase.from('match_scores').upsert({
+        const basePayload = {
           user_id: p.user_id, job_id: jobId,
           eligible: result.eligible,
           overall_score: result.match_score,
-          match_band: result.match_band,
-          eligibility_tier: result.eligibility_tier,
-          criteria_version: result.criteria_version || 1,
           breakdown: result.score_breakdown,
           match_reasons: result.match_reasons,
           gaps: result.gaps,
-          insights: result.insights || [],
-          executive_summary: result.executive_summary || null,
           missing_required: result.gaps.filter(g => {
             try { const p2 = JSON.parse(g); return (p2.en || '').startsWith('Missing required') && !(p2.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
           }),
           calculated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,job_id' });
+        };
+        const v3Payload = {
+          ...basePayload,
+          match_band: result.match_band,
+          eligibility_tier: result.eligibility_tier,
+          criteria_version: result.criteria_version || 1,
+          insights: result.insights || [],
+          executive_summary: result.executive_summary || null,
+        };
+        const { error: v3Err } = await supabase.from('match_scores').upsert(v3Payload, { onConflict: 'user_id,job_id' });
+        if (v3Err) {
+          await supabase.from('match_scores').upsert(basePayload, { onConflict: 'user_id,job_id' });
+        }
         count++;
       }
       return count;
@@ -392,17 +407,27 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
     try {
       const user = await getUserFromToken(req);
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
-      try {
-        const { data, error } = await supabase.from('match_scores')
-          .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required, calculated_at')
-          .eq('user_id', user.id).order('overall_score', { ascending: false });
-        if (error) throw error;
-        res.json({ scores: data || [] });
-      } catch (dbErr) {
-        // Table may not exist yet — return empty
-        console.warn('[match-scores] DB query failed (table may not exist):', dbErr.message);
-        res.json({ scores: [] });
+
+      // Try V3 columns first
+      const v3Result = await supabase.from('match_scores')
+        .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required, calculated_at')
+        .eq('user_id', user.id).order('overall_score', { ascending: false });
+
+      if (!v3Result.error) {
+        return res.json({ scores: v3Result.data || [] });
       }
+
+      // V3 columns may not exist — fallback to basic columns
+      const basicResult = await supabase.from('match_scores')
+        .select('job_id, eligible, overall_score, breakdown, match_reasons, gaps, missing_required, calculated_at')
+        .eq('user_id', user.id).order('overall_score', { ascending: false });
+
+      if (!basicResult.error) {
+        return res.json({ scores: basicResult.data || [] });
+      }
+
+      console.warn('[match-scores] DB query failed:', basicResult.error.message);
+      res.json({ scores: [] });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
@@ -417,9 +442,20 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         .or('status.eq.Active,status.is.null')
         .order('created_at', { ascending: false });
 
-      const { data: scores } = await supabase.from('match_scores')
+      let scores = null;
+      // Try V3 columns first, fallback to basic if columns don't exist
+      const v3Result = await supabase.from('match_scores')
         .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required')
         .eq('user_id', user.id);
+      if (!v3Result.error) {
+        scores = v3Result.data;
+      } else {
+        // V3 columns may not exist — fallback to basic columns
+        const basicResult = await supabase.from('match_scores')
+          .select('job_id, eligible, overall_score, breakdown, match_reasons, gaps, missing_required')
+          .eq('user_id', user.id);
+        scores = basicResult.data;
+      }
 
       const scoreMap = {};
       (scores || []).forEach(s => { scoreMap[s.job_id] = s; });

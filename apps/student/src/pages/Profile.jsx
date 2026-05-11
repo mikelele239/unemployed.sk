@@ -89,7 +89,16 @@ export default function Profile() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.profile) setAiProfile(data.profile);
+          if (data.profile) {
+            setAiProfile(data.profile);
+            // Sync AI-extracted location to profile display if profiles.location is stale/different
+            if (data.profile.location) {
+              setProfile(prev => ({
+                ...prev,
+                loc: data.profile.location,
+              }));
+            }
+          }
         }
       } catch (e) { console.warn('AI profile fetch:', e.message); }
     };
@@ -128,19 +137,43 @@ export default function Profile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const nameParts = (profile.name || '').trim().split(' ');
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: session.user.id,
+      const token = session.access_token;
+
+      // Save via server API (bypasses RLS)
+      const res = await fetch('/api/student/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           first_name: nameParts[0] || '',
           last_name: nameParts.slice(1).join(' ') || '',
-          education: profile.edu,
-          location: profile.loc,
+          education: profile.edu || '',
+          location: profile.loc || '',
           bio: profile.bio || '',
-          skills: profile.skills,
-        }, { onConflict: 'user_id' });
-      if (!error) setIsEditing(false);
-      else console.error('Profile save error:', error);
+          skills: profile.skills || [],
+          avatar_url: profile.avatar_url || '',
+        }),
+      });
+
+      if (res.ok) {
+        // Also sync location to ai_profiles so it persists across CV re-parses
+        try {
+          await fetch('/api/ai-profile', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ location: profile.loc || '' }),
+          });
+        } catch (e) { console.warn('AI profile location sync:', e.message); }
+        setIsEditing(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('Profile save error:', err);
+      }
     } catch (err) { console.error('Save error:', err); }
     finally { setSaving(false); }
   };

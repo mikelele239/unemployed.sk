@@ -238,6 +238,11 @@ html, body, #root {
     align-items: flex-start !important;
     gap: 16px !important;
   }
+  .profile-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
 }
 
 .stat-value {

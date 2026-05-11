@@ -84,7 +84,7 @@ const Profile = () => {
     border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)',
     color: 'var(--text)', fontSize: '14px', outline: 'none', transition: 'border 0.2s',
   };
-  const readOnlyStyle = { ...inputStyle, background: 'transparent', border: '1px solid transparent', cursor: 'default', padding: '8px 0' };
+  const readOnlyStyle = { ...inputStyle, background: 'transparent', border: '1px solid transparent', cursor: 'default', padding: '8px 0', wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' };
 
   return (
     <div style={{ animation: 'tabSlideIn 0.4s ease', paddingTop: '12px' }}>
@@ -112,9 +112,9 @@ const Profile = () => {
       )}
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px', alignItems: 'start' }} className="flex-responsive">
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px', alignItems: 'start' }} className="flex-responsive profile-grid">
         {/* LEFT: Company Profile Card */}
-        <div style={{ ...sectionStyle, padding: '28px' }}>
+        <div style={{ ...sectionStyle, padding: '28px', minWidth: 0, overflow: 'hidden' }}>
           {/* Company Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px', paddingBottom: '20px', borderBottom: '1px solid var(--border)' }}>
             <div style={{
@@ -136,42 +136,32 @@ const Profile = () => {
                 <input type="file" accept="image/*" hidden onChange={async (ev) => {
                   const file = ev.target.files?.[0];
                   if (!file) return;
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) return;
-                  const uid = session.user.id;
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) return;
 
-                  // Remove old logo files
-                  const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
-                  const oldLogos = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('logo.'));
-                  if (oldLogos.length > 0) {
-                    await supabase.storage.from('cvs').remove(oldLogos.map(f => `${uid}/${f.name}`));
-                  }
+                    const formData = new FormData();
+                    formData.append('logo', file);
 
-                  const path = `${uid}/logo.${file.name.split('.').pop()}`;
-                  const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
-                  if (!error) {
-                    // Use signed URL since bucket is private
-                    const { data: signedData } = await supabase.storage.from('cvs').createSignedUrl(path, 60 * 60 * 24 * 365);
-                    const logoUrl = signedData?.signedUrl || '';
-
-                    // Update via server proxy
-                    await fetch('/api/employer/ensure-profile', {
+                    const res = await fetch('/api/employer/logo-upload', {
                       method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`,
-                      },
-                      body: JSON.stringify({
-                        name: form.name,
-                        description: form.description,
-                        website: form.website,
-                        location: form.location,
-                      }),
+                      headers: { 'Authorization': `Bearer ${session.access_token}` },
+                      body: formData,
                     });
-                    // Also update logo_url directly
-                    await supabase.from('employers').update({ logo_url: logoUrl }).eq('id', uid);
-                    setCompanyProfile(prev => ({ ...prev, logo_url: logoUrl }));
+
+                    const result = await res.json();
+                    if (res.ok && result.logo_url) {
+                      setCompanyProfile(prev => ({ ...prev, logo_url: result.logo_url }));
+                    } else {
+                      console.error('[Logo Upload] Server error:', result.error);
+                      alert(lang === 'sk' ? 'Nepodarilo sa nahrať logo.' : 'Failed to upload logo.');
+                    }
+                  } catch (err) {
+                    console.error('[Logo Upload] Error:', err);
+                    alert(lang === 'sk' ? 'Nepodarilo sa nahrať logo.' : 'Failed to upload logo.');
                   }
+                  // Reset input so the same file can be re-selected
+                  ev.target.value = '';
                 }} />
                 📷
               </label>

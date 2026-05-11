@@ -92,23 +92,25 @@ export const AppStateProvider = ({ children }) => {
       if (!session) return;
       const uid = session.user.id;
 
-      // 1. Employer profile via direct Supabase query
+      // 1. Employer profile via server-side API (bypasses RLS)
       try {
-        const { data: empData, error: profErr } = await supabase
-          .from('employers')
-          .select('*')
-          .eq('id', uid)
-          .maybeSingle();
-
-        if (empData) {
-          setCompanyProfile({
-            name: empData.name || '',
-            industry: empData.description || '',
-            website: empData.website || '',
-            location: empData.location || '',
-            logo_url: empData.logo_url || '',
-            cover_url: empData.cover_url || '',
-          });
+        const token = session.access_token;
+        const profRes = await fetch('/api/employer/profile', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (profRes.ok) {
+          const { profile: empData } = await profRes.json();
+          if (empData) {
+            console.log('[AppState] empData from server:', empData.name, 'logo_url:', empData.logo_url ? empData.logo_url.substring(0, 60) + '...' : 'NONE');
+            setCompanyProfile({
+              name: empData.name || '',
+              industry: empData.description || '',
+              website: empData.website || '',
+              location: empData.location || '',
+              logo_url: empData.logo_url || '',
+              cover_url: empData.cover_url || '',
+            });
+          }
         }
       } catch (err) {
         console.error('[AppState] Error fetching profile:', err);

@@ -107,11 +107,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ── Middleware ─────────────────────────────────────────────────────────────────
 // JSON body parser — skip for multipart file upload routes
 app.use((req, res, next) => {
-  if (req.path === '/api/cvs/upload') return next();
+  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload') return next();
   express.json({ limit: '16kb' })(req, res, next);
 });
 app.use((req, res, next) => {
-  if (req.path === '/api/cvs/upload') return next();
+  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload') return next();
   express.urlencoded({ extended: false, limit: '16kb' })(req, res, next);
 });
 app.set('trust proxy', 1);
@@ -188,6 +188,83 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Employer Logo Upload (server-side, bypasses RLS) ────────────────────────
+const logoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    const mime = (file.mimetype || '').toLowerCase();
+    const ok = mime.startsWith('image/');
+    cb(null, ok);
+  },
+});
+
+app.post('/api/employer/logo-upload', logoUpload.single('logo'), async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const file = req.file;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'No image file found in request' });
+    }
+
+    const uid = user.id;
+    const ext = (file.originalname || 'logo.png').split('.').pop() || 'png';
+
+    // Remove old logo files from storage
+    try {
+      const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 50 });
+      const oldLogos = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('logo.'));
+      if (oldLogos.length > 0) {
+        await supabase.storage.from('cvs').remove(oldLogos.map(f => `${uid}/${f.name}`));
+      }
+    } catch (cleanErr) {
+      console.warn('[Logo Upload] Cleanup non-fatal:', cleanErr.message);
+    }
+
+    // Upload new logo
+    const storagePath = `${uid}/logo.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('cvs')
+      .upload(storagePath, file.buffer, { upsert: true, contentType: file.mimetype });
+
+    if (uploadErr) {
+      console.error('[Logo Upload] Storage error:', uploadErr);
+      return res.status(500).json({ error: uploadErr.message });
+    }
+
+    // Create a long-lived signed URL (1 year)
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from('cvs')
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+
+    if (signErr) {
+      console.error('[Logo Upload] Signed URL error:', signErr);
+      return res.status(500).json({ error: signErr.message });
+    }
+
+    const logoUrl = signedData?.signedUrl || '';
+
+    // Update the employers table
+    const { error: dbErr } = await supabase
+      .from('employers')
+      .update({ logo_url: logoUrl })
+      .eq('id', uid);
+
+    if (dbErr) {
+      console.error('[Logo Upload] DB update error:', dbErr);
+      return res.status(500).json({ error: dbErr.message });
+    }
+
+    console.log('[Logo Upload] ✅ Logo updated for employer:', uid);
+    res.json({ logo_url: logoUrl });
+  } catch (err) {
+    console.error('[Logo Upload] Critical error:', err);
     res.status(500).json({ error: err.message });
   }
 });
