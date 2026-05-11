@@ -1,4 +1,7 @@
-/api/submit /.netlify/functions/submit 200
+# API routes — proxy to Netlify serverless function (MUST be before SPA fallbacks)
+/api/* /.netlify/functions/api 200
+
+# SPA fallbacks
 /app/* /app/index.html 200
 /employer/* /employer/index.html 200
 /student-demo/* /student-demo/index.html 200

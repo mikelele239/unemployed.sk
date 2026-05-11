@@ -5,8 +5,14 @@
 
 [functions]
   node_bundler = "esbuild"
+  included_files = ["routes/**", "lib/**", "server.js"]
 
-# Required env vars in Netlify dashboard (Site → Environment variables):
-# VITE_SUPABASE_URL      = https://jofrxyimqhbgxwwbqyvs.supabase.co
-# VITE_SUPABASE_ANON_KEY = sb_publishable_...  (public key, safe to expose)
-# Note: NO secret keys needed — form submissions use the public anon key only
+# API function: redirect all /api/* to the serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Set environment variables in Netlify Dashboard → Site → Environment variables
+# (never commit secret values to this file)

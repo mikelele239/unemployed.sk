@@ -1,6 +1,7 @@
 'use strict';
 
-require('dotenv').config();
+if (!process.env.NETLIFY) require('dotenv').config();
+const IS_SERVERLESS = !!process.env.NETLIFY || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 const express = require('express');
 const path = require('path');
 const { createHash } = require('crypto');
@@ -41,13 +42,13 @@ const PORT = process.env.PORT || 3000;
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ── Supabase (Server-Side — uses SERVICE ROLE KEY to bypass RLS) ────────────
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Missing Supabase credentials in .env file');
-  process.exit(1);
+  if (!IS_SERVERLESS) { console.error('❌ Missing Supabase credentials in .env file'); process.exit(1); }
+  else console.warn('⚠️ Supabase credentials missing — some endpoints may fail');
 }
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl || '', supabaseServiceKey || '');
 
 // ── Shared Helpers ─────────────────────────────────────────────────────────────
 function hashIp(ip) {
@@ -153,11 +154,13 @@ app.use((req, res, next) => {
 });
 
 // ── Static File Serving (order matters — demos before landing page) ──────────
-app.use('/app',          express.static(path.join(__dirname, 'apps', 'student',      'dist')));
-app.use('/employer',     express.static(path.join(__dirname, 'apps', 'employer',     'dist')));
-app.use('/student-demo', express.static(path.join(__dirname, 'apps', 'student-demo', 'dist')));
-app.use('/employer-demo',express.static(path.join(__dirname, 'apps', 'employer-demo','dist')));
-app.use(express.static(path.join(__dirname, 'apps', 'landing')));
+if (!IS_SERVERLESS) {
+  app.use('/app',          express.static(path.join(__dirname, 'apps', 'student',      'dist')));
+  app.use('/employer',     express.static(path.join(__dirname, 'apps', 'employer',     'dist')));
+  app.use('/student-demo', express.static(path.join(__dirname, 'apps', 'student-demo', 'dist')));
+  app.use('/employer-demo',express.static(path.join(__dirname, 'apps', 'employer-demo','dist')));
+  app.use(express.static(path.join(__dirname, 'apps', 'landing')));
+}
 
 // ── Route Modules ──────────────────────────────────────────────────────────────
 require('./routes/jobs')(app, supabase, { getUserFromToken });
@@ -1293,120 +1296,122 @@ app.post('/api/notifications/status-changed', async (req, res) => {
   }
 });
 
-// ── SPA Fallbacks ──────────────────────────────────────────────────────────────
-const distBase = __dirname;
-app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));
-app.get('/app(/*)?',            (req, res) => res.sendFile(path.join(distBase, 'apps', 'student',      'dist', 'index.html')));
-app.get('/employer(/*)?',       (req, res) => res.sendFile(path.join(distBase, 'apps', 'employer',     'dist', 'index.html')));
-app.get('/student-demo(/*)?',   (req, res) => res.sendFile(path.join(distBase, 'apps', 'student-demo', 'dist', 'index.html')));
-app.get('/employer-demo(/*)?',  (req, res) => res.sendFile(path.join(distBase, 'apps', 'employer-demo','dist', 'index.html')));
+// ── Export for serverless OR start server ────────────────────────────────────
+if (IS_SERVERLESS) {
+  // In serverless mode, export the Express app (no listen, no SPA fallbacks)
+  module.exports = { app, supabase };
+} else {
+  // ── SPA Fallbacks ──────────────────────────────────────────────────────────
+  const distBase = __dirname;
+  app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));
+  app.get('/app(/*)?',            (req, res) => res.sendFile(path.join(distBase, 'apps', 'student',      'dist', 'index.html')));
+  app.get('/employer(/*)?',       (req, res) => res.sendFile(path.join(distBase, 'apps', 'employer',     'dist', 'index.html')));
+  app.get('/student-demo(/*)?',   (req, res) => res.sendFile(path.join(distBase, 'apps', 'student-demo', 'dist', 'index.html')));
+  app.get('/employer-demo(/*)?',  (req, res) => res.sendFile(path.join(distBase, 'apps', 'employer-demo','dist', 'index.html')));
 
-// ── Start ──────────────────────────────────────────────────────────────────────
-const server = app.listen(PORT, () => {
-  console.log(`unemployed.sk running on http://localhost:${PORT}`);
+  // ── Start ──────────────────────────────────────────────────────────────────
+  const server = app.listen(PORT, () => {
+    console.log(`unemployed.sk running on http://localhost:${PORT}`);
 
-  // ── Startup: detect CVs uploaded while server was down ─────────────────
-  setTimeout(async () => {
-    try {
-      const { data: profiles } = await supabase.from('profiles')
-        .select('user_id, cv_id, original_filename')
-        .not('cv_id', 'is', null);
+    // ── Startup: detect CVs uploaded while server was down ─────────────────
+    setTimeout(async () => {
+      try {
+        const { data: profiles } = await supabase.from('profiles')
+          .select('user_id, cv_id, original_filename')
+          .not('cv_id', 'is', null);
 
-      const { data: aiProfiles } = await supabase.from('ai_profiles')
-        .select('user_id, updated_at');
+        const { data: aiProfiles } = await supabase.from('ai_profiles')
+          .select('user_id, updated_at');
 
-      const aiMap = {};
-      (aiProfiles || []).forEach(a => { aiMap[a.user_id] = a; });
+        const aiMap = {};
+        (aiProfiles || []).forEach(a => { aiMap[a.user_id] = a; });
 
-      const stale = [];
-      for (const p of (profiles || [])) {
-        if (!p.cv_id) continue;
-        // Extract upload timestamp from cv_id path (format: userId/timestamp_filename)
-        const match = p.cv_id.match(/\/(\d{13})_/);
-        if (!match) continue;
-        const uploadTs = parseInt(match[1]);
-        const ai = aiMap[p.user_id];
-        const aiTs = ai ? new Date(ai.updated_at).getTime() : 0;
-        // If CV was uploaded AFTER the last AI parse, it needs reparsing
-        if (uploadTs > aiTs + 60000) { // 1 min tolerance
-          stale.push({ user_id: p.user_id, filename: p.original_filename, uploadTs, aiTs });
+        const stale = [];
+        for (const p of (profiles || [])) {
+          if (!p.cv_id) continue;
+          const match = p.cv_id.match(/\/(\d{13})_/);
+          if (!match) continue;
+          const uploadTs = parseInt(match[1]);
+          const ai = aiMap[p.user_id];
+          const aiTs = ai ? new Date(ai.updated_at).getTime() : 0;
+          if (uploadTs > aiTs + 60000) {
+            stale.push({ user_id: p.user_id, filename: p.original_filename, uploadTs, aiTs });
+          }
         }
-      }
 
-      if (stale.length > 0) {
-        console.log(`[Startup] Found ${stale.length} stale AI profile(s) — triggering reparse...`);
-        const { PDFParse } = require('pdf-parse');
-        const { parseWithAI } = require('./lib/ai-cv-parser');
-        const { calculateProfileCompletion, calculateCandidateJobMatch } = require('./lib/matching-engine');
+        if (stale.length > 0) {
+          console.log(`[Startup] Found ${stale.length} stale AI profile(s) — triggering reparse...`);
+          const { PDFParse } = require('pdf-parse');
+          const { parseWithAI } = require('./lib/ai-cv-parser');
+          const { calculateProfileCompletion } = require('./lib/matching-engine');
 
-        for (const s of stale) {
-          try {
-            console.log(`[Startup] Reparsing CV for ${s.user_id.slice(0,8)} (${s.filename})`);
-            const profile = (profiles || []).find(p => p.user_id === s.user_id);
-            const { data: fileData, error: dlErr } = await supabase.storage.from('cvs').download(profile.cv_id);
-            if (dlErr || !fileData) { console.warn('[Startup] Download failed:', dlErr?.message); continue; }
+          for (const s of stale) {
+            try {
+              console.log(`[Startup] Reparsing CV for ${s.user_id.slice(0,8)} (${s.filename})`);
+              const profile = (profiles || []).find(p => p.user_id === s.user_id);
+              const { data: fileData, error: dlErr } = await supabase.storage.from('cvs').download(profile.cv_id);
+              if (dlErr || !fileData) { console.warn('[Startup] Download failed:', dlErr?.message); continue; }
 
-            const buf = Buffer.from(await fileData.arrayBuffer());
-            const parser = new PDFParse({ data: buf });
-            const pdfResult = await parser.getText();
-            await parser.destroy().catch(() => {});
-            const rawText = (pdfResult.text || '').trim();
-            if (rawText.length < 50) { console.warn('[Startup] Too little text'); continue; }
+              const buf = Buffer.from(await fileData.arrayBuffer());
+              const parser = new PDFParse({ data: buf });
+              const pdfResult = await parser.getText();
+              await parser.destroy().catch(() => {});
+              const rawText = (pdfResult.text || '').trim();
+              if (rawText.length < 50) { console.warn('[Startup] Too little text'); continue; }
 
-            const { data: prof } = await supabase.from('profiles')
-              .select('first_name, last_name, location, skills, email')
-              .eq('user_id', s.user_id).maybeSingle();
+              const { data: prof } = await supabase.from('profiles')
+                .select('first_name, last_name, location, skills, email')
+                .eq('user_id', s.user_id).maybeSingle();
 
-            const parsed = await parseWithAI(rawText, {
-              full_name: `${prof?.first_name||''} ${prof?.last_name||''}`.trim() || null,
-              email: prof?.email, location: prof?.location, skills: prof?.skills,
-            }, s.user_id);
+              const parsed = await parseWithAI(rawText, {
+                full_name: `${prof?.first_name||''} ${prof?.last_name||''}`.trim() || null,
+                email: prof?.email, location: prof?.location, skills: prof?.skills,
+              }, s.user_id);
 
-            const expLevelMap = { entry: 'beginner', junior: 'junior', mid: 'experienced', senior: 'experienced' };
-            const aiData = {
-              user_id: s.user_id, full_name: parsed.full_name, email: parsed.email || prof?.email,
-              phone: parsed.phone, location: parsed.location,
-              hard_skills: parsed.hard_skills, soft_skills: parsed.soft_skills,
-              languages: parsed.languages, experience_years: parsed.experience_years,
-              education_level: parsed.education_level, education_field: parsed.education_field,
-              education_school: parsed.education_school, certifications: parsed.certifications || [],
-              preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
-              parse_status: parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review',
-              extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
-              extraction_version: '3.0', raw_cv_text: rawText.substring(0, 50000),
-              confidence_score: parsed.confidence_score,
-              ai_headline: parsed.ai_headline, ai_summary: parsed.ai_summary,
-              ai_portfolio_intro: parsed.ai_portfolio_intro,
-              ai_strengths: parsed.ai_strengths, ai_development_areas: parsed.ai_development_areas,
-              ai_suggested_roles: parsed.ai_suggested_roles, ai_suggested_categories: parsed.ai_suggested_categories,
-              ai_missing_fields: parsed.ai_missing_fields || [], ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
-              ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
-              experience_level: expLevelMap[parsed.experience_level] || 'unknown',
-              ai_profile_approved: false, ai_generated_at: new Date().toISOString(),
-              profile_completion_score: 0, updated_at: new Date().toISOString(),
-            };
-            aiData.profile_completion_score = calculateProfileCompletion(aiData).score;
+              const expLevelMap = { entry: 'beginner', junior: 'junior', mid: 'experienced', senior: 'experienced' };
+              const aiData = {
+                user_id: s.user_id, full_name: parsed.full_name, email: parsed.email || prof?.email,
+                phone: parsed.phone, location: parsed.location,
+                hard_skills: parsed.hard_skills, soft_skills: parsed.soft_skills,
+                languages: parsed.languages, experience_years: parsed.experience_years,
+                education_level: parsed.education_level, education_field: parsed.education_field,
+                education_school: parsed.education_school, certifications: parsed.certifications || [],
+                preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
+                parse_status: parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review',
+                extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+                extraction_version: '3.0', raw_cv_text: rawText.substring(0, 50000),
+                confidence_score: parsed.confidence_score,
+                ai_headline: parsed.ai_headline, ai_summary: parsed.ai_summary,
+                ai_portfolio_intro: parsed.ai_portfolio_intro,
+                ai_strengths: parsed.ai_strengths, ai_development_areas: parsed.ai_development_areas,
+                ai_suggested_roles: parsed.ai_suggested_roles, ai_suggested_categories: parsed.ai_suggested_categories,
+                ai_missing_fields: parsed.ai_missing_fields || [], ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
+                ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
+                experience_level: expLevelMap[parsed.experience_level] || 'unknown',
+                ai_profile_approved: false, ai_generated_at: new Date().toISOString(),
+                profile_completion_score: 0, updated_at: new Date().toISOString(),
+              };
+              aiData.profile_completion_score = calculateProfileCompletion(aiData).score;
 
-            const { error: saveErr } = await supabase.from('ai_profiles').upsert(aiData, { onConflict: 'user_id' });
-            if (saveErr) { console.error('[Startup] Save failed:', saveErr.message); continue; }
+              const { error: saveErr } = await supabase.from('ai_profiles').upsert(aiData, { onConflict: 'user_id' });
+              if (saveErr) { console.error('[Startup] Save failed:', saveErr.message); continue; }
 
-            // Update profile flags
-            await supabase.from('profiles').upsert({
-              user_id: s.user_id, ai_profile_ready: true,
-              last_cv_parsed_at: new Date().toISOString(),
-            }, { onConflict: 'user_id' });
+              await supabase.from('profiles').upsert({
+                user_id: s.user_id, ai_profile_ready: true,
+                last_cv_parsed_at: new Date().toISOString(),
+              }, { onConflict: 'user_id' });
 
-            // Recalculate match scores
-            const aiMatchingModule = require('./routes/ai-matching');
-            if (aiMatchingModule.helpers?.recalculateForStudent) {
-              const count = await aiMatchingModule.helpers.recalculateForStudent(s.user_id);
-              console.log(`[Startup] ✅ ${s.user_id.slice(0,8)} reparsed + ${count} scores recalculated`);
-            }
-          } catch (err) { console.warn('[Startup] Reparse error:', err.message); }
+              const aiMatchingModule = require('./routes/ai-matching');
+              if (aiMatchingModule.helpers?.recalculateForStudent) {
+                const count = await aiMatchingModule.helpers.recalculateForStudent(s.user_id);
+                console.log(`[Startup] ✅ ${s.user_id.slice(0,8)} reparsed + ${count} scores recalculated`);
+              }
+            } catch (err) { console.warn('[Startup] Reparse error:', err.message); }
+          }
         }
-      }
-    } catch (err) { console.warn('[Startup] Stale check error:', err.message); }
-  }, 5000);
-});
-process.on('SIGTERM', () => server.close(() => process.exit(0)));
-process.on('SIGINT',  () => server.close(() => process.exit(0)));
+      } catch (err) { console.warn('[Startup] Stale check error:', err.message); }
+    }, 5000);
+  });
+  process.on('SIGTERM', () => server.close(() => process.exit(0)));
+  process.on('SIGINT',  () => server.close(() => process.exit(0)));
+}
