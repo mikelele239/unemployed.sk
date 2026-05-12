@@ -37,8 +37,23 @@ export function useJobs() {
         const parsed = (data || []).map(j => {
           const emp = j.employers || {};
           const companyName = j.company || emp.name || '';
+
+          // Normalize tags: DB may return string, JSON string, array, or null
+          let normalizedTags = [];
+          if (Array.isArray(j.tags)) {
+            normalizedTags = j.tags;
+          } else if (typeof j.tags === 'string' && j.tags.trim()) {
+            try {
+              const parsed = JSON.parse(j.tags);
+              normalizedTags = Array.isArray(parsed) ? parsed : [j.tags];
+            } catch {
+              normalizedTags = j.tags.split(',').map(t => t.trim()).filter(Boolean);
+            }
+          }
+
           return {
             ...j,
+            tags: normalizedTags,
             match: j.match_score,
             rateUnit: j.rate_unit,
             startDate: j.start_date,
