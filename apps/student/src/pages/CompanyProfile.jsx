@@ -57,7 +57,15 @@ export default function CompanyProfile() {
           .eq('employer_id', empData.id)
           .order('created_at', { ascending: false });
 
-        const companyJobs = jobsData || [];
+        const companyJobs = (jobsData || []).map(j => {
+          // Normalize tags
+          let tags = [];
+          if (Array.isArray(j.tags)) tags = j.tags;
+          else if (typeof j.tags === 'string' && j.tags.trim()) {
+            try { const p = JSON.parse(j.tags); tags = Array.isArray(p) ? p : [j.tags]; } catch { tags = j.tags.split(',').map(t => t.trim()).filter(Boolean); }
+          }
+          return { ...j, tags, rateUnit: j.rate_unit, workModel: j.work_model, startDate: j.start_date };
+        });
         setJobs(companyJobs);
 
         // Compute stats
