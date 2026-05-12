@@ -278,21 +278,53 @@ const CandidateCard = ({ candidate, onInvite }) => {
                       );
                     })()}
                     
-                    {/* Score breakdown chips */}
+                    {/* Score breakdown — percentage bars */}
                     {candidate.score_breakdown && Object.keys(candidate.score_breakdown).length > 0 && (
-                      <div style={{ flex: 1, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {Object.entries(candidate.score_breakdown).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).map(([key, val]) => {
-                          const labels = { skills: 'Zručnosti', location: 'Lokácia', job_type: 'Typ', category: 'Kategória', education: 'Vzdelanie', experience_level: 'Skúsenosti', language: 'Jazyky', availability: 'Dostupnosť', salary: 'Plat', work_mode: 'Pracovný model' };
-                          const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5, availability: 7, salary: 3, work_mode: 2 };
-                          const maxVal = maxScores[key] || 10;
-                          const pct = Math.round((val / maxVal) * 100);
-                          const dimColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
-                          return (
-                            <span key={key} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '3px', background: 'var(--bg)', border: `1px solid ${dimColor}22`, color: dimColor, fontWeight: 600 }}>
-                              {labels[key] || key}: {val}/{maxVal}
-                            </span>
-                          );
-                        })}
+                      <div style={{ width: '100%', marginTop: '16px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                          {lang === 'sk' ? 'Rozklad skóre' : 'Score Breakdown'}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+                          {(() => {
+                            const labels = {
+                              skills: { sk: 'Zručnosti', en: 'Skills' },
+                              location: { sk: 'Lokácia', en: 'Location' },
+                              education: { sk: 'Vzdelanie', en: 'Education' },
+                              experience_level: { sk: 'Skúsenosti', en: 'Experience' },
+                              language: { sk: 'Jazyky', en: 'Languages' },
+                              job_type: { sk: 'Typ práce', en: 'Job Type' },
+                              category: { sk: 'Kategória', en: 'Category' },
+                              availability: { sk: 'Dostupnosť', en: 'Availability' },
+                              work_mode: { sk: 'Model práce', en: 'Work Mode' },
+                              salary: { sk: 'Plat', en: 'Salary' },
+                            };
+                            const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5, availability: 7, salary: 3, work_mode: 2 };
+                            return Object.entries(candidate.score_breakdown)
+                              .filter(([,v]) => v > 0)
+                              .sort((a,b) => {
+                                const pctA = (a[1] / (maxScores[a[0]] || 10)) * 100;
+                                const pctB = (b[1] / (maxScores[b[0]] || 10)) * 100;
+                                return pctB - pctA;
+                              })
+                              .map(([key, val]) => {
+                                const maxVal = maxScores[key] || 10;
+                                const pct = Math.min(100, Math.round((val / maxVal) * 100));
+                                const dimColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                                const label = labels[key] ? (labels[key][lang] || labels[key].sk) : key;
+                                return (
+                                  <div key={key} style={{ padding: '8px 10px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)' }}>{label}</span>
+                                      <span style={{ fontSize: '11px', fontWeight: 800, color: dimColor }}>{pct}%</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px' }}>
+                                      <div style={{ width: `${pct}%`, height: '100%', borderRadius: '2px', background: dimColor, transition: 'width 0.5s ease' }} />
+                                    </div>
+                                  </div>
+                                );
+                              });
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
