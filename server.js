@@ -506,16 +506,10 @@ app.patch('/api/employer/jobs/:id', async (req, res) => {
 });
 
 // ── CV Upload/Download API (server-side, Supabase Storage) ──────────────────
+// NOTE: This endpoint is split into two phases to avoid Netlify's 10s serverless
+// timeout (which caused 502 errors). Phase 1 (fast) uploads the file and returns
+// immediately. Phase 2 (async) does AI parsing + match recalculation in the background.
 app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
-  const { PDFParse } = require('pdf-parse');
-  async function extractPdfText(buffer) {
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    await parser.destroy().catch(() => {});
-    return (result.text || '').trim();
-  }
-  const mammoth = require('mammoth');
-
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -540,7 +534,10 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Only PDF and DOC/DOCX files are accepted' });
     }
 
-    // Upload to Supabase Storage
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 1 — FAST: Upload to storage + update profile (must finish < 10s)
+    // ═══════════════════════════════════════════════════════════════════════════
+
     const storagePath = `${user.id}/${Date.now()}_${fileName}`;
     const { data: uploadData, error: uploadErr } = await supabase.storage
       .from('cvs')
@@ -562,216 +559,228 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
         original_filename: fileName,
       }, { onConflict: 'user_id' });
 
-    // ── Text extraction (PDF or DOCX) ──
-    let rawText = '';
-    let extractionWarnings = [];
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RESPOND IMMEDIATELY — don't make the client wait for AI parsing
+    // ═══════════════════════════════════════════════════════════════════════════
+    res.json({
+      cv: { id: storagePath, original_filename: fileName, created_at: new Date().toISOString() },
+      ai_profile: null,
+      parse_status: 'processing',
+      warnings: [],
+    });
 
-    try {
-      if (isPdf) {
-        rawText = await extractPdfText(fileBuffer);
-        if (!rawText || rawText.length < 20) {
-          extractionWarnings.push('PDF contains too little text — may be scanned/image-based');
-        }
-      } else if (isDocx) {
-        const result = await mammoth.extractRawText({ buffer: fileBuffer });
-        rawText = (result.value || '').trim();
-        if (result.messages && result.messages.length > 0) {
-          console.warn('[CV Upload] DOCX parse warnings:', result.messages.map(m => m.message).join('; '));
-        }
-        if (!rawText || rawText.length < 20) {
-          extractionWarnings.push('DOCX contains too little text — check file contents');
-        }
-      } else if (isDoc) {
-        // .doc (legacy Word) — mammoth doesn't support it well, try anyway
-        try {
-          const result = await mammoth.extractRawText({ buffer: fileBuffer });
-          rawText = (result.value || '').trim();
-        } catch (docErr) {
-          extractionWarnings.push('Legacy .doc format — text extraction limited. Please use .docx or .pdf for best results.');
-          console.warn('[CV Upload] .doc extraction failed:', docErr.message);
-        }
-      }
-    } catch (extractErr) {
-      console.error('[CV Upload] Text extraction error:', extractErr.message);
-      extractionWarnings.push('Text extraction failed: ' + extractErr.message);
-    }
-
-    console.log('[CV Upload] Extracted text length:', rawText.length, '| Warnings:', extractionWarnings.length);
-
-    // ── AI Profile Extraction (GPT-4o-mini with fallback) ──
-    let aiResult = null;
-    let parseStatus = 'failed';
-    let warnings = [...extractionWarnings];
-
-    if (rawText.length >= 50) {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 2 — ASYNC: Text extraction + AI parsing + match recalc (background)
+    // This runs fire-and-forget after the response has been sent.
+    // The frontend will re-fetch the AI profile after a short delay.
+    // ═══════════════════════════════════════════════════════════════════════════
+    (async () => {
       try {
-        // Get existing profile for merging
-        const { data: profile } = await supabase.from('profiles')
-          .select('first_name, last_name, location, skills')
-          .eq('user_id', user.id).maybeSingle();
+        const { PDFParse } = require('pdf-parse');
+        const mammoth = require('mammoth');
 
-        const existingData = {
-          full_name: `${profile?.first_name||''} ${profile?.last_name||''}`.trim() || null,
-          email: user.email,
-          location: profile?.location,
-          skills: profile?.skills,
-        };
-
-        // Parse with GPT-4o-mini (auto-fallback to rule-based)
-        const { parseWithAI } = require('./lib/ai-cv-parser');
-        const { calculateProfileCompletion } = require('./lib/matching-engine');
-        const parsed = await parseWithAI(rawText, existingData, user.id);
-
-        // Merge skills from profile if AI found none
-        if (parsed.hard_skills.length === 0 && (profile?.skills||[]).length > 0) {
-          parsed.hard_skills = profile.skills;
+        async function extractPdfText(buffer) {
+          const parser = new PDFParse({ data: buffer });
+          const result = await parser.getText();
+          await parser.destroy().catch(() => {});
+          return (result.text || '').trim();
         }
 
-        parseStatus = parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review';
+        // ── Text extraction (PDF or DOCX) ──
+        let rawText = '';
+        let extractionWarnings = [];
 
-        // Map experience_level to DB-compatible values
-        const VALID_EXP_LEVELS = ['no_experience', 'beginner', 'entry', 'junior', 'mid', 'experienced', 'senior', 'unknown'];
-        let dbExpLevel = parsed.experience_level || 'unknown';
-        if (!VALID_EXP_LEVELS.includes(dbExpLevel)) {
-          console.warn('[CV Upload] Invalid experience_level "' + dbExpLevel + '" — mapping to "beginner"');
-          dbExpLevel = 'beginner';
+        try {
+          if (isPdf) {
+            rawText = await extractPdfText(fileBuffer);
+            if (!rawText || rawText.length < 20) {
+              extractionWarnings.push('PDF contains too little text — may be scanned/image-based');
+            }
+          } else if (isDocx) {
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            rawText = (result.value || '').trim();
+            if (result.messages && result.messages.length > 0) {
+              console.warn('[CV Upload BG] DOCX parse warnings:', result.messages.map(m => m.message).join('; '));
+            }
+            if (!rawText || rawText.length < 20) {
+              extractionWarnings.push('DOCX contains too little text — check file contents');
+            }
+          } else if (isDoc) {
+            try {
+              const result = await mammoth.extractRawText({ buffer: fileBuffer });
+              rawText = (result.value || '').trim();
+            } catch (docErr) {
+              extractionWarnings.push('Legacy .doc format — text extraction limited.');
+              console.warn('[CV Upload BG] .doc extraction failed:', docErr.message);
+            }
+          }
+        } catch (extractErr) {
+          console.error('[CV Upload BG] Text extraction error:', extractErr.message);
+          extractionWarnings.push('Text extraction failed: ' + extractErr.message);
         }
 
-        console.log('[CV Upload] AI parse done. Source:', parsed._source, '| Skills:', (parsed.hard_skills||[]).length, '| Confidence:', parsed.confidence_score);
-        console.log('[CV Upload] Summary:', (parsed.ai_summary || '').substring(0, 100) + '...');
+        console.log('[CV Upload BG] Extracted text length:', rawText.length, '| Warnings:', extractionWarnings.length);
 
-        const aiData = {
-          user_id: user.id,
-          full_name: parsed.full_name,
-          email: parsed.email || user.email,
-          phone: parsed.phone,
-          location: parsed.location,
-          hard_skills: parsed.hard_skills,
-          soft_skills: parsed.soft_skills,
-          languages: parsed.languages,
-          experience_years: parsed.experience_years,
-          education_level: parsed.education_level,
-          education_field: parsed.education_field,
-          education_school: parsed.education_school,
-          certifications: parsed.certifications || [],
-          preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
-          preferred_job_types: parsed.preferred_job_types || [],
-          preferred_work_models: parsed.preferred_work_models || [],
-          preferred_categories: parsed.preferred_categories || [],
-          work_mode_preference: parsed.work_mode_preference || null,
-          availability_hours: parsed.availability_hours_per_week || null,
-          salary_expectation: parsed.salary_expectation || null,
-          portfolio_links: parsed.portfolio_links || [],
-          work_experience: parsed.work_experience || [],
-          parse_status: parseStatus,
-          extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
-          extraction_version: '3.0',
-          raw_cv_text: rawText.substring(0, 50000),
-          confidence_score: parsed.confidence_score,
-          ai_headline: parsed.ai_headline,
-          ai_summary: parsed.ai_summary,
-          ai_portfolio_intro: parsed.ai_portfolio_intro,
-          ai_strengths: parsed.ai_strengths,
-          ai_development_areas: parsed.ai_development_areas,
-          ai_suggested_roles: parsed.ai_suggested_roles,
-          ai_suggested_categories: parsed.ai_suggested_categories,
-          ai_missing_fields: parsed.ai_missing_fields || [],
-          ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
-          ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
-          experience_level: dbExpLevel,
-          ai_profile_approved: false,
-          ai_generated_at: new Date().toISOString(),
-          profile_completion_score: parsed._profile_completion_score || 0,
-          updated_at: new Date().toISOString(),
-        };
+        // ── AI Profile Extraction (GPT-4o-mini with fallback) ──
+        let parseStatus = 'failed';
 
-        const completion = calculateProfileCompletion(aiData);
-        aiData.profile_completion_score = Math.max(aiData.profile_completion_score, completion.score);
-
-        console.log('[CV Upload] Saving to ai_profiles for user:', user.id);
-        const { data: aiProfile, error: aiErr } = await supabase.from('ai_profiles')
-          .upsert(aiData, { onConflict: 'user_id' }).select().single();
-
-        if (!aiErr && aiProfile) {
-          const { raw_cv_text, ...safe } = aiProfile;
-          aiResult = safe;
-          console.log('[CV Upload] ✅ AI profile SAVED. Skills:', (aiProfile.hard_skills||[]).length, '| Headline:', aiProfile.ai_headline);
-        }
-        if (aiErr) {
-          console.error('[CV Upload] ❌ AI profile save FAILED:', aiErr.message, aiErr.details, aiErr.hint);
-          warnings.push('AI profile save error: ' + aiErr.message);
-
-          // Try a minimal insert/update as fallback — strip columns that may not exist
+        if (rawText.length >= 50) {
           try {
-            const minimalData = {
+            const { data: profile } = await supabase.from('profiles')
+              .select('first_name, last_name, location, skills')
+              .eq('user_id', user.id).maybeSingle();
+
+            const existingData = {
+              full_name: `${profile?.first_name||''} ${profile?.last_name||''}`.trim() || null,
+              email: user.email,
+              location: profile?.location,
+              skills: profile?.skills,
+            };
+
+            const { parseWithAI } = require('./lib/ai-cv-parser');
+            const { calculateProfileCompletion } = require('./lib/matching-engine');
+            const parsed = await parseWithAI(rawText, existingData, user.id);
+
+            if (parsed.hard_skills.length === 0 && (profile?.skills||[]).length > 0) {
+              parsed.hard_skills = profile.skills;
+            }
+
+            parseStatus = parsed.confidence_score >= 0.5 ? 'ready' : 'needs_review';
+
+            const VALID_EXP_LEVELS = ['no_experience', 'beginner', 'entry', 'junior', 'mid', 'experienced', 'senior', 'unknown'];
+            let dbExpLevel = parsed.experience_level || 'unknown';
+            if (!VALID_EXP_LEVELS.includes(dbExpLevel)) {
+              console.warn('[CV Upload BG] Invalid experience_level "' + dbExpLevel + '" — mapping to "beginner"');
+              dbExpLevel = 'beginner';
+            }
+
+            console.log('[CV Upload BG] AI parse done. Source:', parsed._source, '| Skills:', (parsed.hard_skills||[]).length, '| Confidence:', parsed.confidence_score);
+
+            const aiData = {
               user_id: user.id,
               full_name: parsed.full_name,
               email: parsed.email || user.email,
+              phone: parsed.phone,
+              location: parsed.location,
               hard_skills: parsed.hard_skills,
               soft_skills: parsed.soft_skills,
               languages: parsed.languages,
+              experience_years: parsed.experience_years,
               education_level: parsed.education_level,
+              education_field: parsed.education_field,
+              education_school: parsed.education_school,
+              certifications: parsed.certifications || [],
+              preferred_locations: parsed.preferred_work_locations || (parsed.location ? [parsed.location] : []),
+              preferred_job_types: parsed.preferred_job_types || [],
+              preferred_work_models: parsed.preferred_work_models || [],
+              preferred_categories: parsed.preferred_categories || [],
+              work_mode_preference: parsed.work_mode_preference || null,
+              availability_hours: parsed.availability_hours_per_week || null,
+              salary_expectation: parsed.salary_expectation || null,
+              portfolio_links: parsed.portfolio_links || [],
+              work_experience: parsed.work_experience || [],
               parse_status: parseStatus,
               extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+              extraction_version: '3.0',
               raw_cv_text: rawText.substring(0, 50000),
               confidence_score: parsed.confidence_score,
               ai_headline: parsed.ai_headline,
               ai_summary: parsed.ai_summary,
+              ai_portfolio_intro: parsed.ai_portfolio_intro,
+              ai_strengths: parsed.ai_strengths,
+              ai_development_areas: parsed.ai_development_areas,
+              ai_suggested_roles: parsed.ai_suggested_roles,
+              ai_suggested_categories: parsed.ai_suggested_categories,
+              ai_missing_fields: parsed.ai_missing_fields || [],
+              ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
+              ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
               experience_level: dbExpLevel,
+              ai_profile_approved: false,
+              ai_generated_at: new Date().toISOString(),
+              profile_completion_score: parsed._profile_completion_score || 0,
               updated_at: new Date().toISOString(),
             };
-            const { data: retryProfile, error: retryErr } = await supabase.from('ai_profiles')
-              .upsert(minimalData, { onConflict: 'user_id' }).select().single();
-            if (!retryErr && retryProfile) {
-              const { raw_cv_text: _, ...safeFallback } = retryProfile;
-              aiResult = safeFallback;
-              console.log('[CV Upload] ✅ AI profile SAVED (minimal fallback)');
-            } else if (retryErr) {
-              console.error('[CV Upload] ❌ Minimal fallback also failed:', retryErr.message);
+
+            const completion = calculateProfileCompletion(aiData);
+            aiData.profile_completion_score = Math.max(aiData.profile_completion_score, completion.score);
+
+            console.log('[CV Upload BG] Saving to ai_profiles for user:', user.id);
+            const { data: aiProfile, error: aiErr } = await supabase.from('ai_profiles')
+              .upsert(aiData, { onConflict: 'user_id' }).select().single();
+
+            if (!aiErr && aiProfile) {
+              console.log('[CV Upload BG] ✅ AI profile SAVED. Skills:', (aiProfile.hard_skills||[]).length, '| Headline:', aiProfile.ai_headline);
             }
-          } catch (fbErr) {
-            console.error('[CV Upload] Fallback save error:', fbErr.message);
+            if (aiErr) {
+              console.error('[CV Upload BG] ❌ AI profile save FAILED:', aiErr.message, aiErr.details, aiErr.hint);
+
+              // Try a minimal insert/update as fallback
+              try {
+                const minimalData = {
+                  user_id: user.id,
+                  full_name: parsed.full_name,
+                  email: parsed.email || user.email,
+                  hard_skills: parsed.hard_skills,
+                  soft_skills: parsed.soft_skills,
+                  languages: parsed.languages,
+                  education_level: parsed.education_level,
+                  parse_status: parseStatus,
+                  extraction_source: parsed._source === 'openai' ? 'ai_llm' : 'cv_parse',
+                  raw_cv_text: rawText.substring(0, 50000),
+                  confidence_score: parsed.confidence_score,
+                  ai_headline: parsed.ai_headline,
+                  ai_summary: parsed.ai_summary,
+                  experience_level: dbExpLevel,
+                  updated_at: new Date().toISOString(),
+                };
+                const { error: retryErr } = await supabase.from('ai_profiles')
+                  .upsert(minimalData, { onConflict: 'user_id' }).select().single();
+                if (!retryErr) {
+                  console.log('[CV Upload BG] ✅ AI profile SAVED (minimal fallback)');
+                } else {
+                  console.error('[CV Upload BG] ❌ Minimal fallback also failed:', retryErr.message);
+                }
+              } catch (fbErr) {
+                console.error('[CV Upload BG] Fallback save error:', fbErr.message);
+              }
+            }
+          } catch (parseErr) {
+            console.error('[CV Upload BG] AI parse error:', parseErr.message, parseErr.stack);
           }
+        } else {
+          console.warn('[CV Upload BG] Not enough text for AI analysis (' + rawText.length + ' chars)');
         }
-      } catch (parseErr) {
-        console.error('[CV Upload] AI parse error:', parseErr.message, parseErr.stack);
-        warnings.push('AI parse error: ' + parseErr.message);
+
+        // Update profile flags
+        try {
+          const ready = parseStatus === 'ready' || parseStatus === 'needs_review';
+          await supabase.from('profiles')
+            .upsert({
+              user_id: user.id,
+              email: user.email,
+              ai_profile_ready: ready,
+              last_cv_parsed_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' });
+        } catch (flagErr) {
+          console.warn('[CV Upload BG] Profile flag update non-fatal:', flagErr.message);
+        }
+
+        // Trigger match score recalculation against all active jobs
+        try {
+          const aiMatchingModule = require('./routes/ai-matching');
+          if (aiMatchingModule.helpers && typeof aiMatchingModule.helpers.recalculateForStudent === 'function') {
+            const matchCount = await aiMatchingModule.helpers.recalculateForStudent(user.id);
+            console.log('[CV Upload BG] Match scores recalculated for', matchCount, 'jobs');
+          }
+        } catch (matchErr) {
+          console.warn('[CV Upload BG] Match recalc non-fatal:', matchErr.message);
+        }
+
+        console.log('[CV Upload BG] ✅ Background processing complete for user:', user.id);
+      } catch (bgErr) {
+        console.error('[CV Upload BG] Background processing error:', bgErr.message, bgErr.stack);
       }
-    } else {
-      warnings.push('Not enough text extracted from file for AI analysis (' + rawText.length + ' chars)');
-    }
-
-    // Update profile flags
-    try {
-      const ready = parseStatus === 'ready' || parseStatus === 'needs_review';
-      await supabase.from('profiles')
-        .upsert({
-          user_id: user.id,
-          email: user.email,
-          ai_profile_ready: ready,
-          last_cv_parsed_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-    } catch (flagErr) {
-      console.warn('[CV Upload] Profile flag update non-fatal:', flagErr.message);
-    }
-
-    // Trigger match score recalculation against all active jobs
-    try {
-      const aiMatchingModule = require('./routes/ai-matching');
-      if (aiMatchingModule.helpers && typeof aiMatchingModule.helpers.recalculateForStudent === 'function') {
-        const matchCount = await aiMatchingModule.helpers.recalculateForStudent(user.id);
-        console.log('[CV Upload] Match scores recalculated for', matchCount, 'jobs');
-      }
-    } catch (matchErr) {
-      console.warn('[CV Upload] Match recalc non-fatal:', matchErr.message);
-    }
-
-    res.json({
-      cv: { id: storagePath, original_filename: fileName, created_at: new Date().toISOString() },
-      ai_profile: aiResult,
-      parse_status: parseStatus,
-      warnings,
-    });
+    })();
   } catch (err) {
     console.error('[CV Upload] Critical error:', err);
     res.status(500).json({ error: err.message });
