@@ -199,7 +199,7 @@ export default function Profile() {
         return;
       }
 
-      // Upload via server endpoint — this triggers AI parsing automatically
+      // Upload via server endpoint — file storage is instant, AI parsing runs in background
       const formData = new FormData();
       formData.append('file', file);
 
@@ -217,7 +217,7 @@ export default function Profile() {
       }
 
       const result = await res.json();
-      console.log('[Profile] CV uploaded + AI parsed:', result.parse_status, result.extraction_source);
+      console.log('[Profile] CV uploaded. Status:', result.parse_status);
 
       // Update local CV list
       if (result.cv?.id) {
@@ -229,21 +229,29 @@ export default function Profile() {
         }]);
       }
 
-      // Refresh AI profile — use response first, then re-fetch from server as fallback
+      // If AI profile was returned immediately, use it
       if (result.ai_profile) {
         setAiProfile(result.ai_profile);
       }
-      // Always re-fetch after a short delay to get the latest saved state
-      setTimeout(async () => {
+
+      // AI parsing runs in the background — poll for the updated AI profile
+      // with multiple retries at increasing intervals
+      const pollDelays = [3000, 6000, 12000]; // 3s, 6s, 12s
+      for (const delay of pollDelays) {
+        await new Promise(resolve => setTimeout(resolve, delay));
         try {
           const freshToken = await getAccessTokenAsync() || getAccessToken();
           const aiRes = await fetch('/api/ai-profile', { headers: { 'Authorization': `Bearer ${freshToken}` } });
           if (aiRes.ok) {
             const aiData = await aiRes.json();
-            if (aiData.profile) setAiProfile(aiData.profile);
+            if (aiData.profile && aiData.profile.parse_status !== 'processing') {
+              setAiProfile(aiData.profile);
+              console.log('[Profile] AI profile loaded after background processing');
+              break;
+            }
           }
-        } catch (e) { console.warn('AI profile re-fetch:', e.message); }
-      }, 1000);
+        } catch (e) { console.warn('AI profile poll:', e.message); }
+      }
 
     } catch (err) { console.error('Upload error:', err); }
     finally { setUploading(false); }
