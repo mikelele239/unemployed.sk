@@ -279,28 +279,40 @@ const CandidateCard = ({ candidate, onInvite }) => {
                     })()}
                     
                     {/* Score breakdown — percentage bars */}
-                    {candidate.score_breakdown && Object.keys(candidate.score_breakdown).length > 0 && (
-                      <div style={{ width: '100%', marginTop: '16px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                          {lang === 'sk' ? 'Rozklad skóre' : 'Score Breakdown'}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
-                          {(() => {
-                            const labels = {
-                              skills: { sk: 'Zručnosti', en: 'Skills' },
-                              location: { sk: 'Lokácia', en: 'Location' },
-                              education: { sk: 'Vzdelanie', en: 'Education' },
-                              experience_level: { sk: 'Skúsenosti', en: 'Experience' },
-                              language: { sk: 'Jazyky', en: 'Languages' },
-                              job_type: { sk: 'Typ práce', en: 'Job Type' },
-                              category: { sk: 'Kategória', en: 'Category' },
-                              availability: { sk: 'Dostupnosť', en: 'Availability' },
-                              work_mode: { sk: 'Model práce', en: 'Work Mode' },
-                              salary: { sk: 'Plat', en: 'Salary' },
-                            };
-                            const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5, availability: 7, salary: 3, work_mode: 2 };
-                            return Object.entries(candidate.score_breakdown)
-                              .filter(([,v]) => v > 0)
+                    {candidate.score_breakdown && Object.keys(candidate.score_breakdown).length > 0 && (() => {
+                      const labels = {
+                        skills: { sk: 'Zručnosti', en: 'Skills' },
+                        location: { sk: 'Lokácia', en: 'Location' },
+                        education: { sk: 'Vzdelanie', en: 'Education' },
+                        experience_level: { sk: 'Skúsenosti', en: 'Experience' },
+                        language: { sk: 'Jazyky', en: 'Languages' },
+                        job_type: { sk: 'Typ práce', en: 'Job Type' },
+                        category: { sk: 'Kategória', en: 'Category' },
+                        availability: { sk: 'Dostupnosť', en: 'Availability' },
+                        work_mode: { sk: 'Model práce', en: 'Work Mode' },
+                        salary: { sk: 'Plat', en: 'Salary' },
+                      };
+                      const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5, availability: 7, salary: 3, work_mode: 2 };
+                      const entries = Object.entries(candidate.score_breakdown).filter(([,v]) => v > 0);
+                      const pcts = entries.map(([key, val]) => Math.min(100, Math.round((val / (maxScores[key] || 10)) * 100)));
+                      // If all percentages are identical (no real differentiation), hide breakdown
+                      const allSame = pcts.length > 0 && pcts.every(p => p === pcts[0]);
+                      if (allSame) {
+                        return (
+                          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.12)', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                            💡 {lang === 'sk'
+                              ? 'Pre detailnejšie porovnanie kandidátov nastavte kritériá zhody v ponuke (zručnosti, jazyky, vzdelanie...).'
+                              : 'Configure match criteria in your listing (skills, languages, education...) for detailed candidate comparison.'}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ width: '100%', marginTop: '16px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                            {lang === 'sk' ? 'Rozklad skóre' : 'Score Breakdown'}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+                            {entries
                               .sort((a,b) => {
                                 const pctA = (a[1] / (maxScores[a[0]] || 10)) * 100;
                                 const pctB = (b[1] / (maxScores[b[0]] || 10)) * 100;
@@ -322,11 +334,11 @@ const CandidateCard = ({ candidate, onInvite }) => {
                                     </div>
                                   </div>
                                 );
-                              });
-                          })()}
+                              })}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                   
                   {/* Match reasons (strengths) */}
