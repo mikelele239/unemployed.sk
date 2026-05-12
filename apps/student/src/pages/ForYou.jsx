@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
@@ -142,14 +142,11 @@ export default function ForYou() {
     };
   }, []);
 
-  // Fetch match scores once — auto-trigger recalculation if none exist
-  const recalcTriggered = useRef(false);
+  // Fetch match scores — server auto-fills any missing scores for active jobs
   useEffect(() => {
     const fetchScores = async (retryCount = 0) => {
       try {
-        // Use async token getter — more reliable than sync version
         let token = await getAccessTokenAsync();
-        // If no token yet and first attempt, wait and retry (session may still be restoring)
         if (!token && retryCount < 2) {
           await new Promise(r => setTimeout(r, 1500));
           return fetchScores(retryCount + 1);
@@ -164,32 +161,7 @@ export default function ForYou() {
           const map = {};
           (scores || []).forEach(s => { map[s.job_id] = s; });
           setMatchScores(map);
-
-          // If no scores exist, trigger a one-time recalculation
-          if ((!scores || scores.length === 0) && !recalcTriggered.current) {
-            recalcTriggered.current = true;
-            console.log('[ForYou] No match scores found — triggering auto-recalculation...');
-            try {
-              const recalcRes = await fetch('/api/match/recalculate', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
-              });
-              if (recalcRes.ok) {
-                // Re-fetch scores after recalculation
-                const res2 = await fetch('/api/match-scores', {
-                  headers: { 'Authorization': `Bearer ${token}` },
-                });
-                if (res2.ok) {
-                  const { scores: s2 } = await res2.json();
-                  const map2 = {};
-                  (s2 || []).forEach(s => { map2[s.job_id] = s; });
-                  setMatchScores(map2);
-                  console.log('[ForYou] Auto-recalculation complete:', (s2 || []).length, 'scores');
-                }
-              }
-            } catch (e) { console.warn('[ForYou] Auto-recalc:', e.message); }
-          }
+          console.log('[ForYou] Loaded', (scores || []).length, 'match scores');
         }
       } catch (e) { console.warn('[ForYou] Match scores fetch:', e.message); }
     };

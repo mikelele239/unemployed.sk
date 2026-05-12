@@ -413,26 +413,95 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       const user = await getUserFromToken(req);
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-      // Try V3 columns first
+      // 1. Fetch existing scores
       const v3Result = await supabase.from('match_scores')
         .select('job_id, eligible, overall_score, match_band, eligibility_tier, criteria_version, breakdown, match_reasons, gaps, insights, executive_summary, missing_required, calculated_at')
         .eq('user_id', user.id).order('overall_score', { ascending: false });
 
+      let existingScores = [];
       if (!v3Result.error) {
-        return res.json({ scores: v3Result.data || [] });
+        existingScores = v3Result.data || [];
+      } else {
+        // V3 columns may not exist — fallback to basic columns
+        const basicResult = await supabase.from('match_scores')
+          .select('job_id, eligible, overall_score, breakdown, match_reasons, gaps, missing_required, calculated_at')
+          .eq('user_id', user.id).order('overall_score', { ascending: false });
+        if (!basicResult.error) existingScores = basicResult.data || [];
       }
 
-      // V3 columns may not exist — fallback to basic columns
-      const basicResult = await supabase.from('match_scores')
-        .select('job_id, eligible, overall_score, breakdown, match_reasons, gaps, missing_required, calculated_at')
-        .eq('user_id', user.id).order('overall_score', { ascending: false });
+      // 2. Check which active jobs are missing scores
+      const { data: activeJobs } = await supabase.from('jobs').select('id')
+        .or('status.eq.Active,status.is.null');
+      const activeJobIds = (activeJobs || []).map(j => j.id);
+      const scoredJobIds = new Set(existingScores.map(s => s.job_id));
+      const missingJobIds = activeJobIds.filter(id => !scoredJobIds.has(id));
 
-      if (!basicResult.error) {
-        return res.json({ scores: basicResult.data || [] });
+      // 3. If there are missing scores, calculate them now
+      if (missingJobIds.length > 0) {
+        try {
+          const { data: profile } = await supabase.from('ai_profiles')
+            .select('*').eq('user_id', user.id).maybeSingle();
+
+          if (profile && profile.parse_status !== 'failed') {
+            const { data: missingJobs } = await supabase.from('jobs')
+              .select('*').in('id', missingJobIds);
+            const { data: criteriaRows } = await supabase.from('job_match_criteria')
+              .select('*').in('job_id', missingJobIds);
+            const cMap = {};
+            (criteriaRows || []).forEach(c => { cMap[c.job_id] = c; });
+
+            const newScores = [];
+            for (const job of (missingJobs || [])) {
+              const result = calculateCandidateJobMatch(profile, job, cMap[job.id] || {});
+              const payload = {
+                user_id: user.id, job_id: job.id,
+                eligible: result.eligible,
+                overall_score: result.match_score,
+                breakdown: result.score_breakdown,
+                match_reasons: result.match_reasons,
+                gaps: result.gaps,
+                missing_required: result.gaps.filter(g => {
+                  try { const p = JSON.parse(g); return (p.en || '').startsWith('Missing required') && !(p.en || '').includes('trainable'); } catch { return typeof g === 'string' && g.startsWith('Missing required'); }
+                }),
+                match_band: result.match_band,
+                eligibility_tier: result.eligibility_tier,
+                criteria_version: result.criteria_version || 1,
+                insights: result.insights || [],
+                executive_summary: result.executive_summary || null,
+                calculated_at: new Date().toISOString(),
+              };
+
+              // Upsert (fire-and-forget batch — don't block response for DB writes)
+              supabase.from('match_scores').upsert(payload, { onConflict: 'user_id,job_id' })
+                .then(({ error }) => { if (error) console.warn('[match-scores] upsert err:', error.message); });
+
+              // Add to response immediately
+              newScores.push({
+                job_id: job.id,
+                eligible: payload.eligible,
+                overall_score: payload.overall_score,
+                match_band: payload.match_band,
+                eligibility_tier: payload.eligibility_tier,
+                criteria_version: payload.criteria_version,
+                breakdown: payload.breakdown,
+                match_reasons: payload.match_reasons,
+                gaps: payload.gaps,
+                insights: payload.insights,
+                executive_summary: payload.executive_summary,
+                missing_required: payload.missing_required,
+                calculated_at: payload.calculated_at,
+              });
+            }
+
+            console.log(`[match-scores] Auto-filled ${newScores.length} missing scores for user ${user.id}`);
+            existingScores = [...existingScores, ...newScores];
+          }
+        } catch (calcErr) {
+          console.warn('[match-scores] Auto-fill non-fatal:', calcErr.message);
+        }
       }
 
-      console.warn('[match-scores] DB query failed:', basicResult.error.message);
-      res.json({ scores: [] });
+      res.json({ scores: existingScores });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
@@ -493,22 +562,70 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       const user = await getUserFromToken(req);
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
+      const jobId = req.params.jobId;
+
       // Verify ownership
       const { data: job } = await supabase.from('jobs')
-        .select('employer_id').eq('id', req.params.jobId).single();
+        .select('*').eq('id', jobId).single();
       if (!job || job.employer_id !== user.id)
         return res.status(403).json({ error: 'Not your job' });
 
       try {
         const { data, error } = await supabase.from('match_scores')
-          .select('user_id, eligible, overall_score, breakdown, missing_required, calculated_at')
-          .eq('job_id', req.params.jobId)
+          .select('user_id, eligible, overall_score, match_band, eligibility_tier, breakdown, match_reasons, gaps, missing_required, calculated_at')
+          .eq('job_id', jobId)
           .order('overall_score', { ascending: false });
         if (error) throw error;
-        res.json({ scores: data || [] });
+
+        let scores = data || [];
+
+        // Auto-fill: find applicants who don't have match scores yet
+        const { data: apps } = await supabase.from('applications')
+          .select('candidate_id').eq('job_id', jobId);
+        const applicantIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
+        const scoredIds = new Set(scores.map(s => s.user_id));
+        const missingIds = applicantIds.filter(id => !scoredIds.has(id));
+
+        if (missingIds.length > 0) {
+          const { data: profiles } = await supabase.from('ai_profiles')
+            .select('*').in('user_id', missingIds);
+          const { data: criteria } = await supabase.from('job_match_criteria')
+            .select('*').eq('job_id', jobId).maybeSingle();
+
+          for (const profile of (profiles || [])) {
+            if (profile.parse_status === 'failed') continue;
+            const result = calculateCandidateJobMatch(profile, job, criteria || {});
+            const scoreObj = {
+              user_id: profile.user_id,
+              eligible: result.eligible,
+              overall_score: result.match_score,
+              match_band: result.match_band,
+              eligibility_tier: result.eligibility_tier,
+              breakdown: result.score_breakdown,
+              match_reasons: result.match_reasons,
+              gaps: result.gaps,
+              missing_required: [],
+              calculated_at: new Date().toISOString(),
+            };
+            scores.push(scoreObj);
+
+            // Fire-and-forget DB write
+            supabase.from('match_scores').upsert({
+              ...scoreObj,
+              job_id: jobId,
+              criteria_version: result.criteria_version || 1,
+              insights: result.insights || [],
+              executive_summary: result.executive_summary || null,
+            }, { onConflict: 'user_id,job_id' }).then(({ error: e }) => {
+              if (e) console.warn('[employer/match-scores] upsert err:', e.message);
+            });
+          }
+          if (profiles?.length) console.log(`[employer/match-scores] Auto-filled ${profiles.length} scores for job ${jobId}`);
+        }
+
+        res.json({ scores });
       } catch (dbErr) {
-        // Table may not exist yet — return empty
-        console.warn('[employer/match-scores] DB query failed (table may not exist):', dbErr.message);
+        console.warn('[employer/match-scores] DB query failed:', dbErr.message);
         res.json({ scores: [] });
       }
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -803,10 +920,13 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         return res.json({ scores: {} });
       }
 
+      const cIds = candidate_ids.slice(0, 50);
+      const jIds = job_ids.slice(0, 50);
+
       const { data: matchScores, error } = await supabase.from('match_scores')
-        .select('user_id, job_id, overall_score, breakdown, match_reasons, gaps')
-        .in('user_id', candidate_ids.slice(0, 50))
-        .in('job_id', job_ids.slice(0, 50));
+        .select('user_id, job_id, overall_score, match_band, eligibility_tier, breakdown, match_reasons, gaps')
+        .in('user_id', cIds)
+        .in('job_id', jIds);
 
       if (error) {
         console.warn('[match-scores-bulk] Error:', error.message);
@@ -817,6 +937,82 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       (matchScores || []).forEach(ms => {
         scoresMap[`${ms.user_id}_${ms.job_id}`] = ms;
       });
+
+      // Auto-fill missing pairs
+      const missingPairs = [];
+      for (const cid of cIds) {
+        for (const jid of jIds) {
+          if (!scoresMap[`${cid}_${jid}`]) {
+            missingPairs.push({ candidate_id: cid, job_id: jid });
+          }
+        }
+      }
+
+      if (missingPairs.length > 0 && missingPairs.length <= 200) {
+        try {
+          // Fetch all needed profiles and jobs
+          const uniqueCids = [...new Set(missingPairs.map(p => p.candidate_id))];
+          const uniqueJids = [...new Set(missingPairs.map(p => p.job_id))];
+
+          const { data: profiles } = await supabase.from('ai_profiles')
+            .select('*').in('user_id', uniqueCids);
+          const profileMap = {};
+          (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+
+          const { data: jobs } = await supabase.from('jobs')
+            .select('*').in('id', uniqueJids);
+          const jobMap = {};
+          (jobs || []).forEach(j => { jobMap[j.id] = j; });
+
+          const { data: criteriaRows } = await supabase.from('job_match_criteria')
+            .select('*').in('job_id', uniqueJids);
+          const cMap = {};
+          (criteriaRows || []).forEach(c => { cMap[c.job_id] = c; });
+
+          let filled = 0;
+          for (const { candidate_id, job_id } of missingPairs) {
+            const profile = profileMap[candidate_id];
+            const job = jobMap[job_id];
+            if (!profile || profile.parse_status === 'failed' || !job) continue;
+
+            const result = calculateCandidateJobMatch(profile, job, cMap[job_id] || {});
+            const key = `${candidate_id}_${job_id}`;
+            scoresMap[key] = {
+              user_id: candidate_id,
+              job_id: job_id,
+              overall_score: result.match_score,
+              match_band: result.match_band,
+              eligibility_tier: result.eligibility_tier,
+              breakdown: result.score_breakdown,
+              match_reasons: result.match_reasons,
+              gaps: result.gaps,
+            };
+
+            // Fire-and-forget DB write
+            supabase.from('match_scores').upsert({
+              user_id: candidate_id, job_id: job_id,
+              eligible: result.eligible,
+              overall_score: result.match_score,
+              breakdown: result.score_breakdown,
+              match_reasons: result.match_reasons,
+              gaps: result.gaps,
+              match_band: result.match_band,
+              eligibility_tier: result.eligibility_tier,
+              criteria_version: result.criteria_version || 1,
+              insights: result.insights || [],
+              executive_summary: result.executive_summary || null,
+              missing_required: [],
+              calculated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id,job_id' }).then(({ error: e }) => {
+              if (e) console.warn('[match-scores-bulk] upsert err:', e.message);
+            });
+            filled++;
+          }
+          if (filled > 0) console.log(`[match-scores-bulk] Auto-filled ${filled} missing scores`);
+        } catch (calcErr) {
+          console.warn('[match-scores-bulk] Auto-fill non-fatal:', calcErr.message);
+        }
+      }
 
       res.json({ scores: scoresMap });
     } catch (err) {
