@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 
@@ -73,6 +73,13 @@ export default function EmployerAuth({ onLoginSuccess }) {
     }
   };
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 480);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -80,9 +87,9 @@ export default function EmployerAuth({ onLoginSuccess }) {
       alignItems: 'center',
       justifyContent: 'center',
       background: '#050505',
-      padding: 20,
+      padding: isMobile ? 12 : 20,
       position: 'relative',
-      overflow: 'hidden'
+      overflowY: 'auto'
     }}>
       {/* Crosshatch Grid Background — matches landing page */}
       <div style={{
@@ -109,7 +116,7 @@ export default function EmployerAuth({ onLoginSuccess }) {
           WebkitBackdropFilter: 'blur(30px)',
           borderRadius: 32,
           border: '1px solid rgba(255,255,255,0.08)',
-          padding: '60px 50px',
+          padding: isMobile ? '32px 20px' : '60px 50px',
           boxShadow: '0 50px 150px rgba(0,0,0,0.6)',
           zIndex: 1
         }}

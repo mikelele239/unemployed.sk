@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import QuizStep from '../components/QuizStep';
@@ -6,6 +6,13 @@ import { useNavigate } from 'react-router-dom';
 
 const Onboarding = ({ onComplete }) => {
   const { t, lang } = useI18n();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 480);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { setCompanyProfile } = useAppState();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -58,7 +65,14 @@ const Onboarding = ({ onComplete }) => {
   };
 
   return (
-    <div style={{ height: '100vh' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: isMobile ? 'auto' : '100vh',
+      minHeight: '100vh',
+      background: 'var(--bg)',
+      overflowY: isMobile ? 'auto' : 'hidden'
+    }}>
       {step === 0 && (
         <QuizStep step={1} total={4} label={t('ob1')} subtitle={t('ob1s')} pFill="25%" onNext={nextStep} onBack={() => {}}>
           <input className="text-input" placeholder="Názov firmy" value={obData.name} onChange={e => setObData({...obData, name: e.target.value})} />

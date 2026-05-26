@@ -375,15 +375,39 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         else updates.availability = b.availability;
       }
 
+      // Validate extra fields
+      if (b.full_name !== undefined) updates.full_name = b.full_name;
+      if (b.phone !== undefined) updates.phone = b.phone;
+      if (b.work_mode_preference !== undefined) {
+        if (b.work_mode_preference && !['remote','hybrid','on-site','any'].includes(b.work_mode_preference)) {
+          errs.push('Invalid work mode preference');
+        } else {
+          updates.work_mode_preference = b.work_mode_preference;
+        }
+      }
+      if (b.salary_expectation !== undefined) {
+        const n = parseInt(b.salary_expectation);
+        if (b.salary_expectation !== null && (isNaN(n) || n < 0)) errs.push('Invalid salary expectation');
+        else updates.salary_expectation = n;
+      }
+      if (b.availability_hours !== undefined) {
+        const n = parseInt(b.availability_hours);
+        if (b.availability_hours !== null && (isNaN(n) || n < 0 || n > 168)) errs.push('Invalid availability hours');
+        else updates.availability_hours = n;
+      }
+
       if (errs.length) return res.status(400).json({ error: errs.join('; ') });
 
       // Increment version
       const { data: current } = await supabase.from('ai_profiles')
         .select('profile_version').eq('user_id', user.id).maybeSingle();
-      updates.profile_version = (current?.profile_version || 1) + 1;
+      
+      updates.user_id = user.id;
+      updates.profile_version = (current?.profile_version || 0) + 1;
+      updates.updated_at = new Date().toISOString();
 
       const { data, error } = await supabase.from('ai_profiles')
-        .update(updates).eq('user_id', user.id).select().single();
+        .upsert(updates, { onConflict: 'user_id' }).select().single();
       if (error) return res.status(500).json({ error: error.message });
 
       recalculateForStudent(user.id).catch(e => console.warn('[AI] Recalc:', e.message));
@@ -912,8 +936,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
   app.post('/api/employer/match-scores-bulk', async (req, res) => {
     try {
-      const user = await getUserFromToken(req).catch(() => null);
-      if (!user) console.warn('[match-scores-bulk] No auth — serving anyway');
+      const user = await getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
       const { candidate_ids, job_ids } = req.body;
       if (!Array.isArray(candidate_ids) || !Array.isArray(job_ids)) {
@@ -923,10 +947,23 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       const cIds = candidate_ids.slice(0, 50);
       const jIds = job_ids.slice(0, 50);
 
+      // Verify that the logged-in user is the employer who owns these jobs
+      const { data: ownJobs, error: jobsErr } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('employer_id', user.id)
+        .in('id', jIds);
+
+      const authorizedJobIds = (ownJobs || []).map(j => j.id);
+
+      if (jobsErr || authorizedJobIds.length === 0) {
+        return res.json({ scores: {} });
+      }
+
       const { data: matchScores, error } = await supabase.from('match_scores')
         .select('user_id, job_id, overall_score, match_band, eligibility_tier, breakdown, match_reasons, gaps')
         .in('user_id', cIds)
-        .in('job_id', jIds);
+        .in('job_id', authorizedJobIds);
 
       if (error) {
         console.warn('[match-scores-bulk] Error:', error.message);
@@ -1025,8 +1062,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
   app.post('/api/employer/ai-profiles', async (req, res) => {
     try {
-      const user = await getUserFromToken(req).catch(() => null);
-      if (!user) console.warn('[ai-profiles] No auth — serving anyway');
+      const user = await getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
       const { candidate_ids } = req.body;
       if (!Array.isArray(candidate_ids) || candidate_ids.length === 0) {
@@ -1036,9 +1073,45 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       // Limit to 50 at a time
       const ids = candidate_ids.slice(0, 50);
 
+      // Verify that the candidate has applied to a job owned by this employer, or is requesting their own profile
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('employer_id', user.id);
+      const jobIds = (jobs || []).map(j => j.id);
+
+      const selfRequested = ids.filter(id => id === user.id);
+      let authorizedCandidateIds = [...selfRequested];
+
+      if (jobIds.length > 0) {
+        const { data: apps } = await supabase
+          .from('applications')
+          .select('candidate_id')
+          .in('candidate_id', ids)
+          .or(`employer_id.eq.${user.id},job_id.in.(${jobIds.join(',')})`);
+        if (apps) {
+          authorizedCandidateIds.push(...apps.map(a => a.candidate_id));
+        }
+      } else {
+        const { data: apps } = await supabase
+          .from('applications')
+          .select('candidate_id')
+          .in('candidate_id', ids)
+          .eq('employer_id', user.id);
+        if (apps) {
+          authorizedCandidateIds.push(...apps.map(a => a.candidate_id));
+        }
+      }
+
+      authorizedCandidateIds = [...new Set(authorizedCandidateIds)];
+
+      if (authorizedCandidateIds.length === 0) {
+        return res.json({ profiles: {} });
+      }
+
       const { data: aiProfiles, error } = await supabase.from('ai_profiles')
         .select('user_id, ai_headline, ai_summary, ai_strengths, ai_suggested_roles, hard_skills, soft_skills, languages, experience_years, experience_level, education_level, education_field, education_school, confidence_score')
-        .in('user_id', ids);
+        .in('user_id', authorizedCandidateIds);
 
       if (error) {
         console.warn('[employer/ai-profiles] Query error:', error.message);

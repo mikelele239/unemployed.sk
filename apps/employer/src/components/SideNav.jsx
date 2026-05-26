@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
+import { getUnreadCount, subscribeToConversations } from '../services/messagingService';
 
 
 const SideNav = () => {
   const { t, lang, setLang } = useI18n();
   const { companyProfile } = useAppState();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const updateUnread = async () => {
+      const count = await getUnreadCount();
+      if (active) setUnreadCount(count);
+    };
+
+    updateUnread();
+
+    const sub = subscribeToConversations(() => {
+      updateUnread();
+    });
+
+    return () => {
+      active = false;
+      if (sub && typeof sub.unsubscribe === 'function') sub.unsubscribe();
+    };
+  }, []);
 
   const navItems = [
     { id: 'dashboard', path: '/dashboard', label: t('navDash'), icon: (
@@ -18,6 +39,9 @@ const SideNav = () => {
     )},
     { id: 'candidates', path: '/candidates', label: t('navCand'), icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    )},
+    { id: 'messages', path: '/messages', label: t('navMessages') || 'Správy', icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     )},
     { id: 'profile', path: '/profile', label: t('navProfile'), icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -73,8 +97,30 @@ const SideNav = () => {
           >
             {({ isActive }) => (
               <>
-                <div style={{ width: '22px', height: '22px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? 'var(--accent)' : 'inherit' }}>
+                <div style={{ width: '22px', height: '22px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? 'var(--accent)' : 'inherit', position: 'relative' }}>
                   {item.icon}
+                  {item.id === 'messages' && unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      background: 'var(--accent)',
+                      color: '#fff',
+                      fontSize: '9px',
+                      fontWeight: 900,
+                      borderRadius: '50%',
+                      minWidth: '15px',
+                      height: '15px',
+                      padding: '0 2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 8px rgba(255, 92, 0, 0.4)',
+                      zIndex: 2
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
                 </div>
                 <span style={{ textAlign: 'center', width: '100%' }}>{item.label}</span>
               </>

@@ -1,9 +1,10 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search as SearchIcon, FileText, User } from 'lucide-react';
+import { Home, Search as SearchIcon, FileText, User, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../I18nContext';
 import NotificationBell from './NotificationBell';
+import { getUnreadCount, subscribeToConversations } from '../services/messagingService';
 
 export default function MainLayout() {
   const { t, lang } = useTranslation();
@@ -13,6 +14,26 @@ export default function MainLayout() {
   const [bellVisible, setBellVisible] = useState(true);
   const lastY = useRef(0);
   const hideTimer = useRef(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const updateUnread = async () => {
+      const count = await getUnreadCount();
+      if (active) setUnreadCount(count);
+    };
+
+    updateUnread();
+
+    const sub = subscribeToConversations(() => {
+      updateUnread();
+    });
+
+    return () => {
+      active = false;
+      if (sub && typeof sub.unsubscribe === 'function') sub.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
@@ -50,6 +71,7 @@ export default function MainLayout() {
     { path: '/foryou', label: t('nav.foryou'), icon: Home },
     { path: '/search', label: t('nav.search'), icon: SearchIcon },
     { path: '/applications', label: t('nav.applications'), icon: FileText },
+    { path: '/messages', label: t('nav.messages'), icon: MessageSquare },
     { path: '/profile', label: t('nav.profile'), icon: User },
   ];
 
@@ -149,7 +171,31 @@ export default function MainLayout() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Icon size={isDesktop ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={isDesktop ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} />
+                  {item.path === '/messages' && unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      background: 'var(--accent)',
+                      color: '#fff',
+                      fontSize: '9px',
+                      fontWeight: 900,
+                      borderRadius: '50%',
+                      minWidth: '15px',
+                      height: '15px',
+                      padding: '0 2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 8px rgba(255, 92, 0, 0.4)',
+                      zIndex: 2
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
                 <span>{item.label}</span>
                 
                 {!isDesktop && isActive && (

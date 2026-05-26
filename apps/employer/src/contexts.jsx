@@ -215,8 +215,9 @@ export const AppStateProvider = ({ children }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+        const uniqueId = Math.random().toString(36).substring(2, 9);
         realtimeChannel = supabase
-          .channel('employer-jobs-realtime')
+          .channel(`employer-jobs-realtime-${uniqueId}`)
           .on(
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'jobs' },

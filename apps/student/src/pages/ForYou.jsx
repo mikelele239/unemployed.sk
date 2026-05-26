@@ -124,7 +124,8 @@ export default function ForYou() {
       presenceChannelRef.current = null;
     }
     if (!jobId) return;
-    const channel = supabase.channel(`job_room:${jobId}`);
+    const uniqueId = Math.random().toString(36).substring(2, 9);
+    const channel = supabase.channel(`job_room:${jobId}-${uniqueId}`);
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ online_at: new Date().toISOString() });

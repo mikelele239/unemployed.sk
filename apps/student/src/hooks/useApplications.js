@@ -50,7 +50,7 @@ export function useApplications() {
         }
       } catch {}
 
-      const { error } = await supabase
+      const { data: newApp, error } = await supabase
         .from('applications')
         .insert({
           job_id: job.id,
@@ -59,11 +59,13 @@ export function useApplications() {
           student_email: session.user.email || '',
           student_profile: studentProfile,
           status: 'Pending',
-        });
+        })
+        .select()
+        .maybeSingle();
 
       if (error && error.code !== '23505') { // 23505 = unique violation (already applied)
         console.error('[useApplications] Insert error:', error);
-      } else if (!error) {
+      } else {
         // Notify employer about the new application (fire-and-forget)
         try {
           fetch('/api/notifications/application-received', {
@@ -72,7 +74,7 @@ export function useApplications() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ job_id: job.id, job_title: job.title }),
+            body: JSON.stringify({ job_id: job.id, job_title: job.title, application_id: newApp?.id }),
           }).catch(() => {}); // Non-blocking
         } catch {}
       }

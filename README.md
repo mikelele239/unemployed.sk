@@ -8,7 +8,14 @@
 
 ---
 
-## Architecture
+### Architecture & Modules
+
+For detailed module documentation, see the respective subfolder `README.md` files:
+- [apps/landing](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/apps/landing/README.md): Landing Page marketing page assets.
+- [routes/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/routes/README.md): API endpoint routes and middleware logic.
+- [lib/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/lib/README.md): Matching Engine algorithms, NLP CV extraction, and weights configs.
+- [database/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/README.md): Supabase SQL migrations, RLS security policies, and schemas.
+- [scripts/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/scripts/README.md): Seeding, repair, maintenance, and diagnostics tools.
 
 ```
 Unemployed.sk/
@@ -20,26 +27,17 @@ Unemployed.sk/
 │   ├── employer/                # Employer portal — React + Vite (served at /employer)
 │   ├── student-demo/            # Demo: hardcoded data, no auth (served at /student-demo)
 │   └── employer-demo/           # Demo: hardcoded data, no auth (served at /employer-demo)
-├── routes/
-│   ├── auth.js                  # Authentication, registration, password reset
-│   ├── jobs.js                  # Job CRUD, employer search
-│   └── ai-matching.js           # AI profile parsing, match scoring, criteria
-├── lib/
-│   ├── ai-cv-parser.js          # GPT-4o-mini CV parser with rule-based fallback
-│   ├── ai-extraction.js         # NLP text extraction pipeline
-│   ├── ai-profile-builder.js    # Structured AI profile construction
-│   ├── matching-engine.js       # V3 matching: bands (A–E), eligibility tiers, V2 criteria support
-│   └── matching-config.js       # Weights, skill families, role templates, success factor mappings
-├── database/
-│   ├── scripts/                 # SQL migration scripts (02–17)
-│   └── *.sql                    # RLS policies and schema patches
-├── docs/
-│   ├── PROJECT_OVERVIEW.md      # Full architecture & feature reference
-│   ├── DESIGN_SYSTEM.md         # Colors, typography, spacing tokens
-│   └── FONTS.md                 # Font stack reference
-├── scripts/                     # Maintenance utilities (reparse CVs, recalc matches, etc.)
+├── routes/                      # API endpoint routes & logic controllers
+├── lib/                         # AI resume parsers & matching calculation engines
+├── database/                    # SQL migrations, RLS policies, schemas & models
+├── docs/                        # Architecture overview & design system specs
+├── scripts/                     # Utility seed scripts and database maintenance
 ├── tests/                       # Test suites
 ├── netlify/functions/           # Netlify serverless fallback (submit.js)
+├── artifacts/                   # Feature-specific documentation
+├── _redirects                   # Netlify SPA fallbacks
+├── _headers                     # Security & CSP headers
+```rverless fallback (submit.js)
 ├── artifacts/                   # Feature-specific documentation
 ├── _redirects                   # Netlify SPA fallbacks
 └── _headers                     # Security & CSP headers
@@ -266,31 +264,31 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 
 ### Core Tables
 
-| Table              | Purpose                              | Key Columns                                                    |
-|--------------------|--------------------------------------|----------------------------------------------------------------|
-| `profiles`         | Student profiles                     | `user_id`, `first_name`, `last_name`, `skills[]`, `cv_id`, `avatar_url`, `ai_profile_ready` |
-| `employers`        | Employer profiles                    | `id`, `name`, `description`, `website`, `location`, `logo_url` |
-| `jobs`             | Job listings                         | `id`, `employer_id`, `title`, `company`, `rate`, `tags[]`, `lat`, `lng`, `work_model`, `views` |
-| `applications`     | Student-to-job applications          | `id`, `job_id`, `candidate_id`, `employer_id`, `status`, `interview_dates`, `selected_date` |
-| `user_roles`       | Role enforcement                     | `user_id`, `role` (`candidate` / `employer`)                   |
+| Table | Purpose | Context Document | Key Columns |
+|---|---|---|---|
+| `profiles` | Student profiles | [profiles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/profiles/README.md) | `user_id`, `first_name`, `last_name`, `skills[]`, `cv_id`, `avatar_url`, `ai_profile_ready` |
+| `employers` | Employer profiles | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md) | `id`, `name`, `description`, `website`, `location`, `logo_url` |
+| `jobs` | Job listings | [jobs](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/jobs/README.md) | `id`, `employer_id`, `title`, `company`, `rate`, `tags[]`, `lat`, `lng`, `work_model`, `views` |
+| `applications` | Student-to-job applications | [applications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/applications/README.md) | `id`, `job_id`, `candidate_id`, `employer_id`, `status`, `interview_dates`, `selected_date` |
+| `user_roles` | Role enforcement | [user_roles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/user_roles/README.md) | `user_id`, `role` (`candidate` / `employer`) |
 
 ### AI & Matching Tables
 
-| Table              | Purpose                              | Key Columns                                                    |
-|--------------------|--------------------------------------|----------------------------------------------------------------|
-| `ai_profiles`      | AI-extracted student profiles        | `user_id`, `hard_skills[]`, `soft_skills[]`, `languages[]`, `ai_headline`, `ai_summary`, `confidence_score` |
-| `match_scores`     | Pre-computed match scores            | `user_id`, `job_id`, `overall_score`, `match_band`, `eligibility_tier`, `criteria_version` |
-| `job_match_criteria`| Employer-defined matching criteria  | `job_id`, `required_skills[]`, `success_factors`, `hard_gates`, `criteria_version` |
-| `criteria_audit_log`| Criteria change history             | `job_id`, `employer_id`, `action`, `criteria_snapshot` |
+| Table | Purpose | Context Document | Key Columns |
+|---|---|---|---|
+| `ai_profiles` | AI-extracted student profiles | [ai_profiles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/ai_profiles/README.md) | `user_id`, `hard_skills[]`, `soft_skills[]`, `languages[]`, `ai_headline`, `ai_summary`, `confidence_score` |
+| `match_scores` | Pre-computed match scores | [match_scores](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/match_scores/README.md) | `user_id`, `job_id`, `overall_score`, `match_band`, `eligibility_tier`, `criteria_version` |
+| `job_match_criteria`| Employer-defined matching criteria | [job_match_criteria](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/job_match_criteria/README.md) | `job_id`, `required_skills[]`, `success_factors`, `hard_gates`, `criteria_version` |
+| `criteria_audit_log`| Criteria change history | [job_match_criteria](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/job_match_criteria/README.md#associated-tables) | `job_id`, `employer_id`, `action`, `criteria_snapshot` |
 
 ### Supporting Tables
 
-| Table              | Purpose                              | Key Columns                                                    |
-|--------------------|--------------------------------------|----------------------------------------------------------------|
-| `submissions`      | Landing page leads                   | `email`, `phone`, `user_type`, `company_name`, `consented`     |
-| `notifications`    | In-app notifications                 | `user_id`, `type`, `title`, `message`, `read`                  |
-| `employer_members` | Employer team membership             | `employer_id`, `user_id`, `role`                               |
-| `employer_notes`   | Internal notes on candidates         | `employer_id`, `candidate_id`, `note`                          |
+| Table | Purpose | Context Document | Key Columns |
+|---|---|---|---|
+| `submissions` | Landing page leads | [submissions](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/submissions/README.md) | `email`, `phone`, `user_type`, `company_name`, `consented` |
+| `notifications` | In-app notifications | [notifications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/notifications/README.md) | `user_id`, `type`, `title`, `message`, `read` |
+| `employer_members` | Employer team membership | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `user_id`, `role` |
+| `employer_notes` | Internal notes on candidates | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `candidate_id`, `note` |
 
 ---
 

@@ -6,11 +6,21 @@ import JobDetail from '../components/JobDetail';
 import ModernDatePicker from '../components/ModernDatePicker';
 import { useTranslation } from '../I18nContext';
 import { supabase } from '../supabase';
+import { getOrCreateConversationForApplication } from '../services/messagingService';
 
 export default function Applications() {
   const { t, lang } = useTranslation();
   const navigate = useNavigate();
   const { applications, fetchApplications } = useApplications();
+  const handleOpenChat = async (e, app) => {
+    e.stopPropagation();
+    try {
+      const convId = await getOrCreateConversationForApplication(app.appId || app.id);
+      navigate(`/messages`, { state: { activeConvId: convId } });
+    } catch (err) {
+      console.error('Failed to open chat:', err);
+    }
+  };
   const [selectedJob, setSelectedJob] = useState(null);
   const [confirmDeclineId, setConfirmDeclineId] = useState(null);
   const [successId, setSuccessId] = useState(null);
@@ -141,6 +151,26 @@ export default function Applications() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>
                       {new Date(app.created_at || app.timestamp).toLocaleDateString('sk-SK')}
                     </div>
+                    <button 
+                      onClick={(e) => handleOpenChat(e, app)}
+                      style={{
+                        marginTop: 8,
+                        background: 'var(--accent-light)',
+                        border: '1px solid var(--accent)',
+                        color: 'var(--accent)',
+                        borderRadius: 8,
+                        padding: '4px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      💬 {lang === 'sk' ? 'Správy' : 'Chat'}
+                    </button>
                     {/* Withdraw button — only for Pending/Viewed apps */}
                     {(app.status === 'Pending' || app.status === 'Viewed') && (
                       withdrawConfirmId === (app.appId || app.id) ? (

@@ -49,6 +49,7 @@ export const translations = {
     navListings: 'Ponuky',
     navCand: 'Kandidáti',
     navAi: 'AI inzerát',
+    navMessages: 'Správy',
     navProfile: 'Profil',
     
     invite: 'Pozvať',
@@ -172,6 +173,7 @@ export const translations = {
     navListings: 'Listings',
     navCand: 'Candidates',
     navAi: 'AI listing',
+    navMessages: 'Messages',
     navProfile: 'Profile',
     
     invite: 'Invite',

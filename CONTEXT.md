@@ -1,16 +1,18 @@
 # Unemployed.sk — Production Context
 
-> **Version**: 3.0.0 | **Last Updated**: 2026-05-09
+> **Version**: 3.1.0 | **Last Updated**: 2026-05-20
 
 This document provides a concise summary of the production architecture for AI coding assistants and developers.
 
 ## System Architecture
 
-- **Server**: Express backend (`server.js`) — API proxy, auth, CV parsing, AI matching, static file serving
-- **Route Modules**: `routes/auth.js`, `routes/jobs.js`, `routes/ai-matching.js`
-- **AI Libraries**: `lib/ai-cv-parser.js`, `lib/ai-extraction.js`, `lib/ai-profile-builder.js`, `lib/matching-engine.js`, `lib/matching-config.js`
-- **Database**: Supabase (PostgreSQL) with Row Level Security — all writes bypass RLS via service role key
-- **Storage**: Supabase Storage (`cvs` bucket, private) — signed URLs only
+Detailed module documentation is located in the respective subfolder `README.md` files:
+- **Server Backend**: [routes/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/routes/README.md) details standard endpoint routing and JWT auth verification.
+- **AI & Matching Engine**: [lib/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/lib/README.md) details matching engine, parsing configs, and extraction logic.
+- **Database & Schemas**: [database/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/README.md) details Postgres schema updates, RLS policy gates, and triggers.
+- **Management Scripts**: [scripts/](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/scripts/README.md) details diagnostic, seeder, and maintenance script files.
+- **Static Portals**: [apps/landing](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/apps/landing/README.md) details marketing page setup.
+- **Storage**: Supabase Storage (`cvs` bucket, private) — signed URLs only.
 
 ### Portals
 
@@ -42,22 +44,24 @@ All database writes route through `server.js` to bypass RLS:
 | Status update | `PATCH /api/employer/candidates/:id` | Updates status + sends notification |
 | CV upload | `POST /api/cvs/upload` | Storage upload + AI parse + match recalc |
 
-## AI Matching Pipeline
+## AI Matching Pipeline (V3)
 
-1. **CV Upload** → `pdf-parse` (PDF) or `mammoth` (DOCX) extracts text
-2. **AI Parse** → GPT-4o-mini extracts structured profile (`lib/ai-cv-parser.js`), falls back to rule-based NLP
-3. **Profile Storage** → Upserted into `ai_profiles` table with bilingual content (`{sk: "...", en: "..."}`)
-4. **Match Scoring** → `lib/matching-engine.js` scores candidates against jobs (0–100) across 5 dimensions
-5. **Score Caching** → Pre-computed in `match_scores`, recalculated on CV upload, profile update, or criteria change
-6. **Startup Reparse** → Server detects stale AI profiles on boot and re-parses them
+1. **CV Upload** → `pdf-parse` (PDF) or `mammoth` (DOCX) extracts raw text.
+2. **AI Parse** → GPT-4o-mini parses structured profile attributes (`lib/ai-cv-parser.js`), falling back to rule-based NLP.
+3. **Profile Storage** → Upserted into `ai_profiles` table with bilingual content (`{sk: "...", en: "..."}`).
+4. **Match Scoring** → `lib/matching-engine.js` runs V3 multi-tiered match score (0-100) mapping to Bands `A`–`E` and filters via three-tier eligibility (`eligible`, `near_miss`, `not_eligible`).
+5. **Score Caching** → Pre-computed and saved in `match_scores`, recalculated on CV uploads, updates, or criteria tweaks.
+6. **Startup Reparse** → Server detects stale AI profiles on boot and re-parses them.
 
-### Scoring Dimensions
-Skills (weight 5), Education (3), Experience (3), Location (2), Languages (2)
+### Calibration & Weights (V3)
+- **Hard Gates**: Enforces mandatory checks (such as language levels or strict location compliance).
+- **Success Factors**: Employers calibrate weights across 8 dimensions (technical skills, availability, education, location, languages, industry experience, portfolio, and communication).
+- **Match Bands**: Maps overall percentage score to bands (Band `A`: 85–100, `B`: 70–84, `C`: 55–69, `D`: 40–54, `E`: 0–39).
 
-### Rate Limits
+### Rate Limits & Fallback
 - Global: 50 AI parses/day
 - Per-user: 5 AI parses/day
-- Fallback: Rule-based NLP when limits reached or OpenAI unavailable
+- Fallback: Rule-based NLP parsing when limits are hit or OpenAI is offline.
 
 ## Notification System
 
@@ -76,15 +80,15 @@ Skills (weight 5), Education (3), Experience (3), Location (2), Languages (2)
 
 ## Key Tables
 
-| Table | Purpose |
-|-------|---------|
-| `profiles` | Student profiles (name, skills, cv_id, avatar_url, ai_profile_ready) |
-| `ai_profiles` | AI-extracted structured data (skills, education, languages, AI summaries) |
-| `employers` | Company profiles (name, description, website, location) |
-| `jobs` | Job listings (title, rate, tags, lat/lng, work_model, views) |
-| `applications` | Student applications (status, interview_dates, selected_date) |
-| `match_scores` | Pre-computed match scores (user_id, job_id, overall_score) |
-| `job_match_criteria` | Employer-defined matching criteria per job |
-| `notifications` | In-app notification system |
-| `submissions` | Landing page lead capture |
-| `user_roles` | Role enforcement (candidate/employer) |
+| Table | Purpose | Context Document |
+|-------|---------|------------------|
+| `profiles` | Student profiles (name, skills, cv_id, avatar_url, ai_profile_ready) | [profiles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/profiles/README.md) |
+| `ai_profiles` | AI-extracted structured data (skills, education, languages, AI summaries) | [ai_profiles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/ai_profiles/README.md) |
+| `employers` | Company profiles (name, description, website, location) | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md) |
+| `jobs` | Job listings (title, rate, tags, lat/lng, work_model, views) | [jobs](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/jobs/README.md) |
+| `applications` | Student applications (status, interview_dates, selected_date) | [applications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/applications/README.md) |
+| `match_scores` | Pre-computed match scores (user_id, job_id, overall_score) | [match_scores](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/match_scores/README.md) |
+| `job_match_criteria` | Employer-defined matching criteria per job | [job_match_criteria](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/job_match_criteria/README.md) |
+| `notifications` | In-app notification system | [notifications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/notifications/README.md) |
+| `submissions` | Landing page lead capture | [submissions](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/submissions/README.md) |
+| `user_roles` | Role enforcement (candidate/employer) | [user_roles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/user_roles/README.md) |

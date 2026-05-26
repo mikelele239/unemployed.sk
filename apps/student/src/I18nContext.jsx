@@ -6,6 +6,7 @@ const translations = {
     'nav.foryou': 'Pre teba',
     'nav.search': 'Hľadať',
     'nav.applications': 'Prihlášky',
+    'nav.messages': 'Správy',
     'nav.profile': 'Profil',
 
     // For You
@@ -121,6 +122,7 @@ const translations = {
     'nav.foryou': 'For You',
     'nav.search': 'Search',
     'nav.applications': 'Applications',
+    'nav.messages': 'Messages',
     'nav.profile': 'Profile',
 
     // For You

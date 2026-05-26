@@ -11,6 +11,7 @@ import Candidates from './pages/Candidates';
 import Profile from './pages/Profile';
 import EmployerAuth from './pages/EmployerAuth';
 import Inquiry from './pages/Inquiry';
+import Messages from './pages/Messages';
 import { supabase } from './supabase';
 
 const AppLayout = () => {
@@ -70,6 +71,7 @@ const AppLayout = () => {
           <Route path="listings" element={<Listings />} />
           <Route path="create-listing" element={<CreateListing />} />
           <Route path="candidates" element={<Candidates />} />
+          <Route path="messages" element={<Messages />} />
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

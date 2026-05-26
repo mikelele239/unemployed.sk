@@ -1,0 +1,636 @@
+================================================================================
+                    UNEMPLOYED.SK — MARKETING CONTEXT GUIDE
+                    Complete Reference for Content Creators
+================================================================================
+
+Last updated: May 2026
+Version: 3.1.0
+Status: Pre-launch (waitlist live, app functional, building audience)
+
+
+================================================================================
+1. BRAND IDENTITY
+================================================================================
+
+BRAND NAME
+  • Official:     unemployed.sk
+  • Casing:       Always lowercase "unemployed.sk" — never capitalized
+  • Domain:       https://unemployed.sk
+  • Email:        unemployed.sk@gmail.com
+
+LOGO TREATMENT
+  • The logo is a custom SVG mark featuring a stylized "U" shape in orange
+  • The wordmark "unemployed.sk" uses the brand's display font (Instrument Serif)
+  • The letters "un" have an orange (#FF5C00) strikethrough line through them,
+    visually crossing out "un" to leave "employed.sk" — symbolizing the platform's
+    mission to move users from "unemployed" to "employed"
+  • The strikethrough animates on the landing page (scales in from left to right)
+  • Logo mark colors: Dark background uses white (#FDFDFD) with orange (#F27C2B)
+    accent shapes. On light backgrounds, the white path becomes dark (#1A1A1A)
+
+TAGLINE
+  • Slovak:   "Od prvej práce až po tvoj dream job"
+  • English:  "From your first job to your dream job"
+
+HERO ROTATING WORDS
+  • Slovak:   prvú → vysnívanú → perfektnú → dobre platenú → flexibilnú → vzdialenú
+  • English:  first → dream → perfect → well-paid → flexible → remote
+  • These cycle in the hero H1: "Nájdi svoju [word] prácu." / "Find your [word] job."
+
+HERO SUBHEADLINE
+  • Slovak:  "Brigády, stáže a plné úväzky pre študentov a absolventov na Slovensku.
+              Inteligentné párovanie, transparentný plat a overení zamestnávatelia —
+              pomôžeme ti byť unemployed." (with "un" struck through)
+  • English: "Part-time jobs, internships and full-time roles for students and
+              graduates in Slovakia. Smart matching, transparent pay and verified
+              employers — we'll help you be unemployed." (with "un" struck through)
+
+BRAND VOICE & TONE
+  • Casual, direct, Gen Z–native language
+  • Confident but not arrogant — "we've got you" energy
+  • Uses familiar terms: "dream job", "swipe", "no strings attached"
+  • Avoids corporate jargon and overly formal language
+  • Bilingual: Slovak is default/primary, English is secondary
+  • Emoji usage is acceptable in marketing (🇸🇰, 🔍, 🎯, ⚡, 💰, 🚀)
+  • Footer tagline: "Vyrobené na Slovensku 🇸🇰" / "Made in Slovakia 🇸🇰"
+
+BRAND VALUES
+  • Transparency  — Every listing shows exact pay, no guessing
+  • Accessibility — No experience needed for entry-level positions
+  • Intelligence  — AI-powered matching, not random listings
+  • Speed         — Apply with one click, up to 3× faster
+  • Trust         — Verified employers only
+  • Inclusivity   — From high school to graduate, everyone has a place
+
+
+================================================================================
+2. WHAT UNEMPLOYED.SK IS
+================================================================================
+
+ONE-LINER
+  "AI-powered career platform for Gen Z in Slovakia."
+
+ELEVATOR PITCH (30 seconds)
+  unemployed.sk is a career platform built for students and graduates in Slovakia.
+  Students discover jobs by swiping through listings — like Tinder for jobs — with
+  AI-powered matching that scores how well each position fits their profile. Upload
+  your CV, get an AI-generated professional profile, and find your match. Employers
+  get a professional dashboard with AI-scored candidates, analytics, and smart
+  recruitment tools. We handle part-time gigs, internships, and full-time roles.
+
+EXPANDED DESCRIPTION
+  unemployed.sk connects Slovak students and graduates with verified employers
+  through a mobile-first, AI-driven job discovery experience. The platform uses
+  OpenAI GPT-4o-mini to parse CVs, generate bilingual professional profiles, and
+  compute multi-dimensional match scores (0–100) across skills, education,
+  experience, location, and languages. Students interact with job cards through
+  a Tinder-style swipe interface on mobile, while employers manage listings,
+  evaluate ranked candidates, and track recruitment analytics through a
+  professional desktop dashboard. The entire platform supports both Slovak and
+  English, with AI content generated bilingually.
+
+
+================================================================================
+3. TARGET AUDIENCE
+================================================================================
+
+PRIMARY: STUDENTS & GRADUATES IN SLOVAKIA
+
+  Segment 1: HIGH SCHOOL STUDENTS (Stredoškoláci)
+    • Age: 15–19
+    • Looking for: First job, weekend gigs, short-term part-time work
+    • Pain points: No experience, don't know where to start, intimidated by 
+      traditional job portals
+    • Key messaging:
+      - "Nájdi svoju prvú prácu" / "Find your first job"
+      - "Žiadne skúsenosti? Žiadny problém." / "No experience? No problem."
+      - One-off gigs with no commitment
+      - Simple and fast — apply with one click
+
+  Segment 2: UNIVERSITY STUDENTS (Vysokoškoláci)
+    • Age: 19–25
+    • Looking for: Internships in their field, part-time work compatible with study
+    • Pain points: Hard to find relevant internships, unclear pay, scattered 
+      applications across platforms
+    • Key messaging:
+      - "Transparentný plat" / "Transparent pay" — every listing shows exact pay
+      - "Stáže pre tvoj odbor" / "Internships for your field"
+      - AI matching finds internships tailored to their skills
+      - Tinder-style swiping for fast discovery
+      - All-in-one communication (messages, interviews, updates)
+
+  Segment 3: GRADUATES (Absolventi)
+    • Age: 22–28
+    • Looking for: First career position, junior roles with good pay
+    • Pain points: "5 years experience" traps, unverified companies, lack of 
+      track record proof
+    • Key messaging:
+      - "Top pozície s najlepším platom" / "Top positions, highest pay"
+      - No "5 years experience" traps
+      - References and badges from past gigs
+      - Verified companies and tailored roles
+
+SECONDARY: EMPLOYERS
+
+  • Companies hiring in Slovakia (especially for junior/entry-level roles)
+  • HR departments and recruiters
+  • SMBs and enterprises looking for young talent
+  • Key messaging:
+    - "Nábor mladých talentov, bez zbytočnej práce" / "Hire young talent, 
+       without the hassle"
+    - AI pre-screening and matching — see only candidates who truly fit
+    - Browse and invite from the candidate database
+    - Analytics and data export from the dashboard
+    - AI-powered listing creation in seconds
+    - Contact: unemployed.sk@gmail.com for pricing
+
+
+================================================================================
+4. PLATFORM FEATURES — STUDENT SIDE
+================================================================================
+
+FOR YOU FEED (Tinder-style job swiping)
+  • Mobile: Full-screen swipe cards with drag gestures
+  • Desktop: Split-view with card stack + detail panel
+  • Each card shows: company name, logo, job title, tags (type, model, schedule),
+    hourly/monthly rate, hours per week, map with location
+  • AI Match Score displayed on each card (0–100%)
+  • Swipe right = Apply | Swipe left = Skip | Bookmark = Save for later
+  • Spring physics animations via Framer Motion
+
+SMART SEARCH
+  • Text search across all listings
+  • Filter drawer: rate range, focus area, category tabs
+  • Employer search (find companies directly)
+
+AI-POWERED PROFILE
+  • Upload CV (PDF or DOCX) → AI parses it using GPT-4o-mini
+  • AI extracts: skills, education, experience, languages
+  • Generates: bilingual headline, executive summary, strengths, development areas,
+    suggested roles, portfolio introduction
+  • Fallback: Rule-based NLP when AI limits reached
+  • Profile strength indicator shows completion percentage
+
+ONBOARDING FLOW
+  • CV upload → AI parse → profile review → skill selection → manual fallback
+  • Zero-friction: designed to get students matched ASAP
+
+APPLICATION TRACKING
+  • Track all applied jobs in one place
+  • Interview scheduling: accept, decline, or counter-offer with custom dates
+  • Real-time notifications for status changes
+
+COMPANY PROFILES
+  • Instagram-style company page with job listings, stats, and location map
+  • Browse company culture before applying
+
+SAVED JOBS
+  • Bookmark listings to review later
+
+
+================================================================================
+5. PLATFORM FEATURES — EMPLOYER SIDE
+================================================================================
+
+PROFESSIONAL DASHBOARD
+  • 5-card analytics overview: Active jobs, Total candidates, Interviews,
+    Conversion rate, Pipeline status
+  • SVG bezier trend charts with animated reveal
+  • Real-time metrics
+
+JOB LISTING MANAGEMENT
+  • Full CRUD: Create, edit, publish, unpublish, delete
+  • Rich creation form: title, rate, type (part-time/full-time/internship),
+    work model (on-site/hybrid/remote), location with map, description,
+    requirements, tags
+  • AI-powered listing creation — generates descriptions and tags automatically
+
+CANDIDATE EVALUATION
+  • Browse applicants ranked by AI match score
+  • AI profiles with extracted skills, education, experience
+  • Match bands: A (85–100 Strong Match), B (70–84 Good Fit), C (55–69 Moderate),
+    D (40–54 Weak), E (0–39 Poor Fit)
+  • Three-tier eligibility: Eligible / Near Miss / Not Eligible
+  • CV preview directly in dashboard
+  • Interview scheduling with custom date picker
+
+ADVANCED MATCHING CRITERIA (V2)
+  • Distribute 100-point budget across 8 success factors:
+    technical_skills, communication, education, portfolio, availability,
+    location, language, industry_exp
+  • Set hard gates (non-negotiable requirements): language, availability,
+    location, education
+  • 5 pre-built role templates for quick setup
+  • Detailed dimension scoring (Skills ×5, Education ×3, Experience ×3,
+    Location ×2, Languages ×2)
+
+COMPANY PROFILE
+  • Logo upload, company description, website, location
+  • Theme toggle (dark/light)
+  • Language toggle (SK/EN)
+
+REAL-TIME NOTIFICATIONS
+  • Status changes, interview invites, hiring decisions
+  • Notification bell with badge count in both portals
+
+
+================================================================================
+6. AI & TECHNOLOGY DIFFERENTIATORS
+================================================================================
+
+AI MATCHING ENGINE
+  • Powered by OpenAI GPT-4o-mini
+  • 5-dimension scoring: Skills, Education, Experience, Location, Languages
+  • Synonym-aware skill matching with transferable skill families
+  • Education level + field matching (exact, related, partial)
+  • Experience years + level compatibility
+  • City/region overlap with work model consideration
+  • Required + preferred language matching
+  • Pre-computed scores cached for instant loading
+  • Recalculated on any profile or criteria change
+
+CV PARSING PIPELINE
+  1. Upload PDF or DOCX
+  2. Text extraction via pdf-parse / mammoth
+  3. GPT-4o-mini structured extraction (with NLP fallback)
+  4. Bilingual profile generation (Slovak + English)
+  5. Match score computation against all active jobs
+  6. Score caching for performance
+
+BILINGUAL AI CONTENT
+  • All AI-generated content produces both Slovak and English versions
+  • Headlines, summaries, strengths, development areas, role suggestions
+  • Rendered dynamically based on user's language preference
+
+TECH STACK (for technical marketing / press)
+  • Frontend: React 18 + Vite (4 independent apps)
+  • Animations: Framer Motion (spring physics, layout transitions)
+  • Maps: Leaflet + React-Leaflet (CartoDB dark tiles)
+  • Backend: Node.js + Express
+  • Database: Supabase (PostgreSQL + Row Level Security)
+  • AI/ML: OpenAI GPT-4o-mini
+  • Hosting: Netlify (static) + VPS (Express server)
+  • Localization: Custom bilingual system (SK/EN)
+
+
+================================================================================
+7. DESIGN SYSTEM & VISUAL IDENTITY
+================================================================================
+
+COLOR PALETTE
+
+  Primary Accent:
+    • Orange:           #FF5C00 (primary CTA, highlights, strikethrough)
+    • Orange Hover:     #FF7A2E (hover states)
+    • Orange Tint:      rgba(255,92,0,0.1) (backgrounds)
+
+  Dark Mode (default for landing page — dark theme):
+    • Background:       #0D0D0D (near-black)
+    • Card Background:  #1A1A1A (dark grey)
+    • Card Hover:       #222222
+    • Primary Text:     #F5F0E8 (warm off-white)
+    • Muted Text:       #999999
+    • Borders:          #2A2A2A
+
+  Light Mode:
+    • Background:       #FFFFFF
+    • Card Background:  #F7F7F7
+    • Card Hover:       #F0F0F0
+    • Primary Text:     #1A1A1A
+    • Muted Text:       #666666
+    • Borders:          #E0E0E0
+
+  Accent Colors:
+    • Green (success):  #22C55E
+    • Blue (info):      #3B82F6
+    • Purple (tertiary):#8B5CF6
+
+TYPOGRAPHY
+
+  Display Font:   Instrument Serif (Google Fonts)
+    — Used for: headings, logo wordmark, stat values, card titles
+    — Mimics: Kepler Condensed Display (from original design files)
+    — Weights used: 400 (rendered with CSS weight 800–900 for thickness)
+
+  Body Font:      DM Sans (Google Fonts)
+    — Used for: body text, UI elements, buttons, inputs, labels
+    — Mimics: Grayfel Medium (from original design files)
+    — Weights used: 300, 400, 500, 600, 700
+
+  Font Loading:   Direct <link> tags in HTML (NOT CSS @import)
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+TYPE SCALE
+  • H1 (hero):       clamp(3.5rem, 8vw, 6.5rem) — weight 900, spacing -1px
+  • H2 (section):    clamp(2.5rem, 5vw, 4rem) — weight 900, spacing -0.5px
+  • H3 (card title): 1.35rem — weight 800, spacing -0.3px
+  • H4 (feature):    1.3rem — weight 700, spacing -0.3px
+  • Body:            16px — weight 400
+  • Small:           0.875rem (14px)
+  • Caption:         0.75rem (12px) — weight 500
+  • Label:           0.75rem (12px) — weight 600, 3px letter-spacing, uppercase
+
+SPACING SCALE
+  xs: 4px | sm: 8px | md: 16px | lg: 24px | xl: 32px | 2xl: 48px | 3xl: 64px
+
+BORDER RADIUS
+  • Cards/Modals:  16px (student), 12px (employer)
+  • Inputs/Buttons: 10px (student), 8px (employer)
+  • Chips/Tags:    100px (pill shape)
+  • Avatars:       50% (circle)
+
+SHADOWS
+  • Default:       0 2px 12px rgba(0,0,0,0.2)
+  • Card:          0 8px 30px rgba(0,0,0,0.25)
+  • Accent glow:   0 4px 20px rgba(255,92,0,0.3)
+  • Navigation:    0 8px 32px rgba(0,0,0,0.12)
+
+ICONOGRAPHY
+  • Style: Feather-style SVG icons (stroke-based, 2px stroke weight)
+  • Size: 20px for navigation, 16px inline
+  • Color: Inherits from currentColor
+
+ANIMATION STANDARDS
+  • Fade:       300ms ease
+  • Slide:      350ms cubic-bezier(0.4, 0, 0.15, 1)
+  • Tab switch: 300ms cubic-bezier(0.4, 0, 0.15, 1)
+  • Scale tap:  100ms ease
+  • Progress:   400ms ease
+  • Spring:     500ms cubic-bezier(0.34, 1.56, 0.64, 1)
+
+RESPONSIVE BREAKPOINTS
+  • Mobile:  < 480px
+  • Tablet:  < 768px
+  • Desktop: < 900px
+  • Wide:    1080px+
+
+
+================================================================================
+8. UI PATTERNS & COMPONENT LIBRARY
+================================================================================
+
+NAVIGATION
+  Landing:  Fixed floating pill navbar (glassmorphism, backdrop-blur)
+            Center-aligned brand, left controls, right CTA
+  Student:  Bottom nav on mobile (4–5 tabs with icons + labels)
+            Active state: orange accent + animated 3px indicator bar
+  Employer: Side nav on desktop (260px sidebar) → bottom nav on mobile
+            Active state: highlighted background + text color
+
+BUTTONS
+  Primary:  Orange background (#FF5C00), white text, rounded
+            Hover: lighter orange + glow shadow
+            Active: scale(0.97) press effect
+  Outline:  Transparent background, 1px border, text color
+            Hover: border turns orange, text turns orange
+  Demo:     Pill-shaped with icon (phone or laptop SVG)
+
+CARDS (JOB CARDS)
+  Background: --bg-card with 1px border
+  Border radius: 20px (landing cards) / 16px (app cards)
+  Content: Avatar (44px, 12px radius) + company info → title → pill tags →
+           rate (large, orange) → swipe buttons (48px circles)
+  Active card: Orange border + glow shadow
+  Stack effect: Cards behind are scaled down, rotated, and faded
+
+TAGS / CHIPS
+  Pill shape (border-radius: 100px)
+  Default: border + muted text
+  Accent: Orange background + white text (first tag, or selected)
+  Active: scale(0.95) press effect
+
+FORMS / INPUTS
+  Background: --bg-card
+  Border: 1.5px solid --border
+  Focus: border turns orange + subtle orange ring (0 0 0 3px rgba(255,92,0,0.1))
+  Border radius: --radius-sm
+
+OVERLAYS / MODALS
+  Full-screen slide-up: translateY(100%) → translateY(0)
+  Backdrop: blur(20px) saturate(180%)
+  Close button: 32px rounded square
+
+TOAST NOTIFICATIONS
+  Bottom-center positioned
+  Green check icon + success message
+  Auto-dismiss animation
+
+DEMO POPUPS
+  Student demo: Phone frame bezel overlay (portrait, iframe to /student-demo/)
+  Employer demo: Laptop frame bezel overlay (landscape, iframe to /employer-demo/)
+
+
+================================================================================
+9. LANDING PAGE STRUCTURE & COPY
+================================================================================
+
+SECTION ORDER:
+  1. Navigation (floating glass pill)
+  2. Hero (full viewport height)
+  3. Students / Graduates section (tabbed: High School / University / Graduates)
+  4. Student Demo trigger button
+  5. Sign Up / Early Access section (waitlist form)
+  6. Employers section (collapsible — 4 numbered features)
+  7. Employer Demo + Contact CTA
+  8. Footer
+
+HERO SECTION
+  • Full-screen (100svh) with centered content
+  • H1: "Nájdi svoju [rotating word] prácu." / "Find your [rotating word] job."
+  • Subtext with "un" strikethrough wordplay
+  • Dual CTA: "Registruj sa" (primary) + "Zisti viac" (outline)
+  • Below: Animated card carousel showing 5 mock job listings from real Slovak
+    companies (Tatra banka, ESET, Slovnaft, Kia Slovakia, Lidl)
+  • Background: Animated grid canvas with orange flash lines (desktop)
+  • Cursor: Custom orange radial-gradient glow following cursor (desktop)
+
+STUDENT SECTION TABS
+  Tab 1: STREDNÁ ŠKOLA / HIGH SCHOOL
+    Card 1: 🔎 Find your first job — No experience? No problem.
+    Card 2: 📌 Simple & fast — Apply with one click, 3× faster
+    Card 3: ⚡ One-off gigs — Short-term, earn, no strings
+
+  Tab 2: VYSOKÁ ŠKOLA / UNIVERSITY
+    Card 1: 💲 Transparent pay — Exact earnings shown
+    Card 2: 🎓 Internships for your field — AI matching + Tinder swiping
+    Card 3: 💬 All-in-one communication — Messages, interviews, updates
+
+  Tab 3: ABSOLVENTI / GRADUATES
+    Card 1: 🏆 Referrals & badges — Prove your track record
+    Card 2: 🚀 Top positions, highest pay — No "5 years experience" traps
+    Card 3: ✅ Verified companies — Roles selected based on your fit
+
+EMPLOYER SECTION (numbered 01–04)
+  01: AI pre-screening & matching — See only candidates who fit
+  02: Invite from our database — Browse verified candidates
+  03: Analytics & data export — Track everything from dashboard
+  04: AI-powered listing creation — Create a listing in seconds
+
+SIGNUP / EARLY ACCESS SECTION
+  • Counter badge: "5 000+ registrovaných" / "5,000+ registered"
+  • Form fields: Email (required), Phone with country code (optional),
+    User type selector (High school / University / Graduate / Employer)
+  • Consent checkboxes: Privacy policy + Terms (required), Marketing (optional)
+  • App Store + Google Play badges (coming soon)
+  • "Už čoskoro" / "Coming soon" label
+
+FOOTER
+  • Logo with strikethrough
+  • "© 2026 unemployed.sk · Vyrobené na Slovensku 🇸🇰"
+
+
+================================================================================
+10. LEGAL & COMPLIANCE
+================================================================================
+
+PRIVACY POLICY
+  • Operator: unemployed.sk
+  • Effective: 1 April 2026
+  • Data collected: Email (required), Phone (optional), User type, IP (hashed)
+  • Purpose: Early access provision and launch notifications
+  • Legal basis: Voluntary consent (Art. 6(1)(a) GDPR)
+  • No third-party data sharing for marketing
+  • Retention: Max 24 months or until consent withdrawn
+  • Rights: Access, rectification, erasure, portability, withdrawal, complaint
+  • Complaint authority: Slovak Data Protection Authority (dataprotection.gov.sk)
+  • Contact: unemployed.sk@gmail.com
+
+TERMS & CONDITIONS
+  • Waitlist registration creates no contractual entitlement
+  • Users must provide accurate information
+  • Automated registration prohibited
+  • Service provided "as is"
+  • Content is copyright-protected
+  • Governed by Slovak law
+  • Contact: unemployed.sk@gmail.com
+
+COOKIE POLICY
+  • Functional cookies: language, theme preference (always active)
+  • Analytics cookies: optional, declined by default
+  • Consent banner shown on first visit
+
+
+================================================================================
+11. COMPETITIVE POSITIONING
+================================================================================
+
+WHAT MAKES UNEMPLOYED.SK DIFFERENT
+  1. Tinder-style UX       — Swipe to discover jobs (not endless scrolling lists)
+  2. AI matching scores    — Know how well you fit before applying (0–100%)
+  3. AI CV parsing         — Upload CV → instant professional profile
+  4. Transparent pay       — Every listing shows exact pay upfront
+  5. Gen Z–first design    — Mobile-first, dark mode, modern animations
+  6. Bilingual             — Full Slovak + English support (including AI content)
+  7. Verified employers    — No fake listings, no scams
+  8. Entry-level focus     — Built specifically for students and graduates
+  9. Speed                 — Apply with one click, 3× faster than traditional portals
+  10. Made in Slovakia     — Built locally, for the local market
+
+POTENTIAL COMPETITORS IN SLOVAKIA
+  • Profesia.sk — Largest traditional job portal (established, but dated UX)
+  • Brigáda.sk — Part-time/gig focused
+  • Kariéra.sk — Career-focused
+  • LinkedIn — Global, not localized for Gen Z or Slovak students
+  
+  POSITIONING VS COMPETITORS:
+  unemployed.sk is NOT another Profesia.sk. It's a mobile-first, AI-driven
+  experience designed for how Gen Z actually interacts with content — through
+  swiping, not scrolling. Traditional portals are built for seasoned job seekers;
+  unemployed.sk is built for someone looking for their very first paycheck.
+
+
+================================================================================
+12. KEY METRICS & SOCIAL PROOF
+================================================================================
+
+  • 5,000+ pre-registrations on waitlist
+  • Bilingual platform (Slovak + English)
+  • AI match scoring across 5 dimensions
+  • Real-time notifications for both students and employers
+  • Complete GDPR compliance
+  • Made in Slovakia 🇸🇰
+
+
+================================================================================
+13. MARKETING COPY SNIPPETS (READY TO USE)
+================================================================================
+
+SHORT TAGLINES
+  SK: "Od prvej práce až po tvoj dream job."
+  EN: "From your first job to your dream job."
+
+  SK: "Swipni sa k práci."
+  EN: "Swipe your way to work."
+
+  SK: "AI ti nájde prácu, ty len swipuješ."
+  EN: "AI finds your job, you just swipe."
+
+  SK: "Žiadne skúsenosti? Žiadny problém."
+  EN: "No experience? No problem."
+
+  SK: "Transparentný plat. Overené firmy. AI párovanie."
+  EN: "Transparent pay. Verified companies. AI matching."
+
+CTA BUTTONS
+  SK: "Registruj sa" / "Vyskúšaj demo" / "Zisti viac"
+  EN: "Sign up" / "Try the demo" / "Learn more"
+
+EMPLOYER CTA
+  SK: "Kontaktujte sales pre cenník"
+  EN: "Contact sales for pricing"
+
+SOCIAL MEDIA BIOS
+  SK: "Brigády, stáže a plné úväzky pre študentov 🇸🇰 AI párovanie | 
+       Transparentný plat | Overené firmy | unemployed.sk"
+  EN: "Part-time jobs, internships & full-time roles for students 🇸🇰 
+       AI matching | Transparent pay | Verified companies | unemployed.sk"
+
+
+================================================================================
+14. PLATFORM STATUS & ROADMAP
+================================================================================
+
+CURRENT STATUS (May 2026):
+  ✅ Landing page live with waitlist
+  ✅ Student portal functional (/app)
+  ✅ Employer portal functional (/employer)
+  ✅ AI matching engine v3 operational
+  ✅ Bilingual AI content generation
+  ✅ Demo portals available (/student-demo, /employer-demo)
+  ✅ Real-time notifications
+  ✅ 5,000+ waitlist registrations
+
+COMING SOON:
+  📱 Native mobile apps (iOS App Store + Google Play) — teased on landing page
+  🔜 Official public launch
+
+
+================================================================================
+15. CONTENT FORMATTING GUIDE
+================================================================================
+
+WHEN WRITING "unemployed.sk":
+  ✅ Always lowercase: "unemployed.sk"
+  ❌ Never: "Unemployed.sk", "Unemployed.SK", "UNEMPLOYED.SK"
+  ✅ In visual assets: strikethrough on "un" in orange
+
+WHEN REFERENCING THE APP:
+  • Student side: "the app", "student portal", "For You feed"
+  • Employer side: "employer dashboard", "employer portal"
+  • The swiping: "Tinder-style swiping", "swipe to discover", "swipe right to apply"
+  • The matching: "AI matching", "AI match score", "AI-powered matching"
+
+LANGUAGE GUIDELINES:
+  • Default to Slovak for Slovak audience
+  • Mirror all content in English for international reach
+  • Use the "un" strikethrough wordplay wherever possible in visual content
+  • Keep it casual and Gen Z-friendly — avoid formal HR/corporate speak
+
+HASHTAGS (SUGGESTED):
+  #UnemployedSK #NájdiPrácu #FindYourJob #AIJobs #StudentJobs
+  #BrigádyPreŠtudentov #SlovakiaJobs #GenZJobs #SwipeToWork
+  #TransparentPay #VyrobenéNaSlovensku #MadeInSlovakia
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

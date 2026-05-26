@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../contexts';
 import { supabase } from '../supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernDatePicker from './ModernDatePicker';
 import CandidateAvatar from './CandidateAvatar';
+import { getOrCreateConversationForApplication } from '../services/messagingService';
 
 // Helper: parse bilingual JSON strings {sk,en} — returns the right language
 function biLang(val, lang) {
@@ -55,6 +57,7 @@ const ELIG_DISPLAY = {
 
 const CandidateCard = ({ candidate, onInvite }) => {
   const { t, lang } = useI18n();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showCV, setShowCV] = useState(false);
@@ -63,6 +66,16 @@ const CandidateCard = ({ candidate, onInvite }) => {
   const [localSuccess, setLocalSuccess] = useState(null);
   const [cvUrl, setCvUrl] = useState(null);
   const [fullscreenCV, setFullscreenCV] = useState(false);
+
+  const handleOpenChat = async (e) => {
+    e.stopPropagation();
+    try {
+      const convId = await getOrCreateConversationForApplication(candidate.id);
+      navigate(`/messages`, { state: { activeConvId: convId } });
+    } catch (err) {
+      console.error('Failed to open chat:', err);
+    }
+  };
 
 
   const profile = candidate.student_profile || {};
@@ -575,37 +588,55 @@ const CandidateCard = ({ candidate, onInvite }) => {
                             </div>
                           </motion.div>
                         ) : (
-                          <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
-                            <motion.button 
-                              whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34, 197, 94, 0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', borderColor: 'transparent' }}
-                              whileTap={{ scale: 0.96 }}
-                              onClick={() => setConfirmHire(true)}
-                              style={{
-                                flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid #22c55e', 
-                                background: 'rgba(34,197,94,0.06)', color: '#22c55e', cursor: 'pointer', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                                fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-                              }}
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                              <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Prijať</span>
-                            </motion.button>
+                          <>
+                            <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '12px' }}>
+                              <motion.button 
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.96 }}
+                                onClick={handleOpenChat}
+                                style={{
+                                  flex: 1, padding: '14px 20px', borderRadius: '12px', border: '1.5px solid var(--accent)', 
+                                  background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', 
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                  fontFamily: 'var(--font-body)', fontWeight: '700', fontSize: '13px',
+                                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                              >
+                                💬 {lang === 'sk' ? 'Kontaktovať (Chat)' : 'Contact (Chat)'}
+                              </motion.button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                              <motion.button 
+                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34, 197, 94, 0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', borderColor: 'transparent' }}
+                                whileTap={{ scale: 0.96 }}
+                                onClick={() => setConfirmHire(true)}
+                                style={{
+                                  flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid #22c55e', 
+                                  background: 'rgba(34,197,94,0.06)', color: '#22c55e', cursor: 'pointer', 
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                  fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Prijať</span>
+                              </motion.button>
 
-                            <motion.button 
-                              whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239, 68, 68, 0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444' }}
-                              whileTap={{ scale: 0.96 }}
-                              onClick={() => setConfirmReject(true)}
-                              style={{
-                                flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid var(--border)', 
-                                background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                                fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-                              }}
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                              <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Odmietnuť</span>
-                            </motion.button>
-                          </div>
+                              <motion.button 
+                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239, 68, 68, 0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444' }}
+                                whileTap={{ scale: 0.96 }}
+                                onClick={() => setConfirmReject(true)}
+                                style={{
+                                  flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid var(--border)', 
+                                  background: 'var(--bg-card)', color: 'var(--text-muted)', cursor: 'pointer', 
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                  fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.3px' }}>Odmietnuť</span>
+                              </motion.button>
+                            </div>
+                          </>
                         )}
                       </AnimatePresence>
                     </>

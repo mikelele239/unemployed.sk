@@ -5,14 +5,26 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModernDatePicker from '../components/ModernDatePicker';
 import CandidateAvatar from '../components/CandidateAvatar';
+import { getOrCreateConversationForApplication } from '../services/messagingService';
 
 const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateStatus }) => {
+  const navigate = useNavigate();
   const [isConfirming, setIsConfirming] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [applicants, setApplicants] = useState(null);
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [showInterviewPicker, setShowInterviewPicker] = useState(false);
+
+  const handleOpenChat = async (applicant, e) => {
+    e.stopPropagation();
+    try {
+      const convId = await getOrCreateConversationForApplication(applicant.id);
+      navigate(`/messages`, { state: { activeConvId: convId } });
+    } catch (err) {
+      console.error('Failed to open chat:', err);
+    }
+  };
   const title = l.title || '—';
   const status = l.status || 'Active';
   const workModel = l.work_model || l.workModel || 'On-site';
@@ -406,7 +418,21 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               })()}
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={(e) => handleOpenChat(selectedApplicant, e)}
+                  style={{ 
+                    flex: '1 1 auto', padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--accent)', 
+                    background: 'var(--accent-light)', color: 'var(--accent)', 
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                  💬 {lang === 'sk' ? 'Kontaktovať' : 'Contact'}
+                </motion.button>
+
                 {/* Interview Date Picker - Fixed Overlay */}
                 <AnimatePresence>
                   {showInterviewPicker && (

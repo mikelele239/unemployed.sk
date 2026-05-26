@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
@@ -12,6 +12,13 @@ export default function Inquiry() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 480);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,10 +61,10 @@ export default function Inquiry() {
 
   if (success) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 20 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: isMobile ? 12 : 20, overflowY: 'auto' }}>
         <motion.div
            variants={containerVariants} initial="hidden" animate="visible"
-           style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: '48px 40px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}
+           style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: isMobile ? '32px 20px' : '48px 40px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}
         >
           <div style={{ fontSize: 48, marginBottom: 20 }}>🎉</div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>Účet bol vytvorený!</h2>
@@ -71,10 +78,10 @@ export default function Inquiry() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 20 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: isMobile ? 12 : 20, overflowY: 'auto' }}>
         <motion.div
           variants={containerVariants} initial="hidden" animate="visible"
-          style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: '48px 40px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', position: 'relative', overflow: 'hidden' }}
+          style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: isMobile ? '32px 20px' : '48px 40px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', position: 'relative', overflow: 'hidden' }}
         >
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 60, height: 60, borderRadius: 16, background: 'var(--accent)', fontSize: 28, marginBottom: 20, boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>

@@ -14,11 +14,23 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 import { useTranslation } from '../I18nContext';
+import { getOrCreateJobQuestionConversation } from '../services/messagingService';
 
 export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  
   if (!isOpen || !job) return null;
+
+  const handleAskQuestion = async () => {
+    try {
+      const convId = await getOrCreateJobQuestionConversation(job.id || job.job_id);
+      onClose();
+      navigate(`/messages`, { state: { activeConvId: convId } });
+    } catch (err) {
+      console.error('Failed to start conversation:', err);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -171,12 +183,31 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
             )}
           </div>
 
-          <div style={{ padding: '16px 20px calc(16px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+          <div style={{ padding: '16px 20px calc(16px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', gap: 12 }}>
+            <button 
+              onClick={handleAskQuestion}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: 12,
+                background: 'var(--bg-card)',
+                color: 'var(--text)',
+                border: '1px solid var(--border)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
+              }}
+            >
+              💬 {t('detail.askQuestion') || 'Opýtať sa'}
+            </button>
             <button 
               onClick={() => onApply(job)}
               disabled={hasApplied}
               className="btn-primary"
-              style={{ width: '100%', padding: '16px', borderRadius: 12, opacity: hasApplied ? 0.7 : 1, background: hasApplied ? 'var(--bg-card)' : 'var(--accent)', color: hasApplied ? 'var(--text-muted)' : '#fff', border: hasApplied ? '1px solid var(--border)' : 'none' }}
+              style={{ flex: 2, padding: '16px', borderRadius: 12, opacity: hasApplied ? 0.7 : 1, background: hasApplied ? 'var(--bg-card)' : 'var(--accent)', color: hasApplied ? 'var(--text-muted)' : '#fff', border: hasApplied ? '1px solid var(--border)' : 'none' }}
             >
               {hasApplied ? t('detail.applied') : t('detail.apply')}
             </button>

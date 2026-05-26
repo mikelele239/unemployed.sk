@@ -50,6 +50,86 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 const supabase = createClient(supabaseUrl || '', supabaseServiceKey || '');
 
+let useDedicatedMessagesTable = false;
+let lastDetectTime = 0;
+
+async function checkUseDedicatedMessagesTable() {
+  const now = Date.now();
+  if (now - lastDetectTime < 10000) { // cache detection for 10 seconds
+    return useDedicatedMessagesTable;
+  }
+  try {
+    const { error } = await supabase.from('application_messages').select('id').limit(1);
+    useDedicatedMessagesTable = !error;
+    lastDetectTime = now;
+  } catch (err) {
+    useDedicatedMessagesTable = false;
+    lastDetectTime = now;
+  }
+  return useDedicatedMessagesTable;
+}
+
+async function getConversationActivity(appId, userId, appCreatedAt) {
+  const hasDedicated = await checkUseDedicatedMessagesTable();
+  let latestMsg = null;
+  let unreadCount = 0;
+  let updatedAt = appCreatedAt;
+
+  if (hasDedicated) {
+    const { data: dbMsgs } = await supabase
+      .from('application_messages')
+      .select('*')
+      .eq('application_id', appId)
+      .order('created_at', { ascending: false });
+
+    unreadCount = (dbMsgs || []).filter(m => m.sender_id !== userId && !m.read_at).length;
+    if (dbMsgs && dbMsgs.length > 0) {
+      const m = dbMsgs[0];
+      latestMsg = {
+        id: m.id,
+        body: m.body,
+        message_type: m.message_type,
+        created_at: m.created_at
+      };
+      updatedAt = m.created_at;
+    } else {
+      latestMsg = {
+        id: 'initial-' + appId,
+        body: 'Prihláška odoslaná.',
+        message_type: 'system',
+        created_at: appCreatedAt
+      };
+    }
+  } else {
+    const { data: notifs } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('related_entity_id', appId)
+      .order('created_at', { ascending: false });
+
+    unreadCount = (notifs || []).filter(n => n.user_id === userId && !n.read).length;
+    if (notifs && notifs.length > 0) {
+      const n = notifs[0];
+      latestMsg = {
+        id: n.id,
+        body: n.message || n.title,
+        message_type: n.type === 'general' ? 'text' : 'system',
+        created_at: n.created_at
+      };
+      updatedAt = n.created_at;
+    } else {
+      latestMsg = {
+        id: 'initial-' + appId,
+        body: 'Prihláška odoslaná.',
+        message_type: 'system',
+        created_at: appCreatedAt
+      };
+    }
+  }
+
+  return { latestMsg, unreadCount, updatedAt };
+}
+
 // ── Shared Helpers ─────────────────────────────────────────────────────────────
 function hashIp(ip) {
   return createHash('sha256').update(ip || '').digest('hex');
@@ -59,15 +139,6 @@ async function getUserFromToken(req) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return null;
   const token = auth.replace('Bearer ', '');
-  
-  // Helper: decode JWT payload without verification (fallback for network issues)
-  const decodeJWT = () => {
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      if (payload.sub) return { id: payload.sub, email: payload.email || '' };
-    } catch {}
-    return null;
-  };
 
   try {
     // Race the Supabase call against a 3-second timeout
@@ -76,11 +147,11 @@ async function getUserFromToken(req) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
     ]);
     const { data: { user }, error } = result;
-    if (error || !user) return decodeJWT();
+    if (error || !user) return null;
     return user;
-  } catch {
-    // Network error or timeout — fall back to JWT decode
-    return decodeJWT();
+  } catch (err) {
+    console.error('[getUserFromToken] Auth verification failed:', err.message);
+    return null;
   }
 }
 
@@ -93,6 +164,14 @@ function rateLimit(req, res, next) {
   const now = Date.now();
   const entry = rateMap.get(ip);
   if (!entry || now > entry.resetAt) {
+    // Periodically prune expired entries (amortized cleanup to prevent memory exhaustion)
+    if (rateMap.size > 1000) {
+      for (const [key, value] of rateMap.entries()) {
+        if (now > value.resetAt) {
+          rateMap.delete(key);
+        }
+      }
+    }
     rateMap.set(ip, { count: 1, resetAt: now + WINDOW_MS });
     return next();
   }
@@ -296,7 +375,11 @@ app.post('/api/student/profile', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    const { first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename, avatar_url } = req.body;
+    const { 
+      first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename, avatar_url,
+      work_model_preference, languages_spoken, availability_hours, salary_expectation 
+    } = req.body;
+
     const upsertData = {
       user_id: user.id,
       email: user.email,
@@ -310,8 +393,86 @@ app.post('/api/student/profile', async (req, res) => {
     if (cv_id !== undefined) upsertData.cv_id = cv_id;
     if (original_filename !== undefined) upsertData.original_filename = original_filename;
     if (avatar_url !== undefined) upsertData.avatar_url = avatar_url;
+    
+    // Save to standard profiles
     const { data, error } = await supabase.from('profiles').upsert(upsertData, { onConflict: 'user_id' }).select().single();
     if (error) return res.status(500).json({ error: error.message });
+
+    // Parse and map fields for ai_profiles table
+    let eduLevel = 'unknown';
+    if (education) {
+      const eduLower = education.toLowerCase();
+      if (eduLower.includes('stredn') || eduLower.includes('high')) {
+        eduLevel = 'high_school';
+      } else if (eduLower.includes('vysok') || eduLower.includes('university') || eduLower.includes('bachelor')) {
+        eduLevel = 'bachelors';
+      } else if (eduLower.includes('absolvent') || eduLower.includes('graduate') || eduLower.includes('master')) {
+        eduLevel = 'masters';
+      }
+    }
+
+    let dbWorkModel = null;
+    if (work_model_preference) {
+      const wmLower = work_model_preference.toLowerCase();
+      if (wmLower.includes('remote')) dbWorkModel = 'remote';
+      else if (wmLower.includes('hybrid')) dbWorkModel = 'hybrid';
+      else if (wmLower.includes('site') || wmLower.includes('mieste')) dbWorkModel = 'on-site';
+    }
+
+    let preferredJobTypes = [];
+    if (Array.isArray(job_preferences)) {
+      preferredJobTypes = job_preferences.map(pref => {
+        const pLower = pref.toLowerCase();
+        if (pLower.includes('brigád') || pLower.includes('part')) return 'part-time';
+        if (pLower.includes('stáž') || pLower.includes('intern')) return 'internship';
+        if (pLower.includes('pln') || pLower.includes('full')) return 'full-time';
+        return null;
+      }).filter(Boolean);
+    }
+
+    let dbLanguages = [];
+    if (Array.isArray(languages_spoken)) {
+      dbLanguages = languages_spoken.map(langName => ({
+        lang: langName,
+        level: langName === 'Slovenčina' || langName === 'Čeština' ? 'native' : 'professional'
+      }));
+    }
+
+    const aiProfileUpsert = {
+      user_id: user.id,
+      full_name: `${first_name || ''} ${last_name || ''}`.trim() || user.email,
+      email: user.email,
+      location: location || '',
+      hard_skills: skills || [],
+      education_level: eduLevel,
+      preferred_job_types: preferredJobTypes,
+      preferred_work_models: dbWorkModel ? [dbWorkModel] : [],
+      work_mode_preference: dbWorkModel,
+      languages: dbLanguages,
+      availability_hours: availability_hours ? parseInt(availability_hours) : null,
+      salary_expectation: salary_expectation ? parseInt(salary_expectation) : null,
+      parse_status: 'ready',
+      extraction_source: 'manual',
+      updated_at: new Date().toISOString(),
+    };
+
+    // Upsert into ai_profiles
+    const { error: aiErr } = await supabase.from('ai_profiles').upsert(aiProfileUpsert, { onConflict: 'user_id' });
+    if (aiErr) {
+      console.error('[Student Profile API] Error upserting ai_profile:', aiErr.message);
+    }
+
+    // Recalculate matching scores immediately
+    try {
+      const aiMatchingModule = require('./routes/ai-matching');
+      if (aiMatchingModule.helpers && typeof aiMatchingModule.helpers.recalculateForStudent === 'function') {
+        const matchCount = await aiMatchingModule.helpers.recalculateForStudent(user.id);
+        console.log('[Student Profile API] Match scores recalculated for student:', user.id, 'Count:', matchCount);
+      }
+    } catch (matchErr) {
+      console.warn('[Student Profile API] Match recalc error:', matchErr.message);
+    }
+
     res.json({ profile: data });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -339,6 +500,41 @@ app.get('/api/employer/cv/:cvId/signed-url', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     const { cvId } = req.params;
+    const candidateId = cvId.split('/')[0];
+
+    let isAuthorized = false;
+    if (candidateId === user.id) {
+      isAuthorized = true;
+    } else {
+      // Get the employer's jobs to verify applicants
+      const { data: jobs } = await supabase.from('jobs').select('id').eq('employer_id', user.id);
+      const jobIds = (jobs || []).map(j => j.id);
+
+      if (jobIds.length > 0) {
+        const { data: appData } = await supabase
+          .from('applications')
+          .select('id')
+          .eq('candidate_id', candidateId)
+          .or(`employer_id.eq.${user.id},job_id.in.(${jobIds.join(',')})`)
+          .limit(1)
+          .maybeSingle();
+        if (appData) isAuthorized = true;
+      } else {
+        const { data: appData } = await supabase
+          .from('applications')
+          .select('id')
+          .eq('candidate_id', candidateId)
+          .eq('employer_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        if (appData) isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Unauthorized: You do not have access to this candidate\'s CV.' });
+    }
+
     const { data, error } = await supabase.storage.from('cvs').createSignedUrl(cvId, 3600);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ url: data.signedUrl });
@@ -410,6 +606,34 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Verify ownership of this candidate application
+    const { data: appData, error: appErr } = await supabase
+      .from('applications')
+      .select('employer_id, job_id')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (appErr || !appData) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    let isAuthorized = false;
+    if (appData.employer_id) {
+      isAuthorized = (appData.employer_id === user.id);
+    } else if (appData.job_id) {
+      const { data: jobData } = await supabase
+        .from('jobs')
+        .select('employer_id')
+        .eq('id', appData.job_id)
+        .maybeSingle();
+      isAuthorized = (jobData && jobData.employer_id === user.id);
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Unauthorized: This candidate application does not belong to your job postings.' });
+    }
+
     const { status, interview_dates } = req.body;
     const updatePayload = {};
     if (status) updatePayload.status = status;
@@ -420,41 +644,6 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
       .eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
 
-    // ── Insert notification for the candidate ──
-    try {
-      const { data: app } = await supabase
-        .from('applications')
-        .select('candidate_id, job_id')
-        .eq('id', req.params.id)
-        .single();
-
-      // Get the job title from the jobs table
-      let jobTitle = 'ponuka';
-      if (app?.job_id) {
-        const { data: job } = await supabase.from('jobs').select('title').eq('id', app.job_id).single();
-        if (job?.title) jobTitle = job.title;
-      }
-
-      if (app?.candidate_id && status) {
-        const notifMap = {
-          'Interview': { type: 'interview_scheduled', title: 'Pozvánka na pohovor', message: `Boli ste pozvaný na pohovor pre pozíciu "${jobTitle}".` },
-          'Interview-Confirmed': { type: 'interview_confirmed', title: 'Pohovor potvrdený', message: `Váš pohovor pre "${jobTitle}" bol potvrdený.` },
-          'Hired': { type: 'hired', title: 'Gratulujeme! 🎉', message: `Boli ste prijatý na pozíciu "${jobTitle}"!` },
-          'Rejected': { type: 'rejected', title: 'Odpoveď na prihlášku', message: `Vaša prihláška na "${jobTitle}" nebola úspešná.` },
-        };
-        const notif = notifMap[status];
-        if (notif) {
-          await supabase.from('notifications').insert([{
-            user_id: app.candidate_id,
-            type: notif.type,
-            title: notif.title,
-            message: notif.message,
-          }]);
-        }
-      }
-    } catch (notifErr) {
-      console.warn('Notification insert non-fatal error:', notifErr.message);
-    }
 
     res.json({ success: true });
   } catch (err) {
@@ -1192,7 +1381,7 @@ app.post('/api/notifications/application-received', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { job_id, job_title } = req.body;
+    const { job_id, job_title, application_id } = req.body;
     if (!job_id) return res.status(400).json({ error: 'job_id is required' });
 
     // Look up the job's employer
@@ -1237,6 +1426,7 @@ app.post('/api/notifications/application-received', async (req, res) => {
       type: 'application_received',
       title: `Nová prihláška: ${studentName}${matchTag}`,
       message: `${studentName} sa prihlásil/a na pozíciu "${title}"${matchTag ? ' ' + matchTag : ''}`,
+      related_entity_id: application_id || null,
       read: false,
     });
 
@@ -1290,6 +1480,7 @@ app.post('/api/notifications/status-changed', async (req, res) => {
       type,
       title,
       message,
+      related_entity_id: application_id,
       read: false,
     });
 
@@ -1301,6 +1492,609 @@ app.post('/api/notifications/status-changed', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[Notifications] status-changed error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Virtual Conversations & Messaging API (using applications + notifications) ──
+app.get('/api/conversations', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Determine role (candidate or employer)
+    const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle();
+    const isCandidate = roleData ? roleData.role === 'candidate' : true;
+
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+    const conversations = [];
+
+    if (isCandidate) {
+      // 1. Student / Candidate
+      const { data: apps, error: appsErr } = await supabase
+        .from('applications')
+        .select('id, job_id, status, created_at, employer_id, selected_date, interview_dates')
+        .eq('candidate_id', user.id);
+
+      if (appsErr) throw appsErr;
+
+      const appIds = (apps || []).map(a => a.id);
+      let allMsgsMap = {};
+      let allNotifsMap = {};
+
+      if (appIds.length > 0) {
+        if (hasDedicated) {
+          const { data: dbMsgs } = await supabase
+            .from('application_messages')
+            .select('application_id, sender_id, read_at, message_type, body, created_at')
+            .in('application_id', appIds)
+            .order('created_at', { ascending: false });
+          if (dbMsgs) {
+            for (const m of dbMsgs) {
+              if (!allMsgsMap[m.application_id]) allMsgsMap[m.application_id] = [];
+              allMsgsMap[m.application_id].push(m);
+            }
+          }
+        } else {
+          const { data: notifs } = await supabase
+            .from('notifications')
+            .select('related_entity_id, user_id, read, type, message, title, created_at')
+            .in('related_entity_id', appIds)
+            .order('created_at', { ascending: false });
+          if (notifs) {
+            for (const n of notifs) {
+              if (!allNotifsMap[n.related_entity_id]) allNotifsMap[n.related_entity_id] = [];
+              allNotifsMap[n.related_entity_id].push(n);
+            }
+          }
+        }
+      }
+
+      // Batch load jobs
+      const jobIds = [...new Set((apps || []).map(a => a.job_id).filter(Boolean))];
+      let jobsMap = {};
+      if (jobIds.length > 0) {
+        const { data: dbJobs } = await supabase
+          .from('jobs')
+          .select('id, title, company, employer_id')
+          .in('id', jobIds);
+        if (dbJobs) {
+          for (const j of dbJobs) {
+            jobsMap[j.id] = j;
+          }
+        }
+      }
+
+      // Batch load employers
+      const empIds = [...new Set([
+        ...(apps || []).map(a => a.employer_id),
+        ...Object.values(jobsMap).map(j => j.employer_id)
+      ].filter(Boolean))];
+      let employersMap = {};
+      if (empIds.length > 0) {
+        const { data: dbEmps } = await supabase
+          .from('employers')
+          .select('id, name, logo_url')
+          .in('id', empIds);
+        if (dbEmps) {
+          for (const e of dbEmps) {
+            employersMap[e.id] = e;
+          }
+        }
+      }
+
+      for (const app of (apps || [])) {
+        const job = jobsMap[app.job_id];
+        const empId = app.employer_id || job?.employer_id;
+        const employer = empId ? employersMap[empId] : null;
+
+        let latestMsg = null;
+        let unreadCount = 0;
+        let updatedAt = app.created_at;
+
+        if (hasDedicated) {
+          const dbMsgs = allMsgsMap[app.id] || [];
+          unreadCount = dbMsgs.filter(m => m.sender_id !== user.id && !m.read_at).length;
+          if (dbMsgs.length > 0) {
+            const m = dbMsgs[0];
+            latestMsg = {
+              id: m.id,
+              body: m.body,
+              message_type: m.message_type,
+              created_at: m.created_at
+            };
+            updatedAt = m.created_at;
+          } else {
+            latestMsg = {
+              id: 'initial-' + app.id,
+              body: 'Prihláška odoslaná.',
+              message_type: 'system',
+              created_at: app.created_at
+            };
+          }
+        } else {
+          const notifs = allNotifsMap[app.id] || [];
+          unreadCount = notifs.filter(n => n.user_id === user.id && !n.read).length;
+          if (notifs.length > 0) {
+            const n = notifs[0];
+            latestMsg = {
+              id: n.id,
+              body: n.message,
+              message_type: n.type === 'chat_message' ? 'text' : 'system',
+              created_at: n.created_at
+            };
+            updatedAt = n.created_at;
+          } else {
+            latestMsg = {
+              id: 'initial-' + app.id,
+              body: 'Prihláška odoslaná.',
+              message_type: 'system',
+              created_at: app.created_at
+            };
+          }
+        }
+
+        conversations.push({
+          id: app.id,
+          applicationId: app.id,
+          jobId: app.job_id,
+          employerId: empId,
+          employer: employer || { id: empId, name: job?.company || 'Zamestnávateľ', logo_url: null },
+          job: job || { id: app.job_id, title: 'Pracovná ponuka' },
+          status: app.status,
+          application: app,
+          lastMessage: latestMsg,
+          unreadCount: unreadCount,
+          updatedAt: updatedAt
+        });
+      }
+    } else {
+      // 2. Employer
+      const { data: member } = await supabase.from('employer_members').select('employer_id').eq('user_id', user.id).maybeSingle();
+      let employerId = member?.employer_id;
+      if (!employerId) {
+        // Fallback: check if the user.id is directly an employer_id in the employers table
+        const { data: emp } = await supabase.from('employers').select('id').eq('id', user.id).maybeSingle();
+        if (emp) {
+          employerId = emp.id;
+        }
+      }
+      if (!employerId) return res.json([]);
+
+      // Fetch all jobs for this employer
+      const { data: jobs } = await supabase.from('jobs').select('id, title, company').eq('employer_id', employerId);
+      
+      let jobsMap = {};
+      if (jobs) {
+        for (const j of jobs) {
+          jobsMap[j.id] = j;
+        }
+      }
+      const jobIds = Object.keys(jobsMap);
+
+      let appsQuery = supabase.from('applications').select('id, job_id, candidate_id, status, created_at, student_name, student_email, selected_date, interview_dates');
+      if (jobIds.length > 0) {
+        appsQuery = appsQuery.or(`employer_id.eq.${employerId},job_id.in.(${jobIds.join(',')})`);
+      } else {
+        appsQuery = appsQuery.eq('employer_id', employerId);
+      }
+      
+      const { data: apps, error: appsErr } = await appsQuery;
+      if (appsErr) throw appsErr;
+
+      const appIds = (apps || []).map(a => a.id);
+      let allMsgsMap = {};
+      let allNotifsMap = {};
+
+      if (appIds.length > 0) {
+        if (hasDedicated) {
+          const { data: dbMsgs } = await supabase
+            .from('application_messages')
+            .select('application_id, sender_id, read_at, message_type, body, created_at')
+            .in('application_id', appIds)
+            .order('created_at', { ascending: false });
+          if (dbMsgs) {
+            for (const m of dbMsgs) {
+              if (!allMsgsMap[m.application_id]) allMsgsMap[m.application_id] = [];
+              allMsgsMap[m.application_id].push(m);
+            }
+          }
+        } else {
+          const { data: notifs } = await supabase
+            .from('notifications')
+            .select('related_entity_id, user_id, read, type, message, title, created_at')
+            .in('related_entity_id', appIds)
+            .order('created_at', { ascending: false });
+          if (notifs) {
+            for (const n of notifs) {
+              if (!allNotifsMap[n.related_entity_id]) allNotifsMap[n.related_entity_id] = [];
+              allNotifsMap[n.related_entity_id].push(n);
+            }
+          }
+        }
+      }
+
+      // Batch load any missing jobs (just in case)
+      const appJobIds = [...new Set((apps || []).map(a => a.job_id).filter(Boolean))];
+      const missingJobIds = appJobIds.filter(id => !jobsMap[id]);
+      if (missingJobIds.length > 0) {
+        const { data: extraJobs } = await supabase
+          .from('jobs')
+          .select('id, title, company')
+          .in('id', missingJobIds);
+        if (extraJobs) {
+          for (const j of extraJobs) {
+            jobsMap[j.id] = j;
+          }
+        }
+      }
+
+      // Batch load profiles
+      const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
+      let profilesMap = {};
+      if (candidateIds.length > 0) {
+        const { data: dbProfiles } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, avatar_url')
+          .in('user_id', candidateIds);
+        if (dbProfiles) {
+          for (const p of dbProfiles) {
+            profilesMap[p.user_id] = p;
+          }
+        }
+      }
+
+      for (const app of (apps || [])) {
+        const job = jobsMap[app.job_id];
+        const profile = profilesMap[app.candidate_id];
+
+        let latestMsg = null;
+        let unreadCount = 0;
+        let updatedAt = app.created_at;
+
+        if (hasDedicated) {
+          const dbMsgs = allMsgsMap[app.id] || [];
+          unreadCount = dbMsgs.filter(m => m.sender_id !== user.id && !m.read_at).length;
+          if (dbMsgs.length > 0) {
+            const m = dbMsgs[0];
+            latestMsg = {
+              id: m.id,
+              body: m.body,
+              message_type: m.message_type,
+              created_at: m.created_at
+            };
+            updatedAt = m.created_at;
+          } else {
+            latestMsg = {
+              id: 'initial-' + app.id,
+              body: 'Prihláška odoslaná.',
+              message_type: 'system',
+              created_at: app.created_at
+            };
+          }
+        } else {
+          const notifs = allNotifsMap[app.id] || [];
+          unreadCount = notifs.filter(n => n.user_id === user.id && !n.read).length;
+          if (notifs.length > 0) {
+            const n = notifs[0];
+            latestMsg = {
+              id: n.id,
+              body: n.message,
+              message_type: n.type === 'chat_message' ? 'text' : 'system',
+              created_at: n.created_at
+            };
+            updatedAt = n.created_at;
+          } else {
+            latestMsg = {
+              id: 'initial-' + app.id,
+              body: 'Prihláška odoslaná.',
+              message_type: 'system',
+              created_at: app.created_at
+            };
+          }
+        }
+
+        const candName = profile
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+          : app.student_name || 'Kandidát';
+
+        conversations.push({
+          id: app.id,
+          applicationId: app.id,
+          jobId: app.job_id,
+          studentId: app.candidate_id,
+          student: {
+            first_name: profile?.first_name || app.student_name?.split(' ')[0] || 'Kandidát',
+            last_name: profile?.last_name || app.student_name?.split(' ')[1] || '',
+            email: app.student_email,
+            avatar_url: profile?.avatar_url
+          },
+          candidateName: candName || 'Kandidát',
+          candidateEmail: app.student_email,
+          candidateAvatar: profile?.avatar_url,
+          application: app,
+          job: job || { id: app.job_id, title: 'Pracovná ponuka' },
+          status: app.status,
+          lastMessage: latestMsg,
+          unreadCount: unreadCount,
+          updatedAt: updatedAt
+        });
+      }
+    }
+
+    // Sort by latest activity
+    conversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    res.json(conversations);
+  } catch (err) {
+    console.error('[Conversations] GET error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/conversations/:id/messages', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const appId = req.params.id;
+
+    // Fetch application to verify access
+    const { data: app, error: appErr } = await supabase.from('applications').select('*').eq('id', appId).maybeSingle();
+    if (appErr || !app) return res.status(404).json({ error: 'Application not found' });
+
+    // Verify user is either student or employer member
+    let hasAccess = app.candidate_id === user.id;
+    if (!hasAccess) {
+      const { data: member } = await supabase.from('employer_members').select('employer_id').eq('user_id', user.id).maybeSingle();
+      let employerId = member?.employer_id;
+      if (!employerId) {
+        const { data: emp } = await supabase.from('employers').select('id').eq('id', user.id).maybeSingle();
+        if (emp) employerId = emp.id;
+      }
+
+      if (employerId) {
+        // Get job details to match employer_id
+        const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', app.job_id).maybeSingle();
+        if ((job && job.employer_id === employerId) || app.employer_id === employerId) {
+          hasAccess = true;
+        }
+      }
+    }
+
+    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+
+    const messages = [];
+
+    // Prepend the initial application submission message
+    messages.push({
+      id: 'initial-' + appId,
+      conversation_id: appId,
+      sender_id: null, // system message
+      message_type: 'system',
+      body: 'Prihláška odoslaná.',
+      created_at: app.created_at
+    });
+
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+
+    if (hasDedicated) {
+      // 1. Fetch from application_messages
+      const { data: dbMsgs, error: dbMsgsErr } = await supabase
+        .from('application_messages')
+        .select('*')
+        .eq('application_id', appId)
+        .order('created_at', { ascending: true });
+
+      if (dbMsgsErr) throw dbMsgsErr;
+
+      for (const m of (dbMsgs || [])) {
+        messages.push({
+          id: m.id,
+          conversation_id: appId,
+          sender_id: m.sender_id === user.id ? user.id : (m.sender_id ? 'other' : null),
+          message_type: m.message_type,
+          body: m.body,
+          created_at: m.created_at
+        });
+      }
+    } else {
+      // 2. Fetch from notifications (fallback virtual mode)
+      const { data: notifs, error: notifsErr } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('related_entity_id', appId)
+        .order('created_at', { ascending: true });
+
+      if (notifsErr) throw notifsErr;
+
+      for (const n of (notifs || [])) {
+        // Map sender based on user_id (recipient) of notification
+        const senderId = n.user_id === user.id ? 'other' : user.id;
+
+        messages.push({
+          id: n.id,
+          conversation_id: appId,
+          sender_id: senderId,
+          message_type: n.type === 'general' ? 'text' : 'system',
+          body: n.message || n.title,
+          created_at: n.created_at
+        });
+      }
+    }
+
+    res.json(messages);
+  } catch (err) {
+    console.error('[Messages] GET error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/conversations/:id/messages', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const appId = req.params.id;
+    const { body } = req.body;
+    if (!body || !body.trim()) return res.status(400).json({ error: 'Message body required' });
+
+    // Fetch application
+    const { data: app, error: appErr } = await supabase.from('applications').select('*').eq('id', appId).maybeSingle();
+    if (appErr || !app) return res.status(404).json({ error: 'Application not found' });
+
+    // Verify user has access to this conversation/application
+    let hasAccess = app.candidate_id === user.id;
+    if (!hasAccess) {
+      const { data: member } = await supabase.from('employer_members').select('employer_id').eq('user_id', user.id).maybeSingle();
+      let employerId = member?.employer_id;
+      if (!employerId) {
+        const { data: emp } = await supabase.from('employers').select('id').eq('id', user.id).maybeSingle();
+        if (emp) employerId = emp.id;
+      }
+
+      if (employerId) {
+        const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', app.job_id).maybeSingle();
+        if ((job && job.employer_id === employerId) || app.employer_id === employerId) {
+          hasAccess = true;
+        }
+      }
+    }
+
+    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+
+    // Determine recipient and sender name
+    let recipientId = null;
+    let senderName = '';
+
+    if (app.candidate_id === user.id) {
+      // Sender is Student, Recipient is Employer
+      senderName = app.student_name || 'Kandidát';
+      const empId = app.employer_id;
+      if (empId) {
+        const { data: member } = await supabase.from('employer_members').select('user_id').eq('employer_id', empId).limit(1).maybeSingle();
+        recipientId = member?.user_id || empId;
+      }
+      if (!recipientId) {
+        // Fallback: get employer member via job
+        const { data: job } = await supabase.from('jobs').select('employer_id').eq('id', app.job_id).maybeSingle();
+        if (job?.employer_id) {
+          const { data: member } = await supabase.from('employer_members').select('user_id').eq('employer_id', job.employer_id).limit(1).maybeSingle();
+          recipientId = member?.user_id || job.employer_id;
+        }
+      }
+    } else {
+      // Sender is Employer, Recipient is Student
+      recipientId = app.candidate_id;
+      const { data: job } = await supabase.from('jobs').select('company').eq('id', app.job_id).maybeSingle();
+      senderName = job?.company || 'Zamestnávateľ';
+    }
+
+    if (!recipientId) return res.status(400).json({ error: 'Recipient not found' });
+
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+
+    if (hasDedicated) {
+      // 1. Insert into application_messages
+      const { data: msg, error: insertErr } = await supabase
+        .from('application_messages')
+        .insert({
+          application_id: appId,
+          sender_id: user.id,
+          body: body.trim(),
+          message_type: 'text'
+        })
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      // 2. Insert notification (bell update)
+      try {
+        await supabase.from('notifications').insert({
+          user_id: recipientId,
+          type: 'general',
+          title: senderName,
+          message: body.trim(),
+          related_entity_id: appId,
+          read: false
+        });
+      } catch (e) {
+        console.warn('Silent warning: Failed to insert message notification bell:', e.message);
+      }
+
+      res.json({
+        id: msg.id,
+        conversation_id: appId,
+        sender_id: user.id,
+        message_type: 'text',
+        body: msg.body,
+        created_at: msg.created_at
+      });
+    } else {
+      // Fallback: Insert notification
+      const { data: notif, error: insertErr } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: recipientId,
+          type: 'general',
+          title: senderName,
+          message: body.trim(),
+          related_entity_id: appId,
+          read: false
+        })
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      // Return the formatted message
+      res.json({
+        id: notif.id,
+        conversation_id: appId,
+        sender_id: user.id,
+        message_type: 'text',
+        body: notif.message,
+        created_at: notif.created_at
+      });
+    }
+  } catch (err) {
+    console.error('[Messages] POST error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/conversations/:id/read', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const appId = req.params.id;
+
+    // Mark notifications for this application as read for current user
+    const { error: notifErr } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('related_entity_id', appId)
+      .eq('user_id', user.id);
+
+    if (notifErr) console.warn('Warning marking notifications as read:', notifErr.message);
+
+    // If using dedicated messages, mark messages as read
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+    if (hasDedicated) {
+      const { error: msgErr } = await supabase
+        .from('application_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('application_id', appId)
+        .not('sender_id', 'eq', user.id)
+        .is('read_at', null);
+
+      if (msgErr) console.warn('Warning marking messages as read:', msgErr.message);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Conversations] POST read error:', err);
     res.status(500).json({ error: err.message });
   }
 });

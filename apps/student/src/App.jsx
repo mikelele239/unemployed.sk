@@ -6,6 +6,7 @@ import MainLayout from './components/MainLayout';
 import ForYou from './pages/ForYou';
 import Search from './pages/Search';
 import Applications from './pages/Applications';
+import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import CompanyProfile from './pages/CompanyProfile';
 import CandidateAuth from './pages/CandidateAuth';
@@ -137,6 +138,7 @@ function App() {
             <Route path="foryou" element={<ForYou />} />
             <Route path="search" element={<Search />} />
             <Route path="applications" element={<Applications />} />
+            <Route path="messages" element={<Messages />} />
             <Route path="profile" element={<Profile />} />
             <Route path="company/:companyName" element={<CompanyProfile />} />
             <Route path="*" element={<Navigate to="/foryou" replace />} />

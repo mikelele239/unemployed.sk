@@ -14,6 +14,13 @@ const JOB_TYPES_EN = ['Part-time', 'Internship', 'Full-time', 'One-off gigs', 'R
 export default function Onboarding({ onComplete }) {
   const { t, lang } = useTranslation();
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 480);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Phase: 'upload' | 'parsing' | 'review' | 'manual' | 'climax'
   const [phase, setPhase] = useState('upload'); 
   const [parsingProgress, setParsingProgress] = useState(0);
@@ -70,31 +77,82 @@ export default function Onboarding({ onComplete }) {
 
   const startParsing = async (fileObj) => {
     setPhase('parsing');
-    setParsingProgress(20);
+    setParsingProgress(10);
     setParseWarnings([]);
     setUploadError('');
 
     try {
-      setParsingProgress(40);
+      setParsingProgress(30);
       const result = await cvApi.uploadCV(fileObj);
       setData(prev => ({ ...prev, cv_id: result.id }));
-      setParsingProgress(80);
+      setParsingProgress(40);
 
-      const ai = result.ai_profile;
-      if (ai && result.parse_status !== 'failed') {
+      // Now poll for the parsed AI profile
+      let parsedAi = null;
+      let finalStatus = 'processing';
+      const pollDelays = [2000, 3000, 3000, 4000]; // 2s, 3s, 3s, 4s = 12s total
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (token) {
+        for (let i = 0; i < pollDelays.length; i++) {
+          setParsingProgress(40 + Math.round(((i + 1) / pollDelays.length) * 45)); // progresses from 40% to 85%
+          await new Promise(resolve => setTimeout(resolve, pollDelays[i]));
+          try {
+            const aiRes = await fetch('/api/ai-profile', { 
+              headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              if (aiData.profile && aiData.profile.parse_status !== 'processing' && aiData.profile.parse_status !== 'pending') {
+                parsedAi = aiData.profile;
+                finalStatus = aiData.profile.parse_status;
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn('AI profile poll error:', e.message);
+          }
+        }
+      }
+
+      setParsingProgress(90);
+
+      if (parsedAi && finalStatus !== 'failed') {
         // Map AI profile data to onboarding data format
         const eduMap = { high_school: 'Stredná škola', bachelors: 'Vysoká škola', masters: 'Vysoká škola', phd: 'Vysoká škola' };
         const eduMapEn = { high_school: 'High school', bachelors: 'University', masters: 'Graduate', phd: 'Graduate' };
-        const allSkills = [...(ai.hard_skills || []), ...(ai.soft_skills || [])].slice(0, 10);
+        const allSkills = [...(parsedAi.hard_skills || []), ...(parsedAi.soft_skills || [])].slice(0, 10);
 
         // Map languages from AI
-        const aiLangs = (ai.languages || []).map(l => l.lang).filter(Boolean);
+        const aiLangs = (parsedAi.languages || []).map(l => l.lang).filter(Boolean);
 
         // Map work model from AI
         const workModelMap = { 'on-site': lang === 'en' ? 'On-site' : 'Na mieste', 'hybrid': 'Hybrid', 'remote': 'Remote' };
 
-        const name = ai.full_name || data.name || '';
-        const bio = ai.ai_summary || (lang === 'en'
+        // Map preferred job types from AI
+        const jobTypeDbMap = {
+          'part-time': lang === 'en' ? 'Part-time' : 'Brigáda',
+          'part_time': lang === 'en' ? 'Part-time' : 'Brigáda',
+          'internship': lang === 'en' ? 'Internship' : 'Stáž',
+          'full-time': lang === 'en' ? 'Full-time' : 'Plný úväzok',
+          'full_time': lang === 'en' ? 'Full-time' : 'Plný úväzok',
+        };
+        const jobTypes = (parsedAi.preferred_job_types || []).map(t => jobTypeDbMap[t.toLowerCase()]).filter(Boolean);
+
+        // Map salary expectation
+        let salaryOption = '';
+        if (parsedAi.salary_expectation) {
+          const s = parsedAi.salary_expectation;
+          if (s <= 600) salaryOption = lang === 'en' ? '€400-600' : '400-600€';
+          else if (s <= 900) salaryOption = lang === 'en' ? '€600-900' : '600-900€';
+          else if (s <= 1200) salaryOption = lang === 'en' ? '€900-1200' : '900-1200€';
+          else salaryOption = lang === 'en' ? '€1200+' : '1200+€';
+        }
+
+        const name = parsedAi.full_name || data.name || '';
+        const bio = parsedAi.ai_summary || (lang === 'en'
           ? (name || 'Student') + ' — ' + allSkills.slice(0, 3).join(', ') + '.'
           : (name || 'Študent') + ' — ' + allSkills.slice(0, 3).join(', ') + '.');
 
@@ -103,34 +161,32 @@ export default function Onboarding({ onComplete }) {
           name: name || prev.name,
           bio: bio,
           skills: allSkills.length > 0 ? allSkills : prev.skills,
-          edu: lang === 'en' ? (eduMapEn[ai.education_level] || '') : (eduMap[ai.education_level] || ''),
-          loc: ai.location || '',
-          jobType: prev.jobType,
-          workModel: workModelMap[ai.work_model_preference] || '',
+          edu: lang === 'en' ? (eduMapEn[parsedAi.education_level] || '') : (eduMap[parsedAi.education_level] || ''),
+          loc: parsedAi.location || '',
+          jobType: jobTypes.length > 0 ? jobTypes : prev.jobType,
+          workModel: workModelMap[parsedAi.work_mode_preference || (parsedAi.preferred_work_models && parsedAi.preferred_work_models[0]) || ''] || '',
           languages: aiLangs.length > 0 ? aiLangs : prev.languages,
-          availHours: ai.availability_hours_per_week ? String(ai.availability_hours_per_week) : '',
-          salaryExpect: '',
+          availHours: parsedAi.availability_hours ? String(parsedAi.availability_hours) : '',
+          salaryExpect: salaryOption || prev.salaryExpect,
         }));
 
-        if (result.parse_status === 'needs_review') {
+        if (finalStatus === 'needs_review') {
           setParseWarnings([lang === 'sk'
             ? 'AI profil má nízku istotu — skontroluj údaje a doplň chýbajúce.'
             : 'AI profile has low confidence — review and fill in missing data.']);
         }
       } else {
-        // CV was uploaded but parse failed — still go to review so user can fill in manually
+        // CV was uploaded but parse failed or timed out — still go to review so user can fill in manually
         setParseWarnings([lang === 'sk'
           ? 'CV bolo nahrané, ale nepodarilo sa extrahovať dáta — vyplň údaje nižšie.'
           : 'CV uploaded but data extraction failed — please fill in below.']);
       }
 
       setParsingProgress(100);
-      // Always go to review — user can correct or fill in
       setTimeout(() => setPhase('review'), 400);
 
     } catch (err) {
       console.error('CV upload error:', err);
-      // On error, still go to review so user isn't stuck — CV upload may have partially succeeded
       setParseWarnings([
         (lang === 'sk' ? 'Chyba pri nahrávaní: ' : 'Upload error: ') + (err.message || 'Unknown error'),
         lang === 'sk' ? 'Vyplň údaje manuálne nižšie.' : 'Please fill in your details manually below.'
@@ -212,7 +268,14 @@ export default function Onboarding({ onComplete }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: isMobile ? 'auto' : '100vh',
+      minHeight: '100vh',
+      background: 'var(--bg)',
+      overflowY: isMobile ? 'auto' : 'hidden'
+    }}>
       <AnimatePresence mode="wait">
 
         {/* WELCOME */}
@@ -377,6 +440,7 @@ export default function Onboarding({ onComplete }) {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Name Input */}
               <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ob.reviewName')}</span>
                 <input value={data.name} onChange={e => setData({ ...data, name: e.target.value })}
@@ -384,8 +448,10 @@ export default function Onboarding({ onComplete }) {
                   style={{ background: 'transparent', border: 'none', color: data.name ? 'var(--text)' : 'var(--text-muted)', fontSize: 18, fontWeight: 700, width: '100%', marginTop: 8, outline: 'none' }}
                 />
               </div>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+
+              {/* Education & Location */}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>{t('ob.reviewEdu')}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {(lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent']).map(opt => (
@@ -396,7 +462,7 @@ export default function Onboarding({ onComplete }) {
                     ))}
                   </div>
                 </div>
-                <div style={{ flex: 1, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>{t('ob.reviewLoc')}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra'].map(opt => (
@@ -412,6 +478,95 @@ export default function Onboarding({ onComplete }) {
                   </div>
                 </div>
               </div>
+
+              {/* Job Preferences & Work Model */}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                    {lang === 'en' ? 'Preferred Job Types' : 'Preferovaný typ úväzku'}
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(lang === 'en' ? ['Part-time', 'Internship', 'Full-time'] : ['Brigáda', 'Stáž', 'Plný úväzok']).map(opt => {
+                      const isSel = data.jobType.includes(opt);
+                      return (
+                        <span key={opt} onClick={() => setData(prev => ({
+                          ...prev,
+                          jobType: isSel ? prev.jobType.filter(x => x !== opt) : [...prev.jobType, opt]
+                        }))}
+                          style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                            background: isSel ? 'var(--accent)' : 'var(--bg)', color: isSel ? '#fff' : 'var(--text-muted)',
+                            border: `1px solid ${isSel ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                    {lang === 'en' ? 'Work Model Preference' : 'Model práce'}
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(lang === 'en' ? ['On-site', 'Hybrid', 'Remote'] : ['Na mieste', 'Hybrid', 'Remote']).map(opt => (
+                      <span key={opt} onClick={() => setData(prev => ({ ...prev, workModel: opt }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: data.workModel === opt ? 'var(--accent)' : 'var(--bg)', color: data.workModel === opt ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${data.workModel === opt ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekly Availability & Salary Expectation */}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                    {lang === 'en' ? 'Hours / Week' : 'Dostupnosť (hod/týždeň)'}
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {['10', '20', '30', '40+'].map(opt => (
+                      <span key={opt} onClick={() => setData(prev => ({ ...prev, availHours: opt }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: data.availHours === opt ? 'var(--accent)' : 'var(--bg)', color: data.availHours === opt ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${data.availHours === opt ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                    {lang === 'en' ? 'Salary Expectation' : 'Platové očakávania'}
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(lang === 'en' ? ['€400-600', '€600-900', '€900-1200', '€1200+'] : ['400-600€', '600-900€', '900-1200€', '1200+€']).map(opt => (
+                      <span key={opt} onClick={() => setData(prev => ({ ...prev, salaryExpect: opt }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: data.salaryExpect === opt ? 'var(--accent)' : 'var(--bg)', color: data.salaryExpect === opt ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${data.salaryExpect === opt ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Languages spoken */}
+              <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                  {lang === 'en' ? 'Languages spoken' : 'Jazyky, ktoré ovládaš'}
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {['Slovenčina', 'Angličtina', 'Nemčina', 'Čeština', 'Maďarčina', 'Francúzština', 'Španielčina', 'Iné'].map(opt => {
+                    const isSel = data.languages.includes(opt);
+                    return (
+                      <span key={opt} onClick={() => setData(prev => ({
+                        ...prev,
+                        languages: isSel ? prev.languages.filter(x => x !== opt) : [...prev.languages, opt]
+                      }))}
+                        style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          background: isSel ? 'var(--accent)' : 'var(--bg)', color: isSel ? '#fff' : 'var(--text-muted)',
+                          border: `1px solid ${isSel ? 'var(--accent)' : 'var(--border)'}` }}>{opt}</span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Skills review */}
               <div style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12, display: 'block' }}>{t('ob.reviewSkills')}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -480,7 +635,7 @@ export default function Onboarding({ onComplete }) {
                         {s.type === 'text' && (
                           <input type="text" placeholder={s.placeholder} value={data[s.id]}
                             onChange={e => setData({ ...data, [s.id]: e.target.value })}
-                            onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : typeof finalizeMatching === 'function' && finalizeMatching())}
+                            onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : setPhase('review'))}
                             style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 16, fontWeight: 600, outline: 'none', transition: 'border 0.2s', boxSizing: 'border-box' }}
                             onFocus={e => e.target.style.borderColor = 'var(--accent)'}
                             onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
@@ -507,13 +662,13 @@ export default function Onboarding({ onComplete }) {
             </div>
 
             <div style={{ padding: '20px 24px' }}>
-              <button onClick={() => manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : typeof finalizeMatching === 'function' && finalizeMatching()}
+              <button onClick={() => manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : setPhase('review')}
                 disabled={MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()}
                 style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 800, borderRadius: 16, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', opacity: (MANUAL_STEPS[manualStep].type === 'text' && !data.name.trim()) ? 0.5 : 1, transition: 'transform 0.2s, opacity 0.2s' }}
                 onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
                 onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
-                {manualStep < MANUAL_STEPS.length - 1 ? 'Ďalej' : 'Uložiť profil'}
+                {manualStep < MANUAL_STEPS.length - 1 ? (lang === 'en' ? 'Continue' : 'Ďalej') : (lang === 'en' ? 'Review Profile' : 'Skontrolovať profil')}
               </button>
             </div>
             </div>

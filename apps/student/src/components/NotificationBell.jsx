@@ -53,8 +53,9 @@ export default function NotificationBell({ lang }) {
         if (!session || cancelled) return;
         const userId = session.user.id;
 
+        const uniqueId = Math.random().toString(36).substring(2, 9);
         channel = supabase
-          .channel('student-notifications-realtime')
+          .channel(`student-notifications-realtime-${uniqueId}`)
           .on(
             'postgres_changes',
             {

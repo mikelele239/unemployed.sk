@@ -104,7 +104,7 @@ assert('breakdown sums to match_score', Math.round(Object.values(result.score_br
 assert('has match_reasons', Array.isArray(result.match_reasons) && result.match_reasons.length > 0);
 assert('has gaps array', Array.isArray(result.gaps));
 assert('is eligible', result.eligible === true);
-assert('all 9 dimensions in breakdown', Object.keys(result.score_breakdown).length === 9);
+assert('all 10 dimensions in breakdown', Object.keys(result.score_breakdown).length === 10);
 
 console.log('\ncalculateCandidateJobMatch — missing required skills:');
 const weakCandidate = { ...candidate, hard_skills: ['python'], soft_skills: [] };
@@ -222,7 +222,7 @@ assert('short text → low confidence', extractShort.confidence_score < 0.3);
 
 // Match with no criteria
 const noCriteriaResult = calculateCandidateJobMatch(candidate, job, {});
-assert('no criteria → high score', noCriteriaResult.match_score > 70);
+assert('no criteria → capped score (<= 50)', noCriteriaResult.match_score <= 50);
 
 // Match with null candidate data
 const nullResult = calculateCandidateJobMatch({}, job, criteria);
