@@ -27,3 +27,4 @@ Each database table (or conceptual model) has a corresponding README containing 
 - [Notifications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/notifications/README.md): User messaging system.
 - [Submissions](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/submissions/README.md): Marketing leads.
 - [User Roles](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/user_roles/README.md): Multi-portal role guard map.
+- [Application Messages](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/application_messages/README.md): Chat messages between candidates and employers.

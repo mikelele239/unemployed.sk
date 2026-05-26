@@ -289,6 +289,7 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 | `notifications` | In-app notifications | [notifications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/notifications/README.md) | `user_id`, `type`, `title`, `message`, `read` |
 | `employer_members` | Employer team membership | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `user_id`, `role` |
 | `employer_notes` | Internal notes on candidates | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `candidate_id`, `note` |
+| `application_messages` | Chat messages | [application_messages](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/application_messages/README.md) | `id`, `application_id`, `sender_id`, `message_type`, `body` |
 
 ---
 
