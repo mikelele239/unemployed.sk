@@ -142,8 +142,10 @@ export default function Messages() {
 
   // Fetch messages when active conversation changes
   useEffect(() => {
-    if (!activeConvId) {
+    // AI verify thread is handled entirely by VerificationChat — don't try to fetch messages
+    if (!activeConvId || activeConvId === AI_VERIFY_ID) {
       setMessages([]);
+      setLoadingMessages(false);
       return;
     }
 

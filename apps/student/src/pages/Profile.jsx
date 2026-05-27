@@ -25,6 +25,10 @@ export default function Profile() {
   const [profile, setProfile] = useState({ name: '', edu: '', loc: '', bio: '', skills: [], email: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [tempProfile, setTempProfile] = useState(null);
+  const [showAvatarSourceModal, setShowAvatarSourceModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const videoRef = useRef(null);
 
   const startEditing = () => {
     setTempProfile({
@@ -51,6 +55,96 @@ export default function Profile() {
   const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState(null);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [aiProfile, setAiProfile] = useState(null);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 400, height: 400, facingMode: 'user' } 
+      });
+      setCameraStream(stream);
+      setCameraActive(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      alert(lang === 'en' ? 'Could not access camera. Please upload a file instead.' : 'Nepodarilo sa spustiť kameru. Nahrajte súbor.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = async () => {
+    if (!videoRef.current) return;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const video = videoRef.current;
+      const size = Math.min(video.videoWidth, video.videoHeight);
+      const sx = (video.videoWidth - size) / 2;
+      const sy = (video.videoHeight - size) / 2;
+      ctx.drawImage(video, sx, sy, size, size, 0, 0, 300, 300);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'camera-capture.png', { type: 'image/png' });
+        stopCamera();
+        setShowAvatarSourceModal(false);
+        await uploadAvatarFile(file);
+      }, 'image/png');
+    } catch (err) {
+      console.error('Capture error:', err);
+    }
+  };
+
+  const uploadAvatarFile = async (file) => {
+    try {
+      setUploading(true);
+      const token = await getAccessTokenAsync() || getAccessToken();
+      if (!token) return;
+
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const res = await fetch('/api/student/avatar-upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const avatarUrl = json.avatar_url || '';
+
+        setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+        if (tempProfile) {
+          setTempProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+        }
+        setResolvedAvatarUrl(avatarUrl);
+        setAvatarFailed(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('Avatar upload error:', err);
+        alert(err.error || 'Upload failed');
+      }
+    } catch (err) { 
+      console.error('Avatar upload error:', err); 
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -345,7 +439,7 @@ export default function Profile() {
     if (key === 'cv') {
       document.getElementById('cv-file-input')?.click();
     } else if (key === 'avatar') {
-      document.getElementById('avatar-file-input')?.click();
+      setShowAvatarSourceModal(true);
     } else if (key === 'skills') {
       setAddingSkill(true);
       setTimeout(() => {
@@ -365,35 +459,8 @@ export default function Profile() {
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const token = await getAccessTokenAsync() || getAccessToken();
-      if (!token) return;
-
-      const formData = new FormData();
-      formData.append('avatar', file);
-
-      const res = await fetch('/api/student/avatar-upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const avatarUrl = json.avatar_url || '';
-
-        setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
-        if (tempProfile) {
-          setTempProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
-        }
-        setResolvedAvatarUrl(avatarUrl);
-        setAvatarFailed(false);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        console.error('Avatar upload error:', err);
-        alert(err.error || 'Upload failed');
-      }
-    } catch (err) { console.error('Avatar upload error:', err); }
+    setShowAvatarSourceModal(false);
+    await uploadAvatarFile(file);
   };
 
   return (
@@ -413,20 +480,21 @@ export default function Profile() {
 
       <div style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0, overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
+          <div 
+            onClick={() => setShowAvatarSourceModal(true)}
+            style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0, overflow: 'hidden', position: 'relative', cursor: 'pointer' }}
+          >
             {(resolvedAvatarUrl || profile.avatar_url) && !avatarFailed ? (
               <img src={resolvedAvatarUrl || profile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
             ) : (
               profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
             )}
-            <label 
-              style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 20, borderRadius: '50%' }}
+            {/* Subtle Overlay icon on Hover */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', opacity: 0, transition: 'opacity 0.2s', color: '#fff', fontSize: 20 }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0'}
-            >
-              <input type="file" id="avatar-file-input" accept="image/*" hidden onChange={handleAvatarUpload} />
+              onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
               📷
-            </label>
+            </div>
           </div>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{profile.name || (lang === 'en' ? 'User' : 'Užívateľ')}</h2>
@@ -988,18 +1056,20 @@ export default function Profile() {
 
               {/* Avatar Upload */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
-                <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}>
+                <div 
+                  onClick={() => setShowAvatarSourceModal(true)}
+                  style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}
+                >
                   {(resolvedAvatarUrl || tempProfile.avatar_url) && !avatarFailed ? (
                     <img src={resolvedAvatarUrl || tempProfile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
                   ) : (
                     tempProfile.name ? tempProfile.name.charAt(0).toUpperCase() : 'U'
                   )}
-                  <label style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 12, fontWeight: 700 }}
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', opacity: 0, transition: 'opacity 0.2s', color: '#fff', fontSize: 16 }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
-                    <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
                     📷
-                  </label>
+                  </div>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Klikni pre zmenu fotky' : 'Click to change photo'}</span>
               </div>
@@ -1090,6 +1160,108 @@ export default function Profile() {
                 onMouseOut={e => e.currentTarget.style.opacity = '1'}>
                 {saving ? '...' : (lang === 'sk' ? 'Uložiť zmeny' : 'Save Changes')}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Avatar Source Selector / Camera Modal */}
+      <AnimatePresence>
+        {showAvatarSourceModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={() => { stopCamera(); setShowAvatarSourceModal(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 360, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 24, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+            >
+              <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: cameraActive ? 16 : 24 }}>
+                {cameraActive 
+                  ? (lang === 'sk' ? 'Urob fotku' : 'Take a photo') 
+                  : (lang === 'sk' ? 'Zmena profilovej fotky' : 'Profile Picture')}
+              </h3>
+
+              {cameraActive ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                  {/* Live Video Preview (Circular Crop) */}
+                  <div style={{ width: 220, height: 220, borderRadius: '50%', overflow: 'hidden', background: '#000', border: '3px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  </div>
+                  
+                  {/* Camera Actions */}
+                  <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
+                    <button 
+                      onClick={capturePhoto}
+                      style={{ flex: 2, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                    >
+                      📸 {lang === 'sk' ? 'Odfotiť' : 'Capture'}
+                    </button>
+                    <button 
+                      onClick={() => { stopCamera(); }}
+                      style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      {lang === 'sk' ? 'Späť' : 'Back'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* File Upload Option */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'left' }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                    <input type="file" accept="image/*" onChange={handleAvatarUpload} hidden />
+                    <span style={{ fontSize: 20 }}>📂</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {lang === 'sk' ? 'Vybrať súbor' : 'Choose a file'}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {lang === 'sk' ? 'Nahrať z galérie alebo priečinkov' : 'Upload from gallery or directories'}
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Camera Option */}
+                  <div 
+                    onClick={startCamera}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                  >
+                    <span style={{ fontSize: 20 }}>📷</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {lang === 'sk' ? 'Odfotiť sa' : 'Take a photo'}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {lang === 'sk' ? 'Použiť fotoaparát na zariadení' : 'Use device camera'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cancel Button */}
+                  <button 
+                    onClick={() => { stopCamera(); setShowAvatarSourceModal(false); }}
+                    style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'var(--border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}
+                  >
+                    {lang === 'sk' ? 'Zrušiť' : 'Cancel'}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

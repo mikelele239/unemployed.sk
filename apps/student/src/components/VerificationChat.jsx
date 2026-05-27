@@ -485,20 +485,33 @@ export default function VerificationChat() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+      // Pick the first supported audio format
+      const mimeType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/mp4',
+      ].find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+      const mrOptions = mimeType ? { mimeType } : {};
+      const mr = new MediaRecorder(stream, mrOptions);
+      const actualMime = mr.mimeType || mimeType || 'audio/webm';
+
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(audioChunksRef.current, { type: actualMime });
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64 = reader.result.split(',')[1];
-          await submitAnswer({ audioBase64: base64, audioMimeType: 'audio/webm' });
+          await submitAnswer({ audioBase64: base64, audioMimeType: actualMime });
         };
         reader.readAsDataURL(blob);
       };
       mediaRecorderRef.current = mr;
-      mr.start();
+      mr.start(250); // collect data every 250ms for more reliable chunks
       setIsRecording(true);
       setRecordingSeconds(0);
 
@@ -511,6 +524,10 @@ export default function VerificationChat() {
       }, 1000);
     } catch (err) {
       console.error('Mic error:', err);
+      alert(err.name === 'NotAllowedError'
+        ? (lang === 'sk' ? 'Prístup k mikrofónu bol zamietnutý. Skontroluj nastavenia prehliadača.' : 'Microphone access was denied. Please check your browser settings.')
+        : (lang === 'sk' ? 'Mikrofón nie je dostupný.' : 'Microphone not available.')
+      );
       setVoiceAllowed(false); // fall back to text
     }
   };

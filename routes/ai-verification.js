@@ -355,16 +355,22 @@ module.exports = function aiVerificationRouter(app, supabase, { getUserFromToken
         return res.status(409).json({ error: 'Verification already completed', verification: existing });
       }
 
+      // Delete any stale in-progress session so we get a clean start with the CV check
+      if (existing?.status === 'in_progress') {
+        await supabase.from('cv_verifications').delete().eq('id', existing.id);
+      }
+
       const lang = req.body.lang || 'sk';
 
-      // ── Does the user have a CV uploaded? ──────────────────────────────────
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('cv_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // ── Does the user have a CV? Check profiles.cv_id AND ai_profiles ──────
+      const [{ data: profile }, { data: aiProfileRow }] = await Promise.all([
+        supabase.from('profiles').select('cv_id').eq('user_id', user.id).maybeSingle(),
+        supabase.from('ai_profiles').select('user_id, raw_cv_text').eq('user_id', user.id).maybeSingle(),
+      ]);
 
-      const hasCv = !!(profile?.cv_id);
+      // Has a CV if profiles.cv_id is set OR if ai_profiles has raw text from a previous parse
+      const hasCv = !!(profile?.cv_id) || !!(aiProfileRow?.raw_cv_text);
+      console.log(`[verify/start] user=${user.id.substring(0,8)} hasCv=${hasCv} cv_id=${profile?.cv_id}`);
 
       let firstQuestion, mode, sessionData;
 
@@ -431,19 +437,13 @@ module.exports = function aiVerificationRouter(app, supabase, { getUserFromToken
         };
       }
 
-      // Upsert session
+      // Always insert fresh (stale in_progress was deleted above)
       let sessionId;
-      if (existing?.status === 'in_progress') {
-        sessionId = existing.id;
-        await supabase.from('cv_verifications')
-          .update({ ...sessionData, updated_at: new Date().toISOString() })
-          .eq('id', sessionId);
-      } else {
-        const { data: newSess, error: ie } = await supabase.from('cv_verifications')
-          .insert(sessionData).select('id').single();
-        if (ie) return res.status(500).json({ error: ie.message });
-        sessionId = newSess.id;
-      }
+      const { data: newSess, error: ie } = await supabase.from('cv_verifications')
+        .insert(sessionData).select('id').single();
+      if (ie) return res.status(500).json({ error: ie.message });
+      sessionId = newSess.id;
+
 
       return res.json({
         sessionId,
