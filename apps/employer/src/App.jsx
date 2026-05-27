@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { useAppState, useI18n } from './contexts';
 import SideNav from './components/SideNav';
 import NotificationBell from './components/NotificationBell';
@@ -49,22 +49,46 @@ const AppLayout = () => {
 
   return (
     <div className="main-app">
-      {!isSetup && <SideNav />}
-      {/* Notification Bell — fixed top-right, hides on scroll down */}
       {!isSetup && (
-        <div style={{
-          position: 'fixed',
-          top: 28,
-          right: 32,
-          zIndex: 200,
-          opacity: bellVisible ? 1 : 0,
-          transform: bellVisible ? 'translateY(0)' : 'translateY(-20px)',
-          pointerEvents: bellVisible ? 'auto' : 'none',
-          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        <div className="mobile-top-bar" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0 16px',
+          background: 'var(--sidebar-bg)',
+          borderBottom: '1px solid var(--border)',
+          height: '56px',
+          flexShrink: 0,
+          zIndex: 100,
+          width: '100%'
         }}>
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+            <span style={{ 
+              fontFamily: 'var(--font-display)', 
+              fontSize: '1.15rem', 
+              color: 'var(--text)', 
+              position: 'relative',
+              whiteSpace: 'nowrap'
+            }}>
+              <span style={{ position: 'relative' }}>
+                un
+                <span style={{ 
+                  position: 'absolute', 
+                  left: '-1px', 
+                  right: '-1px', 
+                  top: '50%', 
+                  height: '2px', 
+                  background: 'var(--accent)', 
+                  borderRadius: '2px' 
+                }} />
+              </span>
+              employed.sk
+            </span>
+          </Link>
           <NotificationBell lang={lang} />
         </div>
       )}
+      {!isSetup && <SideNav />}
       <main className="app-content" style={{ position: 'relative' }}>
         <Routes>
           <Route index element={<Navigate to="/dashboard" replace />} />

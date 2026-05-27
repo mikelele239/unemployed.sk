@@ -3,6 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import { getUnreadCount, subscribeToConversations } from '../services/messagingService';
+import NotificationBell from './NotificationBell';
 
 
 const SideNav = () => {
@@ -59,7 +60,7 @@ const SideNav = () => {
       position: 'relative'
     }}>
       {/* Brand Section - Desktop Only */}
-      <div className="desktop-only" style={{ padding: '32px 24px', borderBottom: '1px solid var(--border)' }}>
+      <div className="desktop-only" style={{ padding: '32px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
           <span style={{ 
             fontFamily: 'var(--font-display)', 
@@ -83,6 +84,7 @@ const SideNav = () => {
             employed.sk
           </span>
         </Link>
+        <NotificationBell lang={lang} />
       </div>
 
 

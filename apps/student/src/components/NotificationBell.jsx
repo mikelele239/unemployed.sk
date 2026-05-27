@@ -10,7 +10,7 @@ export default function NotificationBell({ lang }) {
   const [notifications, setNotifications] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 0, right: 0 });
+  const [panelPos, setPanelPos] = useState({ top: 0, right: 0, left: 'auto' });
   const bellRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -114,10 +114,20 @@ export default function NotificationBell({ lang }) {
   const updatePosition = useCallback(() => {
     if (bellRef.current) {
       const rect = bellRef.current.getBoundingClientRect();
-      setPanelPos({
-        top: rect.bottom + 8,
-        right: Math.max(16, window.innerWidth - rect.right),
-      });
+      const alignToLeft = rect.left < 240;
+      if (alignToLeft) {
+        setPanelPos({
+          top: rect.bottom + 8,
+          left: Math.max(16, rect.left),
+          right: 'auto',
+        });
+      } else {
+        setPanelPos({
+          top: rect.bottom + 8,
+          right: Math.max(16, window.innerWidth - rect.right),
+          left: 'auto',
+        });
+      }
     }
   }, []);
 
@@ -202,7 +212,8 @@ export default function NotificationBell({ lang }) {
         style={{
           position: 'fixed',
           top: panelPos.top,
-          right: panelPos.right,
+          left: panelPos.left === 'auto' ? undefined : panelPos.left,
+          right: panelPos.right === 'auto' ? undefined : panelPos.right,
           width: Math.min(360, window.innerWidth - 32),
           maxHeight: 440,
           overflowY: 'auto',

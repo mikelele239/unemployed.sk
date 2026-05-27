@@ -316,3 +316,13 @@ html, body, #root {
   .grid-responsive.cols-3 { grid-template-columns: repeat(3, 1fr); }
   .grid-responsive.cols-4 { grid-template-columns: repeat(4, 1fr); }
 }
+
+.mobile-top-bar {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .mobile-top-bar {
+    display: flex !important;
+  }
+}

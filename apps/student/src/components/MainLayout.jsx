@@ -83,6 +83,46 @@ export default function MainLayout() {
       background: 'var(--bg)',
       overflow: 'hidden'
     }}>
+      {!isDesktop && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0 16px',
+          background: 'var(--bg)',
+          borderBottom: '1px solid var(--border)',
+          height: '56px',
+          flexShrink: 0,
+          zIndex: 100,
+        }}>
+          <div 
+            onClick={() => navigate('/foryou')}
+            style={{ 
+              fontFamily: 'var(--font-display)', 
+              fontSize: '1.15rem', 
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}>
+            <span style={{ position: 'relative' }}>
+              un
+              <span style={{ 
+                position: 'absolute', 
+                left: '-1px', 
+                right: '-1px', 
+                top: '50%', 
+                height: '2px', 
+                background: 'var(--accent)', 
+                borderRadius: '2px' 
+              }} />
+            </span>
+            employed.sk
+          </div>
+          <NotificationBell lang={lang} />
+        </div>
+      )}
       {/* Sidebar Navigation (Desktop) / Bottom Nav (Mobile) */}
       <nav style={{
         width: isDesktop ? '240px' : '100%',
@@ -104,7 +144,11 @@ export default function MainLayout() {
         {isDesktop && (
           <div style={{ 
             padding: '32px 16px',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px'
           }}>
             <div 
               onClick={() => navigate('/foryou')}
@@ -134,6 +178,7 @@ export default function MainLayout() {
               </span>
               employed.sk
             </div>
+            <NotificationBell lang={lang} />
           </div>
         )}
 
@@ -230,19 +275,7 @@ export default function MainLayout() {
         </div>
       </nav>
 
-      {/* Notification Bell — fixed top-right, hides on scroll down */}
-      <div style={{
-        position: 'fixed',
-        top: isDesktop ? 24 : 12,
-        right: isDesktop ? 32 : 16,
-        zIndex: 200,
-        opacity: bellVisible ? 1 : 0,
-        transform: bellVisible ? 'translateY(0)' : 'translateY(-20px)',
-        pointerEvents: bellVisible ? 'auto' : 'none',
-        transition: 'opacity 0.2s ease, transform 0.2s ease',
-      }}>
-        <NotificationBell lang={lang} />
-      </div>
+
 
       <div style={{ 
         flex: 1, 
