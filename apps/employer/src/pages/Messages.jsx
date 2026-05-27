@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Send, 
   MessageSquare, 
@@ -14,7 +14,14 @@ import {
   AlertCircle,
   FileText,
   Mail,
-  UserCheck
+  UserCheck,
+  MapPin,
+  Globe,
+  GraduationCap,
+  Award,
+  X,
+  ExternalLink,
+  Phone
 } from 'lucide-react';
 import { useI18n } from '../contexts';
 import { 
@@ -27,6 +34,7 @@ import {
 } from '../services/messagingService';
 import { supabase } from '../supabase';
 import ModernDatePicker from '../components/ModernDatePicker';
+import CandidateAvatar from '../components/CandidateAvatar';
 
 const formatSystemMessage = (body, lang) => {
   if (!body) return '';
@@ -52,6 +60,81 @@ const formatSystemMessage = (body, lang) => {
   return body;
 };
 
+// Helper: parse bilingual JSON strings {sk,en}
+function biLang(val, lang) {
+  if (!val) return '';
+  if (typeof val === 'object' && (val.sk || val.en)) return val[lang] || val.en || val.sk || '';
+  if (typeof val !== 'string') return String(val);
+  try {
+    const parsed = JSON.parse(val);
+    if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) return parsed[lang] || parsed.en || parsed.sk || '';
+    return val;
+  } catch { return val; }
+}
+
+// Helper for bilingual arrays
+function biLangArr(arr, lang) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => biLang(item, lang)).filter(Boolean);
+}
+
+const BAND_DISPLAY = {
+  A: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '🟢', label: { sk: 'Silná zhoda', en: 'Strong fit' } },
+  B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔵', label: { sk: 'Dobrá zhoda', en: 'Good fit' } },
+  C: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡', label: { sk: 'Potenciálna zhoda', en: 'Potential fit' } },
+  D: { color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: '🟠', label: { sk: 'Čiastočná zhoda', en: 'Partial fit' } },
+  E: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴', label: { sk: 'Nízka zhoda', en: 'Low fit' } },
+};
+
+function getScoreBand(score) {
+  if (score >= 80) return 'A';
+  if (score >= 60) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 20) return 'D';
+  return 'E';
+}
+
+const ELIG_DISPLAY = {
+  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '✓' },
+  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '≈' },
+  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '✗' },
+};
+
+const formatStatusDetail = (app, lang) => {
+  if (!app) return '';
+  const status = (app.status || 'pending').toLowerCase();
+  switch (status) {
+    case 'pending':
+      return lang === 'sk' ? 'Čaká na posúdenie' : 'Awaiting Review';
+    case 'interview': {
+      const dates = app.interview_dates || [];
+      if (dates.length === 0) {
+        return lang === 'sk' ? 'Navrhnutý pohovor (čaká na výber termínu)' : 'Interview proposed (awaiting selection)';
+      }
+      const datesStr = dates.map(d => new Date(d).toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })).join(', ');
+      return lang === 'sk' 
+        ? `Navrhnutý pohovor (čaká na výber termínu). Navrhnuté termíny: ${datesStr}` 
+        : `Interview proposed (awaiting selection). Proposed dates: ${datesStr}`;
+    }
+    case 'counter-offer':
+      return lang === 'sk'
+        ? `Protinávrh termínu: ${app.selected_date ? new Date(app.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' }) : ''}`
+        : `Candidate counter-offered: ${app.selected_date ? new Date(app.selected_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : ''}`;
+    case 'interview-confirmed':
+      return lang === 'sk'
+        ? `Pohovor potvrdený na: ${app.selected_date ? new Date(app.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' }) : ''}`
+        : `Interview confirmed for: ${app.selected_date ? new Date(app.selected_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : ''}`;
+    case 'hired':
+      return lang === 'sk' ? 'Kandidát bol úspešne prijatý' : 'Candidate successfully hired';
+    case 'rejected':
+      return lang === 'sk' ? 'Uchádzač bol zamietnutý' : 'Candidate was rejected';
+    case 'declined':
+      return lang === 'sk' ? 'Uchádzač odmietol pozvanie' : 'Candidate declined invite';
+    default:
+      return app.status;
+  }
+};
+
 export default function Messages() {
   const { t, lang } = useI18n();
   const location = useLocation();
@@ -64,6 +147,114 @@ export default function Messages() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [showEmployerDatePicker, setShowEmployerDatePicker] = useState(false);
+  const navigate = useNavigate();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [profileCvUrl, setProfileCvUrl] = useState(null);
+  const [fullscreenCV, setFullscreenCV] = useState(false);
+
+  const handleViewProfile = async () => {
+    if (!activeConv) return;
+    const candidateId = activeConv.studentId;
+    const jobId = activeConv.jobId;
+
+    if (!candidateId) return;
+
+    setLoadingProfile(true);
+    setShowProfileModal(true);
+    setProfileData(null);
+    setProfileCvUrl(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // 1. Fetch profile from Supabase
+      const { data: prof, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', candidateId)
+        .maybeSingle();
+      
+      if (profErr) throw profErr;
+      if (!prof) {
+        setLoadingProfile(false);
+        return;
+      }
+
+      // 2. Fetch AI profile
+      let aiProfile = {};
+      try {
+        const aiRes = await fetch('/api/employer/ai-profiles', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${session.access_token}` 
+          },
+          body: JSON.stringify({ candidate_ids: [candidateId] }),
+        });
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          aiProfile = aiData.profiles?.[candidateId] || {};
+        }
+      } catch (err) {
+        console.error('AI Profile fetch failed:', err);
+      }
+
+      // 3. Fetch Match Score
+      let matchScore = {};
+      if (jobId) {
+        try {
+          const msRes = await fetch('/api/employer/match-scores-bulk', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${session.access_token}` 
+            },
+            body: JSON.stringify({ 
+              candidate_ids: [candidateId], 
+              job_ids: [jobId] 
+            }),
+          });
+          if (msRes.ok) {
+            const msData = await msRes.json();
+            const matchKey = `${candidateId}_${jobId}`;
+            matchScore = msData.scores?.[matchKey] || {};
+          }
+        } catch (err) {
+          console.error('Match score fetch failed:', err);
+        }
+      }
+
+      // 4. Fetch CV URL
+      let cvUrlStr = null;
+      if (prof.cv_id) {
+        try {
+          const cvRes = await fetch(`/api/employer/cv/${encodeURIComponent(prof.cv_id)}/signed-url`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          if (cvRes.ok) {
+            const cvData = await cvRes.json();
+            cvUrlStr = cvData.url;
+          }
+        } catch (cvErr) {
+          console.error('CV url fetch failed:', cvErr);
+        }
+      }
+
+      setProfileData({
+        profile: prof,
+        aiProfile,
+        matchScore
+      });
+      setProfileCvUrl(cvUrlStr);
+    } catch (err) {
+      console.error('Error loading candidate profile:', err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   const messagesEndRef = useRef(null);
   const activeConvRef = useRef(null);
@@ -290,14 +481,12 @@ export default function Messages() {
                   className="conv-card-hover"
                 >
                   {/* Candidate Avatar */}
-                  <div style={{ 
-                    width: 44, height: 44, borderRadius: '50%', 
-                    background: 'linear-gradient(135deg, var(--accent) 0%, #FF8C32 100%)', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    color: '#fff', fontSize: 15, fontWeight: 700, flexShrink: 0 
-                  }}>
-                    {conv.candidateName.charAt(0).toUpperCase()}
-                  </div>
+                  <CandidateAvatar 
+                    userId={conv.studentId} 
+                    avatarUrl={conv.candidateAvatar} 
+                    name={conv.candidateName} 
+                    size={44} 
+                  />
 
                   {/* Metadata */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -383,18 +572,26 @@ export default function Messages() {
           </button>
         )}
 
-        <div style={{ 
-          width: 40, height: 40, borderRadius: '50%', 
-          background: 'linear-gradient(135deg, var(--accent) 0%, #FF8C32 100%)', 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', 
-          color: '#fff', fontSize: 14, fontWeight: 700 
-        }}>
-          {activeConv?.candidateName.charAt(0).toUpperCase()}
+        <div 
+          onClick={handleViewProfile} 
+          style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+          className="hover-scale"
+        >
+          <CandidateAvatar 
+            userId={activeConv?.studentId} 
+            avatarUrl={activeConv?.candidateAvatar} 
+            name={activeConv?.candidateName} 
+            size={40} 
+          />
         </div>
 
         {/* Header Title */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+          <h3 
+            onClick={handleViewProfile}
+            style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            className="hover-accent-color"
+          >
             {activeConv?.candidateName}
           </h3>
           {activeConv?.job?.title && (
@@ -405,115 +602,37 @@ export default function Messages() {
                 <>
                   <span style={{ color: 'var(--border)' }}>•</span>
                   <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 10, color: 'var(--accent)' }}>
-                    {activeConv.application.status}
+                    {formatStatusDetail(activeConv.application, lang)}
                   </span>
                 </>
               )}
             </div>
           )}
         </div>
+
+        {/* Profile Button */}
+        <button
+          onClick={handleViewProfile}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 8,
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <FileText size={14} style={{ color: 'var(--accent)' }} />
+          <span className="desktop-only">{lang === 'sk' ? 'Profil' : 'Profile'}</span>
+        </button>
       </div>
 
-      {/* Interactive Interview Banner */}
-      {activeConv?.application && (
-        <div style={{
-          background: 'rgba(255, 92, 0, 0.04)',
-          borderBottom: '1px solid var(--border)',
-          padding: '12px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-          zIndex: 10
-        }}>
-          {activeConv.application.status === 'Interview' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-              <Clock size={16} style={{ color: 'var(--accent)' }} />
-              <span>
-                {lang === 'sk' ? 'Pozvánka odoslaná. Čaká sa na výber termínu uchádzačom.' : 'Invitation sent. Awaiting candidate selection.'}
-              </span>
-            </div>
-          )}
 
-          {activeConv.application.status === 'Counter-Offer' && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Calendar size={16} style={{ color: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                  {lang === 'sk' 
-                    ? `Uchádzač navrhol iný termín: ${new Date(activeConv.application.selected_date).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' })}` 
-                    : `Candidate counter-offered: ${new Date(activeConv.application.selected_date).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}`
-                  }
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    const { error } = await supabase
-                      .from('applications')
-                      .update({ status: 'Interview-Confirmed' })
-                      .eq('id', activeConv.applicationId);
-                    if (!error) {
-                      await fetchInbox();
-                    }
-                  }}
-                  style={{
-                    padding: '6px 12px', borderRadius: 6, background: '#22c55e', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  {lang === 'sk' ? 'Prijať' : 'Accept'}
-                </button>
-                <button
-                  onClick={() => setShowEmployerDatePicker(true)}
-                  style={{
-                    padding: '6px 12px', borderRadius: 6, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  {lang === 'sk' ? 'Iné termíny' : 'New Dates'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeConv.application.status === 'Interview-Confirmed' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#22c55e', fontWeight: 700 }}>
-              <CheckCircle2 size={16} />
-              <span>
-                {lang === 'sk' 
-                  ? `Pohovor potvrdený na: ${new Date(activeConv.application.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}` 
-                  : `Interview confirmed for: ${new Date(activeConv.application.selected_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`
-                }
-              </span>
-            </div>
-          )}
-
-          {activeConv.application.status === 'Declined' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#ef4444', fontWeight: 700 }}>
-              <AlertCircle size={16} />
-              <span>
-                {lang === 'sk' ? 'Uchádzač odmietol pozvanie na pohovor.' : 'Candidate declined the interview invitation.'}
-              </span>
-            </div>
-          )}
-
-          {!['interview', 'interview-confirmed', 'counter-offer', 'declined', 'hired', 'rejected'].includes((activeConv.application.status || '').toLowerCase()) && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: 10 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {lang === 'sk' ? 'Chcete s týmto uchádzačom naplánovať pohovor?' : 'Want to schedule an interview with this candidate?'}
-              </span>
-              <button
-                onClick={() => setShowEmployerDatePicker(true)}
-                style={{
-                  padding: '6px 12px', borderRadius: 6, background: 'linear-gradient(135deg, var(--accent) 0%, #FF8C32 100%)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-                }}
-              >
-                {lang === 'sk' ? 'Naplánovať pohovor' : 'Schedule Interview'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Messages list */}
       <div style={{ 
@@ -622,6 +741,78 @@ export default function Messages() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Interactive Interview/Status Popup Banner */}
+      {activeConv?.application && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.08)',
+          border: '1.5px solid rgba(59, 130, 246, 0.2)',
+          borderRadius: 12,
+          padding: '14px 18px',
+          margin: '0 24px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+              <Clock size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.4 }}>
+                {lang === 'sk' ? 'Stav výberu:' : 'Hiring Process:'}{' '}
+                <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                  {formatStatusDetail(activeConv.application, lang)}
+                </span>
+              </span>
+            </div>
+
+            {/* Actions for Counter-Offer */}
+            {activeConv.application.status === 'Counter-Offer' && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from('applications')
+                      .update({ status: 'Interview-Confirmed' })
+                      .eq('id', activeConv.applicationId);
+                    if (!error) {
+                      await fetchInbox();
+                    }
+                  }}
+                  style={{
+                    padding: '6px 12px', borderRadius: 6, background: '#22c55e', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  {lang === 'sk' ? 'Prijať termín' : 'Accept Date'}
+                </button>
+                <button
+                  onClick={() => setShowEmployerDatePicker(true)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 6, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  {lang === 'sk' ? 'Zmeniť' : 'Change'}
+                </button>
+              </div>
+            )}
+
+            {/* Actions to Invite if not already in scheduling process */}
+            {!['interview', 'interview-confirmed', 'counter-offer', 'declined', 'hired', 'rejected'].includes((activeConv.application.status || '').toLowerCase()) && (
+              <button
+                onClick={() => setShowEmployerDatePicker(true)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)'
+                }}
+              >
+                {lang === 'sk' ? 'Naplánovať pohovor' : 'Schedule Interview'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form 
         onSubmit={handleSend}
@@ -675,215 +866,7 @@ export default function Messages() {
     </div>
   );
 
-  const renderCandidateSummary = () => {
-    if (!activeConv || !activeConv.application) return null;
-    const app = activeConv.application;
-    
-    return (
-      <div style={{
-        width: '300px',
-        height: '100%',
-        background: 'var(--bg)',
-        borderLeft: '1px solid var(--border)',
-        padding: '28px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 20,
-        overflowY: 'auto'
-      }} className="desktop-only">
-        <div>
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>
-            {lang === 'sk' ? 'Detail uchádzača' : 'Candidate Details'}
-          </h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-              <User size={16} style={{ color: 'var(--accent)' }} />
-              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{activeConv.candidateName}</span>
-            </div>
-            
-            {app.student_email && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-                <Mail size={16} />
-                <span style={{ wordBreak: 'break-all' }}>{app.student_email}</span>
-              </div>
-            )}
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
-              <UserCheck size={16} />
-              <span>Stav: <strong style={{ color: 'var(--accent)' }}>{app.status}</strong></span>
-            </div>
-          </div>
-        </div>
 
-        {/* Interview Management */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-          <h4 style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Calendar size={14} style={{ color: 'var(--accent)' }} />
-            <span>{lang === 'sk' ? 'Plánovanie pohovoru' : 'Interview Scheduling'}</span>
-          </h4>
-
-          {/* Action based on status */}
-          {!['interview', 'interview-confirmed', 'counter-offer', 'declined', 'hired', 'rejected'].includes((app.status || '').toLowerCase()) && (
-            <button
-              onClick={() => setShowEmployerDatePicker(true)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, var(--accent) 0%, #FF8C32 100%)',
-                border: 'none',
-                color: '#fff',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6
-              }}
-            >
-              <span>{lang === 'sk' ? 'Pozvať na pohovor' : 'Invite to Interview'}</span>
-            </button>
-          )}
-
-          {app.status === 'Interview' && (
-            <div style={{ background: 'rgba(255, 92, 0, 0.04)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 6 }}>
-                {lang === 'sk' ? 'Odoslané termíny' : 'Proposed Dates'}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(app.interview_dates || []).map((date, idx) => (
-                  <div key={idx} style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
-                    • {new Date(date).toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>
-                {lang === 'sk' ? 'Čaká sa na odpoveď od uchádzača.' : 'Awaiting candidate selection.'}
-              </div>
-            </div>
-          )}
-
-          {app.status === 'Counter-Offer' && (
-            <div style={{ background: 'rgba(255, 92, 0, 0.04)', border: '1px solid var(--accent)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 4 }}>
-                  {lang === 'sk' ? 'Protinávrh uchádzača' : 'Candidate Counter-Offer'}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                  {app.selected_date ? new Date(app.selected_date).toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    const { error } = await supabase
-                      .from('applications')
-                      .update({ status: 'Interview-Confirmed' })
-                      .eq('id', app.id);
-                    if (!error) {
-                      await fetchInbox();
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    background: '#22c55e',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'center'
-                  }}
-                >
-                  {lang === 'sk' ? 'Prijať' : 'Accept'}
-                </button>
-
-                <button
-                  onClick={() => setShowEmployerDatePicker(true)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'center'
-                  }}
-                >
-                  {lang === 'sk' ? 'Iné termíny' : 'New Dates'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {app.status === 'Interview-Confirmed' && (
-            <div style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid #22c55e', borderRadius: 8, padding: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', marginBottom: 4 }}>
-                <CheckCircle2 size={12} />
-                <span>{lang === 'sk' ? 'Pohovor potvrdený' : 'Interview Confirmed'}</span>
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                {app.selected_date ? new Date(app.selected_date).toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
-              </div>
-            </div>
-          )}
-
-          {app.status === 'Declined' && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #ef4444', borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', marginBottom: 4 }}>
-                {lang === 'sk' ? 'Pohovor odmietnutý' : 'Interview Declined'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {lang === 'sk' ? 'Uchádzač odmietol pozvanie na pohovor.' : 'Candidate declined the interview invite.'}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-          <h4 style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)' }}>
-            {lang === 'sk' ? 'Rýchle akcie' : 'Quick Actions'}
-          </h4>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
-              onClick={() => {
-                // Navigate to candidate detail (which is usually in listings or dashboard)
-                window.location.href = `/employer/candidates`;
-              }}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-            >
-              <FileText size={14} />
-              <span>{lang === 'sk' ? 'Zobraziť profil' : 'View Profile'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={{ height: '100%', width: '100%', display: 'flex', overflow: 'hidden' }}>
@@ -903,7 +886,6 @@ export default function Messages() {
           {activeConvId ? (
             <>
               {renderChatThread()}
-              {renderCandidateSummary()}
             </>
           ) : (
             <div style={{ 
@@ -965,6 +947,306 @@ export default function Messages() {
               />
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Candidate Profile Modal Overlay */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <div 
+            style={{ 
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10002, padding: isMobile ? 12 : 24 
+            }}
+            onClick={() => setShowProfileModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ 
+                width: '100%', maxWidth: '900px', height: isMobile ? '100%' : '85vh', 
+                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: isMobile ? 0 : 16, 
+                display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                position: 'relative'
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Sparkles size={18} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                    {lang === 'sk' ? 'Profil kandidáta' : 'Candidate Profile'}
+                  </h3>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {activeConv && (
+                    <button
+                      onClick={() => {
+                        setShowProfileModal(false);
+                        navigate(`/candidates/${activeConv.studentId}?jobId=${activeConv.jobId}`);
+                      }}
+                      style={{ 
+                        background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', 
+                        fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 
+                      }}
+                    >
+                      <span>{lang === 'sk' ? 'Otvoriť celú stránku' : 'Open Full Page'}</span>
+                      <ExternalLink size={12} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setShowProfileModal(false)}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text)', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content Scroll Area */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+                {loadingProfile ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+                    <div className="spinner" style={{ width: 32, height: 32, border: '2px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Načítavam údaje...' : 'Loading details...'}</span>
+                  </div>
+                ) : !profileData ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                    <AlertCircle size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
+                    <p>{lang === 'sk' ? 'Nepodarilo sa načítať profil.' : 'Failed to load profile.'}</p>
+                  </div>
+                ) : (() => {
+                  const { profile, aiProfile, matchScore } = profileData;
+                  const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Kandidát';
+                  const skills = profile.skills || aiProfile?.hard_skills || [];
+                  const locationText = profile.location || aiProfile?.location || '';
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                      
+                      {/* Top Header Card */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                        <CandidateAvatar userId={profile.user_id} avatarUrl={profile.avatar_url} name={name} size={72} style={{ border: '2px solid var(--border)' }} />
+                        
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)' }}>{name}</h2>
+                          {aiProfile?.ai_headline && (
+                            <p style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--accent)', fontWeight: 600, margin: '0 0 8px' }}>
+                              "{biLang(aiProfile.ai_headline, lang)}"
+                            </p>
+                          )}
+                          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                            {locationText && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{locationText}</span>}
+                            {profile.email && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={12} />{profile.email}</span>}
+                          </div>
+                        </div>
+
+                        {/* Match Score Badge */}
+                        {matchScore && matchScore.overall_score && (() => {
+                          const score = matchScore.overall_score;
+                          const band = matchScore.match_band || getScoreBand(score);
+                          const bandStyle = BAND_DISPLAY[band] || BAND_DISPLAY.E;
+                          return (
+                            <div style={{ padding: '10px 16px', borderRadius: 10, background: bandStyle.bg, border: `1px solid ${bandStyle.color}22`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: bandStyle.color }}>{score}%</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: bandStyle.color, lineHeight: 1.2 }}>
+                                <div>{bandStyle.icon} {bandStyle.label[lang]}</div>
+                                <div style={{ fontSize: 9, opacity: 0.8, textTransform: 'uppercase', marginTop: 2 }}>{lang === 'sk' ? 'Zhoda s pozíciou' : 'Job Match'}</div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* AI Executive Summary */}
+                      <div>
+                        <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Sparkles size={14} />
+                          {lang === 'sk' ? 'Výkonné zhrnutie (AI Analýza)' : 'AI Executive Summary'}
+                        </h4>
+                        <div style={{ background: 'var(--bg)', padding: '16px 20px', borderRadius: 10, border: '1px solid var(--border)', borderLeft: '4px solid var(--accent)', fontSize: 14, lineHeight: '1.6', color: 'var(--text)' }}>
+                          {biLang(aiProfile?.ai_summary || profile.bio, lang) || (
+                            <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              {lang === 'sk' ? 'Žiadne zhrnutie nie je k dispozícii.' : 'No summary available.'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Strengths & Gaps (Split) */}
+                      {matchScore && (matchScore.match_reasons || matchScore.gaps) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="grid-responsive cols-1">
+                          <div>
+                            <h5 style={{ fontSize: 11, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 0 }}>
+                              ✓ {lang === 'sk' ? 'Silné stránky zhody' : 'Match strengths'}
+                            </h5>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {biLangArr(matchScore.match_reasons || aiProfile?.ai_strengths || [], lang).slice(0, 4).map((r, i) => (
+                                <span key={i} style={{ fontSize: 12, background: 'rgba(34,197,94,0.05)', color: '#22c55e', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(34,197,94,0.1)', fontWeight: 600 }}>
+                                  {r}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h5 style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 0 }}>
+                              ✗ {lang === 'sk' ? 'Medzery / Rozvojové oblasti' : 'Gaps'}
+                            </h5>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {biLangArr(matchScore.gaps || aiProfile?.ai_missing_fields || [], lang).slice(0, 4).map((g, i) => {
+                                const isTrainable = g.includes('trénovateľné') || g.includes('trainable');
+                                return (
+                                  <span key={i} style={{ fontSize: 12, background: isTrainable ? 'rgba(59,130,246,0.05)' : 'rgba(239,68,68,0.05)', color: isTrainable ? '#3b82f6' : '#ef4444', padding: '5px 10px', borderRadius: 6, border: `1px solid ${isTrainable ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)'}`, fontWeight: 600 }}>
+                                    {isTrainable ? '⚡' : '✗'} {g}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Education & Experience & Skills & Languages Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }} className="grid-responsive cols-1">
+                        {/* Skills */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                            <Award size={14} style={{ color: 'var(--accent)' }} />
+                            {lang === 'sk' ? 'Zručnosti' : 'Skills'}
+                          </h4>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {skills.map((s, idx) => (
+                              <span key={idx} style={{ padding: '4px 10px', borderRadius: 6, background: 'var(--bg)', fontSize: 11, border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600 }}>
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Languages */}
+                        {aiProfile?.languages && aiProfile.languages.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                              <Globe size={14} style={{ color: 'var(--accent)' }} />
+                              {lang === 'sk' ? 'Jazyky' : 'Languages'}
+                            </h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {aiProfile.languages.map((l, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                                  <span>{l.lang}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)' }}>{l.level}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Education */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                            <GraduationCap size={14} style={{ color: 'var(--accent)' }} />
+                            {lang === 'sk' ? 'Najvyššie vzdelanie' : 'Highest Education'}
+                          </h4>
+                          <div style={{ borderLeft: '2px solid var(--accent)', paddingLeft: 10, fontSize: 12 }}>
+                            {aiProfile?.education_level ? (
+                              <>
+                                <div style={{ fontWeight: 700 }}>
+                                  {{
+                                    high_school: lang === 'sk' ? 'Stredná škola' : 'High School',
+                                    bachelors: lang === 'sk' ? 'Bakalárske štúdium' : 'Bachelor\'s',
+                                    masters: lang === 'sk' ? 'Magisterské štúdium' : 'Master\'s',
+                                    phd: 'Doktorandské štúdium (PhD)',
+                                  }[aiProfile.education_level] || aiProfile.education_level}
+                                </div>
+                                {aiProfile.education_field && <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{aiProfile.education_field}</div>}
+                              </>
+                            ) : profile.education ? (
+                              <div style={{ fontWeight: 700 }}>{profile.education}</div>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{lang === 'sk' ? 'Vzdelanie neuvedené.' : 'Not specified.'}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Experience */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                            <Briefcase size={14} style={{ color: 'var(--accent)' }} />
+                            {lang === 'sk' ? 'Dĺžka praxe' : 'Experience Length'}
+                          </h4>
+                          <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: 10, fontSize: 12 }}>
+                            <div style={{ fontWeight: 700 }}>{aiProfile?.experience_years || 0} {lang === 'sk' ? 'rokov' : 'years'}</div>
+                            {aiProfile?.experience_years === 0 && <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{lang === 'sk' ? 'Bez formálnej praxe.' : 'No formal experience.'}</div>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Resume Original Doc */}
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, marginTop: 0 }}>
+                          <FileText size={14} style={{ color: 'var(--accent)' }} />
+                          {lang === 'sk' ? 'Originálny životopis (PDF)' : 'Original Resume (PDF)'}
+                        </h4>
+                        
+                        {profile.cv_id && profileCvUrl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600 }}>{profile.original_filename || 'Zivotopis.pdf'}</span>
+                              <button 
+                                onClick={() => setFullscreenCV(true)}
+                                style={{ padding: '6px 12px', borderRadius: 6, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                {lang === 'sk' ? 'Otvoriť náhľad' : 'Open Preview'}
+                              </button>
+                            </div>
+                            {/* Short inline PDF frame in modal */}
+                            <div style={{ height: 350, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                              <iframe src={profileCvUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Resume Modal PDF" />
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 13 }}>
+                            {lang === 'sk' ? 'Životopis nie je priložený.' : 'No resume attached.'}
+                          </span>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen CV Viewer inside chat */}
+      <AnimatePresence>
+        {fullscreenCV && profileCvUrl && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 100003, display: 'flex', flexDirection: 'column', backdropFilter: 'blur(10px)', padding: '40px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', color: '#fff' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>
+                  {profileData?.profile ? `${profileData.profile.first_name || ''} ${profileData.profile.last_name || ''}`.trim() : 'Kandidát'}
+                </h2>
+                <p style={{ fontSize: '12px', opacity: 0.7, margin: 0 }}>Originálny životopis</p>
+              </div>
+              <button 
+                onClick={() => setFullscreenCV(false)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={20} style={{ margin: '0 auto' }} />
+              </button>
+            </div>
+            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+              <iframe src={profileCvUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Full CV Preview" />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

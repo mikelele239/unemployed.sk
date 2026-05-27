@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Listings from './pages/Listings';
 import CreateListing from './pages/CreateListing';
 import Candidates from './pages/Candidates';
+import CandidateProfile from './pages/CandidateProfile';
 import Profile from './pages/Profile';
 import EmployerAuth from './pages/EmployerAuth';
 import Inquiry from './pages/Inquiry';
@@ -71,6 +72,7 @@ const AppLayout = () => {
           <Route path="listings" element={<Listings />} />
           <Route path="create-listing" element={<CreateListing />} />
           <Route path="candidates" element={<Candidates />} />
+          <Route path="candidates/:candidateId" element={<CandidateProfile />} />
           <Route path="messages" element={<Messages />} />
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
