@@ -132,7 +132,7 @@ export default function MainLayout() {
         borderTop: isDesktop ? 'none' : '1px solid var(--border)',
         display: 'flex',
         flexDirection: isDesktop ? 'column' : 'row',
-        padding: isDesktop ? '24px 12px' : '0',
+        padding: isDesktop ? '0 12px 24px' : '0',
         paddingBottom: isDesktop ? '24px' : 'env(safe-area-inset-bottom, 0px)',
         position: isDesktop ? 'relative' : 'fixed',
         bottom: 0,

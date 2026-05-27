@@ -24,6 +24,24 @@ export default function Profile() {
   const { lang, setLang, theme, setTheme, t } = useTranslation();
   const [profile, setProfile] = useState({ name: '', edu: '', loc: '', bio: '', skills: [], email: '' });
   const [isEditing, setIsEditing] = useState(false);
+  const [tempProfile, setTempProfile] = useState(null);
+
+  const startEditing = () => {
+    setTempProfile({
+      name: profile.name || '',
+      edu: profile.edu || '',
+      loc: profile.loc || '',
+      bio: profile.bio || '',
+      skills: [...(profile.skills || [])],
+      avatar_url: profile.avatar_url || '',
+    });
+    setIsEditing(true);
+  };
+
+  const closeEditing = () => {
+    setIsEditing(false);
+    setTempProfile(null);
+  };
   const [cvs, setCvs] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -133,11 +151,12 @@ export default function Profile() {
   }, []);
 
   const handleSave = async () => {
+    if (!tempProfile) return;
     try {
       setSaving(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const nameParts = (profile.name || '').trim().split(' ');
+      const nameParts = (tempProfile.name || '').trim().split(' ');
       const token = session.access_token;
 
       // Save via server API (bypasses RLS)
@@ -150,11 +169,11 @@ export default function Profile() {
         body: JSON.stringify({
           first_name: nameParts[0] || '',
           last_name: nameParts.slice(1).join(' ') || '',
-          education: profile.edu || '',
-          location: profile.loc || '',
-          bio: profile.bio || '',
-          skills: profile.skills || [],
-          avatar_url: profile.avatar_url || '',
+          education: tempProfile.edu || '',
+          location: tempProfile.loc || '',
+          bio: tempProfile.bio || '',
+          skills: tempProfile.skills || [],
+          avatar_url: tempProfile.avatar_url || '',
         }),
       });
 
@@ -167,10 +186,22 @@ export default function Profile() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify({ location: profile.loc || '' }),
+            body: JSON.stringify({ location: tempProfile.loc || '' }),
           });
         } catch (e) { console.warn('AI profile location sync:', e.message); }
+
+        setProfile(prev => ({
+          ...prev,
+          name: tempProfile.name,
+          edu: tempProfile.edu,
+          loc: tempProfile.loc,
+          bio: tempProfile.bio,
+          skills: tempProfile.skills,
+          avatar_url: tempProfile.avatar_url,
+        }));
+        
         setIsEditing(false);
+        setTempProfile(null);
       } else {
         const err = await res.json().catch(() => ({}));
         console.error('Profile save error:', err);
@@ -270,15 +301,27 @@ export default function Profile() {
   };
 
   const handleAddSkill = () => {
-    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
-      setProfile(prev => ({ ...prev, skills: [...(prev.skills || []), newSkill.trim()] }));
+    if (newSkill.trim()) {
+      if (tempProfile) {
+        if (!tempProfile.skills.includes(newSkill.trim())) {
+          setTempProfile(prev => ({ ...prev, skills: [...(prev.skills || []), newSkill.trim()] }));
+        }
+      } else {
+        if (!profile.skills.includes(newSkill.trim())) {
+          setProfile(prev => ({ ...prev, skills: [...(prev.skills || []), newSkill.trim()] }));
+        }
+      }
       setNewSkill('');
       setAddingSkill(false);
     }
   };
 
   const handleRemoveSkill = (skill) => {
-    setProfile(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
+    if (tempProfile) {
+      setTempProfile(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
+    } else {
+      setProfile(prev => ({ ...prev, skills: (prev.skills || []).filter(s => s !== skill) }));
+    }
   };
 
   // Profile strength: name, location, profile pic, CV, 3+ skills
@@ -309,7 +352,7 @@ export default function Profile() {
         skillInputRef.current?.focus();
       }, 100);
     } else {
-      setIsEditing(true);
+      startEditing();
       setTimeout(() => {
         if (key === 'name') {
           document.getElementById('profile-name-input')?.focus();
@@ -350,16 +393,19 @@ export default function Profile() {
             'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            first_name: profile.name?.split(' ')[0] || '',
-            last_name: profile.name?.split(' ').slice(1).join(' ') || '',
-            education: profile.edu || '',
-            location: profile.loc || '',
-            skills: profile.skills || [],
+            first_name: (tempProfile?.name || profile.name)?.split(' ')[0] || '',
+            last_name: (tempProfile?.name || profile.name)?.split(' ').slice(1).join(' ') || '',
+            education: tempProfile?.edu || profile.edu || '',
+            location: tempProfile?.loc || profile.loc || '',
+            skills: tempProfile?.skills || profile.skills || [],
             avatar_url: avatarUrl,
           }),
         });
 
         setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+        if (tempProfile) {
+          setTempProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+        }
         setResolvedAvatarUrl(avatarUrl);
         setAvatarFailed(false);
       }
@@ -371,7 +417,7 @@ export default function Profile() {
       <div style={{ padding: '16px 56px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400 }}>{t('nav.profile')}</h1>
         <button 
-          onClick={() => setIsEditing(true)}
+          onClick={startEditing}
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 18px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s' }}
           onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
           onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)'; }}
@@ -747,16 +793,36 @@ export default function Profile() {
             {lang === 'en' ? 'Your strengths' : 'Tvoje silné stránky'}
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {(profile.skills || []).map(skill => (
-              <span key={skill} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)' }}>
-                {skill}
-              </span>
-            ))}
-            {isEditing && (profile.skills || []).map(skill => (
-              <button key={`rm-${skill}`} onClick={() => handleRemoveSkill(skill)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer', transition: 'all 0.2s' }} title={lang === 'en' ? 'Remove' : 'Odstrániť'}>
-                ✕ {skill}
-              </button>
-            ))}
+            <AnimatePresence>
+              {((tempProfile || profile).skills || []).map(skill => (
+                <motion.span 
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                  key={skill} 
+                  style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)' }}
+                >
+                  {skill}
+                </motion.span>
+              ))}
+              {isEditing && (tempProfile?.skills || profile.skills || []).map(skill => (
+                <motion.button 
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                  key={`rm-${skill}`} 
+                  onClick={() => handleRemoveSkill(skill)} 
+                  style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer', transition: 'all 0.2s' }} 
+                  title={lang === 'en' ? 'Remove' : 'Odstrániť'}
+                >
+                  ✕ {skill}
+                </motion.button>
+              ))}
+            </AnimatePresence>
             {addingSkill ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <input
@@ -913,112 +979,137 @@ export default function Profile() {
         </div>
       </div>
       {/* Edit Profile Modal */}
-      {isEditing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={() => setIsEditing(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800 }}>{lang === 'sk' ? 'Upraviť profil' : 'Edit Profile'}</h2>
-              <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
-            </div>
+      <AnimatePresence>
+        {isEditing && tempProfile && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={closeEditing}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              onClick={e => e.stopPropagation()} 
+              style={{ width: '100%', maxWidth: 480, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 800 }}>{lang === 'sk' ? 'Upraviť profil' : 'Edit Profile'}</h2>
+                <button onClick={closeEditing} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+              </div>
 
-            {/* Avatar Upload */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
-              <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}>
-                {(resolvedAvatarUrl || profile.avatar_url) && !avatarFailed ? (
-                  <img src={resolvedAvatarUrl || profile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
-                ) : (
-                  profile.name ? profile.name.charAt(0).toUpperCase() : 'U'
+              {/* Avatar Upload */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+                <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, overflow: 'hidden', position: 'relative', cursor: 'pointer', marginBottom: 8 }}>
+                  {(resolvedAvatarUrl || tempProfile.avatar_url) && !avatarFailed ? (
+                    <img src={resolvedAvatarUrl || tempProfile.avatar_url} alt="" onError={() => setAvatarFailed(true)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', borderRadius: '50%' }} />
+                  ) : (
+                    tempProfile.name ? tempProfile.name.charAt(0).toUpperCase() : 'U'
+                  )}
+                  <label style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 12, fontWeight: 700 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
+                    <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+                    📷
+                  </label>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Klikni pre zmenu fotky' : 'Click to change photo'}</span>
+              </div>
+
+              {/* Name */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Meno a priezvisko' : 'Full Name'}</label>
+                <input id="profile-name-input" value={tempProfile.name || ''} onChange={e => setTempProfile({...tempProfile, name: e.target.value})}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+   
+              {/* Location */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Lokalita' : 'Location'}</label>
+                <input id="profile-loc-input" value={tempProfile.loc || ''} onChange={e => setTempProfile({...tempProfile, loc: e.target.value})} placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Education */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Vzdelanie' : 'Education'}</label>
+                <input value={tempProfile.edu || ''} onChange={e => setTempProfile({...tempProfile, edu: e.target.value})} placeholder={lang === 'sk' ? 'napr. STU Bratislava' : 'e.g. STU Bratislava'}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Bio / About */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'O mne' : 'About Me'}</label>
+                <textarea value={tempProfile.bio || ''} onChange={e => setTempProfile({...tempProfile, bio: e.target.value})} placeholder={lang === 'sk' ? 'Napíš niečo o sebe...' : 'Tell us about yourself...'}
+                  rows={3}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 500, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+              </div>
+
+              {/* CV Upload */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Životopis' : 'CV'}</label>
+                {cvs.length > 0 && (
+                  <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: 'var(--green)' }}>✓</span> {cvs[0].original_filename}
+                  </div>
                 )}
-                <label style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', opacity: 0, cursor: 'pointer', transition: 'opacity 0.2s', color: '#fff', fontSize: 12, fontWeight: 700 }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                  onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
-                  <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
-                  📷
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, border: '2px dashed var(--border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', transition: 'all 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                  <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
+                  {uploading ? '...' : (lang === 'sk' ? '📎 Nahrať nový životopis' : '📎 Upload new CV')}
                 </label>
               </div>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Klikni pre zmenu fotky' : 'Click to change photo'}</span>
-            </div>
 
-            {/* Name */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Meno a priezvisko' : 'Full Name'}</label>
-              <input id="profile-name-input" value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
-            </div>
- 
-            {/* Location */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Lokalita' : 'Location'}</label>
-              <input id="profile-loc-input" value={profile.loc || ''} onChange={e => setProfile({...profile, loc: e.target.value})} placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-
-            {/* Education */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Vzdelanie' : 'Education'}</label>
-              <input value={profile.edu || ''} onChange={e => setProfile({...profile, edu: e.target.value})} placeholder={lang === 'sk' ? 'napr. STU Bratislava' : 'e.g. STU Bratislava'}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-
-            {/* Bio / About */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'O mne' : 'About Me'}</label>
-              <textarea value={profile.bio || ''} onChange={e => setProfile({...profile, bio: e.target.value})} placeholder={lang === 'sk' ? 'Napíš niečo o sebe...' : 'Tell us about yourself...'}
-                rows={3}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 500, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
-            </div>
-
-            {/* CV Upload */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Životopis' : 'CV'}</label>
-              {cvs.length > 0 && (
-                <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: 'var(--green)' }}>✓</span> {cvs[0].original_filename}
+              {/* Skills */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Zručnosti' : 'Skills'}</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  <AnimatePresence>
+                    {(tempProfile.skills || []).map(skill => (
+                      <motion.span 
+                        layout
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                        key={skill} 
+                        style={{ padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)', display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        {skill}
+                        <span onClick={() => handleRemoveSkill(skill)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1, opacity: 0.7 }}>×</span>
+                      </motion.span>
+                    ))}
+                  </AnimatePresence>
                 </div>
-              )}
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 10, border: '2px dashed var(--border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer', transition: 'all 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
-                {uploading ? '...' : (lang === 'sk' ? '📎 Nahrať nový životopis' : '📎 Upload new CV')}
-              </label>
-            </div>
-
-            {/* Skills */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Zručnosti' : 'Skills'}</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                {(profile.skills || []).map(skill => (
-                  <span key={skill} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {skill}
-                    <span onClick={() => handleRemoveSkill(skill)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1, opacity: 0.7 }}>×</span>
-                  </span>
-                ))}
+                {addingSkill ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input ref={skillInputRef} type="text" value={newSkill} onChange={e => setNewSkill(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddSkill(); if (e.key === 'Escape') { setAddingSkill(false); setNewSkill(''); } }}
+                      placeholder={lang === 'sk' ? 'Názov...' : 'Skill name...'} autoFocus
+                      style={{ flex: 1, padding: '6px 12px', borderRadius: 100, fontSize: 12, border: '1px solid var(--accent)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} />
+                    <button onClick={handleAddSkill} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>✓</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAddingSkill(true)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>+ {lang === 'sk' ? 'Pridať' : 'Add'}</button>
+                )}
               </div>
-              {addingSkill ? (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input ref={skillInputRef} type="text" value={newSkill} onChange={e => setNewSkill(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAddSkill(); if (e.key === 'Escape') { setAddingSkill(false); setNewSkill(''); } }}
-                    placeholder={lang === 'sk' ? 'Názov...' : 'Skill name...'} autoFocus
-                    style={{ flex: 1, padding: '6px 12px', borderRadius: 100, fontSize: 12, border: '1px solid var(--accent)', background: 'var(--bg)', color: 'var(--text)', outline: 'none' }} />
-                  <button onClick={handleAddSkill} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>✓</button>
-                </div>
-              ) : (
-                <button onClick={() => setAddingSkill(true)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>+ {lang === 'sk' ? 'Pridať' : 'Add'}</button>
-              )}
-            </div>
 
-            {/* Save button */}
-            <button onClick={handleSave} disabled={saving}
-              style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', transition: 'opacity 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
-              onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-              {saving ? '...' : (lang === 'sk' ? 'Uložiť zmeny' : 'Save Changes')}
-            </button>
-          </div>
-        </div>
-      )}
+              {/* Save button */}
+              <button onClick={handleSave} disabled={saving}
+                style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
+                onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+                {saving ? '...' : (lang === 'sk' ? 'Uložiť zmeny' : 'Save Changes')}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
