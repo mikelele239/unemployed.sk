@@ -60,6 +60,15 @@ html, body, #root {
   position: relative;
 }
 
+/* Full-height page breakout (e.g. Kanban) */
+.kanban-fullpage {
+  margin: -48px -64px;
+  height: calc(100vh - 0px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .sidebar-link:hover {
   background: var(--bg-card) !important;
   color: var(--text) !important;
@@ -168,13 +177,16 @@ html, body, #root {
     box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
   }
   .app-content {
-    padding: 16px;
+    padding: 0;
     flex: 1;
     height: auto;
     overflow-y: auto;
     overflow-x: hidden;
     order: 1;
-    padding-bottom: 20px;
+  }
+  .kanban-fullpage {
+    margin: 0;
+    height: 100%;
   }
   
   .side-nav nav {
