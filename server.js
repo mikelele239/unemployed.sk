@@ -245,6 +245,7 @@ if (!IS_SERVERLESS) {
 require('./routes/jobs')(app, supabase, { getUserFromToken });
 require('./routes/auth')(app, supabase, { hashIp, getUserFromToken, rateLimit, VALID_TYPES, EMAIL_RE });
 require('./routes/ai-matching')(app, supabase, { getUserFromToken });
+require('./routes/ai-verification')(app, supabase, { getUserFromToken });
 
 // ── Employer Profile API (server-side, bypasses RLS) ──────────────────────────
 app.post('/api/employer/ensure-profile', async (req, res) => {

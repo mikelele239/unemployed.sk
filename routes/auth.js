@@ -129,7 +129,7 @@ module.exports = function authRouter(app, supabase, { hashIp, getUserFromToken, 
       // This avoids Supabase's email rate limits on the free tier
       const { data: { user }, error: createError } = await supabase.auth.admin.createUser({
         email, password,
-        email_confirm: true,
+        email_confirm: false,
         user_metadata: { role: 'candidate', full_name: fullName }
       });
       if (createError) {

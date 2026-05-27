@@ -73,17 +73,12 @@ export default function CandidateAuth({ onLoginSuccess }) {
           throw new Error(result.details || result.error || 'Registrácia zlyhala.');
         }
 
-        // Auto-login after successful registration
-        const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginErr) {
-          // Account created but auto-login failed — prompt manual login
-          setMessage('Účet bol vytvorený! Prihláste sa pomocou svojich údajov.');
-          setMode('login');
-          return;
-        }
-        if (loginData.session) {
-          if (onLoginSuccess) onLoginSuccess(loginData.session);
-        }
+        // Do NOT auto-login since email verification is required.
+        // Prompt them to check their email and switch to login mode.
+        setMessage('Registrácia bola úspešná! Na váš e-mail sme odoslali overovací odkaz. Pred prvým prihlásením prosím kliknite na odkaz v správe (skontrolujte aj SPAM).');
+        setPassword('');
+        setConfirmPassword('');
+        setMode('login');
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;

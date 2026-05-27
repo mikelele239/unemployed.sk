@@ -55,11 +55,9 @@ function App() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // Consider onboarding complete if ANY of these exist:
-        // - has a name (from manual entry or CV parse)
-        // - has a cv_id (uploaded a CV)
-        // - has skills filled in
-        if (profile && (profile.first_name || profile.last_name || profile.cv_id || (profile.skills && profile.skills.length > 0))) {
+        // Consider onboarding complete if user has uploaded a CV or filled out manual preferences/skills
+        // (Avoid checking first_name/last_name which are pre-populated upon registration)
+        if (profile && (profile.cv_id || (profile.skills && profile.skills.length > 0) || (profile.job_preferences && profile.job_preferences.length > 0))) {
           setProfileStarted(true);
           localStorage.setItem('unemployed_onboarding_complete', session.user.id);
         } else if (onboardingDone === session.user.id) {
