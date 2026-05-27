@@ -11,10 +11,48 @@ const ATTR_CONFIG = {
   language:    { icon: '🌍', color: '#3b82f6', sk: 'Jazykové znalosti', en: 'Language Skills' },
   skills:      { icon: '💻', color: '#8b5cf6', sk: 'Technické zručnosti', en: 'Technical Skills' },
   experience:  { icon: '💼', color: '#f59e0b', sk: 'Pracovné skúsenosti', en: 'Work Experience' },
-  soft_skills: { icon: '🤝', color: '#22c55e', sk: 'Mäkké zručnosti', en: 'Soft Skills' },
+  soft_skills: { icon: '🤝', color: '#22c55e', sk: 'Mäkké zručnosti',    en: 'Soft Skills' },
+  collect:     { icon: '📋', color: '#a78bfa', sk: 'Zber informácií',     en: 'Profile Collection' },
 };
 
+const COLLECT_STEP_LABELS = [
+  { sk: 'Celé meno',        en: 'Full name' },
+  { sk: 'Telefón',          en: 'Phone' },
+  { sk: 'Lokalita',         en: 'Location' },
+  { sk: 'Štátna príslušnosť', en: 'Nationality' },
+  { sk: 'Vzdelanie',        en: 'Education' },
+  { sk: 'Pracovné skúsenosti', en: 'Work experience' },
+  { sk: 'Mimoškolské aktivity', en: 'Extracurricular' },
+  { sk: 'Osobnostné zručnosti', en: 'Soft skills' },
+  { sk: 'Technické zručnosti', en: 'Technical skills' },
+  { sk: 'Jazyky',           en: 'Languages' },
+];
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
+
+function CollectProgressBar({ step, total, lang }) {
+  const pct = Math.round((step / total) * 100);
+  const label = COLLECT_STEP_LABELS[step] || COLLECT_STEP_LABELS[total - 1];
+  return (
+    <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: 5 }}>
+          📋 {lang === 'sk' ? 'Vytvárame tvoj profil' : 'Building your profile'}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+          {lang === 'sk' ? label?.sk : label?.en} · {pct}%
+        </span>
+      </div>
+      <div style={{ height: 4, background: 'var(--bg-card)', borderRadius: 2, overflow: 'hidden' }}>
+        <motion.div
+          style={{ height: '100%', background: 'linear-gradient(90deg, #a78bfa, #7c3aed)', borderRadius: 2 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function ConsentModal({ lang, onAccept, onDecline }) {
   return (
@@ -289,7 +327,10 @@ export default function VerificationChat() {
   const [attributeIndex, setAttributeIndex] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions] = useState(3);
-  const [messages, setMessages] = useState([]); // [{role:'ai'|'student', text, attribute}]
+  const [messages, setMessages] = useState([]);
+  const [sessionMode, setSessionMode] = useState('interview'); // 'collect' | 'interview'
+  const [collectStep, setCollectStep] = useState(0);
+  const [collectTotal] = useState(10); // [{role:'ai'|'student', text, attribute}]
 
   // Results (accumulate as sections complete)
   const [results, setResults] = useState({});
@@ -343,6 +384,8 @@ export default function VerificationChat() {
       setCurrentAttribute(data.attribute || 'language');
       setAttributeIndex(data.attributeIndex || 0);
       setQuestionIndex(data.questionIndex || 0);
+      setSessionMode(data.mode || 'interview');
+      if (data.mode === 'collect') setCollectStep(0);
       setMessages([{ role: 'ai', text: data.question, attribute: data.attribute }]);
       setPhase('interview');
     } catch (err) {
@@ -388,6 +431,19 @@ export default function VerificationChat() {
           ...prev,
           [currentAttribute]: { ...resp.evaluation, transcript: [] },
         }));
+      }
+
+      // CV generated → show transition banner
+      if (resp.cvGenerated && resp.modeTransition === 'interview') {
+        setSessionMode('interview');
+        if (resp.transitionMessage) {
+          setMessages(prev => [...prev, { role: 'ai', text: resp.transitionMessage, attribute: 'transition' }]);
+        }
+      }
+
+      // Update collect progress
+      if (resp.collectProgress) {
+        setCollectStep(resp.collectProgress.step);
       }
 
       if (resp.sessionComplete) {
@@ -642,17 +698,24 @@ export default function VerificationChat() {
   // ── Interview phase ──────────────────────────────────────────────────────
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
-      {/* Progress Bar */}
-      <ProgressBar
-        attributeIndex={attributeIndex}
-        questionIndex={questionIndex}
-        totalAttributes={ATTRIBUTES.length}
-        totalQuestions={totalQuestions}
-      />
+      {/* Progress Bar — collect or interview */}
+      {sessionMode === 'collect' ? (
+        <CollectProgressBar step={collectStep} total={collectTotal} lang={lang} />
+      ) : (
+        <ProgressBar
+          attributeIndex={attributeIndex}
+          questionIndex={questionIndex}
+          totalAttributes={ATTRIBUTES.length}
+          totalQuestions={totalQuestions}
+        />
+      )}
 
       {/* Current section label */}
       {(() => {
-        const cfg = ATTR_CONFIG[currentAttribute];
+        const cfg = ATTR_CONFIG[sessionMode === 'collect' ? 'collect' : currentAttribute];
+        const label = sessionMode === 'collect'
+          ? (lang === 'sk' ? 'Zber informácií pre CV' : 'Collecting CV information')
+          : (lang === 'sk' ? cfg?.sk : cfg?.en);
         return (
           <div style={{
             padding: '8px 20px',
@@ -663,10 +726,12 @@ export default function VerificationChat() {
             background: `${cfg?.color}08`,
           }}>
             <span>{cfg?.icon}</span>
-            {lang === 'sk' ? cfg?.sk : cfg?.en}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
-              — {lang === 'sk' ? `Otázka ${questionIndex + 1} z ${totalQuestions}` : `Question ${questionIndex + 1} of ${totalQuestions}`}
-            </span>
+            {label}
+            {sessionMode === 'interview' && (
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                — {lang === 'sk' ? `Otázka ${questionIndex + 1} z ${totalQuestions}` : `Question ${questionIndex + 1} of ${totalQuestions}`}
+              </span>
+            )}
           </div>
         );
       })()}

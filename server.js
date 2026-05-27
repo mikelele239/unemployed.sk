@@ -234,11 +234,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ── Middleware ─────────────────────────────────────────────────────────────────
 // JSON body parser — skip for multipart file upload routes
 app.use((req, res, next) => {
-  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload') return next();
+  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload' || req.path === '/api/student/avatar-upload') return next();
   express.json({ limit: '16kb' })(req, res, next);
 });
 app.use((req, res, next) => {
-  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload') return next();
+  if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload' || req.path === '/api/student/avatar-upload') return next();
   express.urlencoded({ extended: false, limit: '16kb' })(req, res, next);
 });
 app.set('trust proxy', 1);
@@ -398,6 +398,73 @@ app.post('/api/employer/logo-upload', logoUpload.single('logo'), async (req, res
     res.status(500).json({ error: err.message });
   }
 });
+
+app.post('/api/student/avatar-upload', logoUpload.single('avatar'), async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const file = req.file;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'No image file found in request' });
+    }
+
+    const uid = user.id;
+    const ext = (file.originalname || 'avatar.png').split('.').pop() || 'png';
+
+    // Remove old avatar files from storage
+    try {
+      const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 50 });
+      const oldAvatars = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('avatar.'));
+      if (oldAvatars.length > 0) {
+        await supabase.storage.from('cvs').remove(oldAvatars.map(f => `${uid}/${f.name}`));
+      }
+    } catch (cleanErr) {
+      console.warn('[Avatar Upload] Cleanup non-fatal:', cleanErr.message);
+    }
+
+    // Upload new avatar
+    const storagePath = `${uid}/avatar.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('cvs')
+      .upload(storagePath, file.buffer, { upsert: true, contentType: file.mimetype });
+
+    if (uploadErr) {
+      console.error('[Avatar Upload] Storage error:', uploadErr);
+      return res.status(500).json({ error: uploadErr.message });
+    }
+
+    // Create a long-lived signed URL (1 year)
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from('cvs')
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+
+    if (signErr) {
+      console.error('[Avatar Upload] Signed URL error:', signErr);
+      return res.status(500).json({ error: signErr.message });
+    }
+
+    const avatarUrl = signedData?.signedUrl || '';
+
+    // Update the profiles table
+    const { error: dbErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('user_id', uid);
+
+    if (dbErr) {
+      console.error('[Avatar Upload] DB update error:', dbErr);
+      return res.status(500).json({ error: dbErr.message });
+    }
+
+    console.log('[Avatar Upload] ✅ Avatar updated for student:', uid);
+    res.json({ avatar_url: avatarUrl });
+  } catch (err) {
+    console.error('[Avatar Upload] Critical error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.get('/api/employer/profile', async (req, res) => {
   try {

@@ -366,41 +366,21 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const uid = session.user.id;
+      const token = await getAccessTokenAsync() || getAccessToken();
+      if (!token) return;
 
-      // Remove any existing avatar files first
-      const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 20 });
-      const oldAvatars = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('avatar.'));
-      if (oldAvatars.length > 0) {
-        await supabase.storage.from('cvs').remove(oldAvatars.map(f => `${uid}/${f.name}`));
-      }
+      const formData = new FormData();
+      formData.append('avatar', file);
 
-      const ext = file.name.split('.').pop();
-      const path = `${uid}/avatar.${ext}`;
-      const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type });
-      if (!error) {
-        // Always use a signed URL since the 'cvs' bucket is private
-        const { data: signedData } = await supabase.storage.from('cvs').createSignedUrl(path, 60 * 60 * 24 * 365);
-        const avatarUrl = signedData?.signedUrl || '';
+      const res = await fetch('/api/student/avatar-upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
 
-        // Update avatar_url via server proxy to bypass RLS
-        await fetch('/api/student/profile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            first_name: (tempProfile?.name || profile.name)?.split(' ')[0] || '',
-            last_name: (tempProfile?.name || profile.name)?.split(' ').slice(1).join(' ') || '',
-            education: tempProfile?.edu || profile.edu || '',
-            location: tempProfile?.loc || profile.loc || '',
-            skills: tempProfile?.skills || profile.skills || [],
-            avatar_url: avatarUrl,
-          }),
-        });
+      if (res.ok) {
+        const json = await res.json();
+        const avatarUrl = json.avatar_url || '';
 
         setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
         if (tempProfile) {
@@ -408,6 +388,10 @@ export default function Profile() {
         }
         setResolvedAvatarUrl(avatarUrl);
         setAvatarFailed(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('Avatar upload error:', err);
+        alert(err.error || 'Upload failed');
       }
     } catch (err) { console.error('Avatar upload error:', err); }
   };
