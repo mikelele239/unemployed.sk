@@ -4,7 +4,7 @@
 > Students discover jobs through Tinder-style swiping and AI matching.
 > Employers manage listings, evaluate candidates, and track recruitment analytics.
 >
-> **Version**: 3.1.0 | **Last Updated**: 2026-05-11
+> **Version**: 3.2.0 | **Last Updated**: 2026-05-27
 
 ---
 
@@ -69,7 +69,7 @@ Unemployed.sk/
 | **Auth**          | `CandidateAuth.jsx`     | Login / Register via server-side admin API (avoids email rate limits), password reset       |
 | **Onboarding**    | `Onboarding.jsx`        | CV upload → AI parse → profile review → skill selection → manual entry fallback            |
 | **For You**       | `ForYou.jsx`            | Tinder swipe cards (mobile) + split-view detail (desktop), AI match scores, map hero       |
-| **Search**        | `Search.jsx`            | Text search + filter drawer (rate, focus area, category tabs) + employer search             |
+| **Search**        | `Search.jsx`            | Text search + Explore Pathways (curated Gen Z discovery banners) + filter drawer + employer search |
 | **Applications**  | `Applications.jsx`      | Track applied jobs, interview scheduling (accept/decline/counter-offer with date picker)   |
 | **Profile**       | `Profile.jsx`           | Edit name/bio/education/location, CV management, avatar upload, skills, profile strength   |
 | **Company**       | `CompanyProfile.jsx`    | Instagram-style company page with listings, stats, and location map                        |
@@ -105,7 +105,7 @@ Unemployed.sk/
 | **Dashboard**     | `Dashboard.jsx`         | 5-card analytics: active jobs, total candidates, interviews, conversion rate, pipeline     |
 | **Listings**      | `Listings.jsx`          | Full CRUD for job postings with rich edit modal (all fields + AI match criteria)            |
 | **Create Listing**| `CreateListing.jsx`     | Job creation form (title, rate, type, model, location, description, requirements, tags)    |
-| **Candidates**    | `Candidates.jsx`        | Browse & evaluate applicants with AI profiles, CV preview, interview scheduling            |
+| **Candidates**    | `Candidates.jsx`        | ATS Kanban Board (5 columns, drag-and-drop pipeline, status change API triggers, confirming modals) |
 | **Profile**       | `Profile.jsx`           | Company info, logo upload, theme/language settings, sign out                               |
 
 ### Components

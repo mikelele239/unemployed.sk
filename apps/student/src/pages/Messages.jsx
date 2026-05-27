@@ -464,8 +464,19 @@ export default function Messages() {
                 <button
                   onClick={async () => {
                     if (window.confirm(lang === 'sk' ? 'Naozaj chceš odmietnuť toto pozvanie?' : 'Do you really want to decline this invitation?')) {
-                      await supabase.from('applications').update({ status: 'Declined' }).eq('id', activeConv.applicationId);
-                      await fetchInbox();
+                      const session = (await supabase.auth.getSession()).data.session;
+                      if (!session) return;
+                      const res = await fetch(`/api/applications/${activeConv.applicationId}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ status: 'Declined' })
+                      });
+                      if (res.ok) {
+                        await fetchInbox();
+                      }
                     }
                   }}
                   style={{
@@ -491,11 +502,17 @@ export default function Messages() {
                       whileTap={{ scale: 0.98 }}
                       key={date}
                       onClick={async () => {
-                        const { error } = await supabase
-                          .from('applications')
-                          .update({ status: 'Interview-Confirmed', selected_date: date })
-                          .eq('id', activeConv.applicationId);
-                        if (!error) {
+                        const session = (await supabase.auth.getSession()).data.session;
+                        if (!session) return;
+                        const res = await fetch(`/api/applications/${activeConv.applicationId}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                          },
+                          body: JSON.stringify({ status: 'Interview-Confirmed', selected_date: date })
+                        });
+                        if (res.ok) {
                           await fetchInbox();
                         }
                       }}
@@ -823,11 +840,17 @@ export default function Messages() {
                 title={lang === 'sk' ? 'Navrhnúť termín' : 'Propose Date'}
                 onSelect={async (dates) => {
                   const counterDate = dates[0];
-                  const { error } = await supabase
-                    .from('applications')
-                    .update({ status: 'Counter-Offer', selected_date: counterDate })
-                    .eq('id', activeConv.applicationId);
-                  if (!error) {
+                  const session = (await supabase.auth.getSession()).data.session;
+                  if (!session) return;
+                  const res = await fetch(`/api/applications/${activeConv.applicationId}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({ status: 'Counter-Offer', selected_date: counterDate })
+                  });
+                  if (res.ok) {
                     setShowStudentCounterPicker(false);
                     await fetchInbox();
                   }

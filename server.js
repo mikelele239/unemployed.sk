@@ -601,6 +601,42 @@ app.get('/api/employer/candidates', async (req, res) => {
   }
 });
 
+// Helper to create notifications and insert system messages into chat
+async function createSystemMessageAndNotification({ appId, recipientId, type, title, message, statusChangeValue }) {
+  // 1. Insert into notifications
+  try {
+    await supabase.from('notifications').insert({
+      user_id: recipientId,
+      type: type || 'general',
+      title: title,
+      message: message,
+      related_entity_id: appId,
+      read: false
+    });
+  } catch (err) {
+    console.warn('[createSystemMessageAndNotification] Warning: failed to insert notification bell:', err.message);
+  }
+
+  // 2. Insert into application_messages if table exists
+  try {
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+    if (hasDedicated) {
+      await supabase.from('application_messages').insert({
+        application_id: appId,
+        sender_id: null, // NULL represents a system sender
+        body: message,
+        message_type: statusChangeValue === 'Interview' ? 'interview_invite' : 'system',
+        metadata: {
+          status: statusChangeValue,
+          title: title
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[createSystemMessageAndNotification] Warning: failed to insert system chat message:', err.message);
+  }
+}
+
 // ── Employer Update Application Status (server-side, bypasses RLS) ──────────
 app.patch('/api/employer/candidates/:id', async (req, res) => {
   try {
@@ -610,7 +646,7 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
     // Verify ownership of this candidate application
     const { data: appData, error: appErr } = await supabase
       .from('applications')
-      .select('employer_id, job_id')
+      .select('employer_id, job_id, candidate_id, student_name')
       .eq('id', req.params.id)
       .maybeSingle();
 
@@ -634,16 +670,65 @@ app.patch('/api/employer/candidates/:id', async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized: This candidate application does not belong to your job postings.' });
     }
 
-    const { status, interview_dates } = req.body;
+    const { status, interview_dates, selected_date } = req.body;
     const updatePayload = {};
     if (status) updatePayload.status = status;
     if (interview_dates) updatePayload.interview_dates = interview_dates;
+    if (selected_date !== undefined) updatePayload.selected_date = selected_date;
+
     const { error } = await supabase
       .from('applications')
       .update(updatePayload)
       .eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
 
+    // Trigger Notification and System message
+    if (status && appData.candidate_id) {
+      // Get Job Title and Employer Name for rich notifications
+      const { data: job } = await supabase.from('jobs').select('title, company').eq('id', appData.job_id).maybeSingle();
+      const employerName = job?.company || 'Zamestnávateľ';
+      const jobTitle = job?.title || 'Pracovná pozícia';
+
+      const statusLabels = {
+        'Viewed': 'Zobrazená',
+        'Interview': 'Pozvánka na pohovor',
+        'Interview-Confirmed': 'Potvrdený termín pohovoru',
+        'Hired': 'Prijatý/á! 🎉',
+        'Rejected': 'Ukončený výberový proces',
+      };
+
+      const label = statusLabels[status] || status;
+      let msgText = `Stav tvojej prihlášky na pozíciu "${jobTitle}" bol zmenený na: ${label}`;
+      let notificationType = 'general';
+
+      if (status === 'Interview') {
+        msgText = `Firma ${employerName} ti navrhla termíny pre pohovor na pozíciu "${jobTitle}".`;
+        notificationType = 'interview_scheduled';
+      } else if (status === 'Interview-Confirmed') {
+        const dateVal = selected_date || updatePayload.selected_date;
+        const dateStr = dateVal ? new Date(dateVal).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        msgText = `Firma ${employerName} potvrdila termín pohovoru na pozíciu "${jobTitle}" dňa: ${dateStr}.`;
+        notificationType = 'interview_confirmed';
+      } else if (status === 'Hired') {
+        msgText = `Gratulujeme! Firma ${employerName} ťa úspešne prijala na pozíciu "${jobTitle}"! 🎉`;
+        notificationType = 'hired';
+      } else if (status === 'Rejected') {
+        msgText = `Ďakujeme za tvoj čas a úsilie. Firma ${employerName} sa rozhodla v tomto výberovom konaní nepokračovať.`;
+        notificationType = 'rejected';
+      } else if (status === 'Viewed') {
+        msgText = `Firma ${employerName} si prezrela tvoju prihlášku na pozíciu "${jobTitle}".`;
+        notificationType = 'status_update';
+      }
+
+      await createSystemMessageAndNotification({
+        appId: req.params.id,
+        recipientId: appData.candidate_id,
+        type: notificationType,
+        title: status === 'Interview' ? 'Pozvánka na pohovor' : `Aktualizácia stavu: ${label}`,
+        message: msgText,
+        statusChangeValue: status
+      });
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -1236,13 +1321,84 @@ app.patch('/api/applications/:id', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    const { status } = req.body;
+    
+    // Fetch current application to verify candidate identity and get employer_id
+    const { data: appData, error: appErr } = await supabase
+      .from('applications')
+      .select('id, job_id, student_name, student_email, employer_id, selected_date, interview_dates')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (appErr || !appData) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    // Verify ownership
+    if (appData.student_email !== user.email) {
+      return res.status(403).json({ error: 'Unauthorized: This is not your application.' });
+    }
+
+    const { status, selected_date } = req.body;
+    const updatePayload = {};
+    if (status) updatePayload.status = status;
+    if (selected_date !== undefined) updatePayload.selected_date = selected_date;
+
     const { error } = await supabase
       .from('applications')
-      .update({ status })
-      .eq('id', req.params.id)
-      .eq('student_email', user.email);
+      .update(updatePayload)
+      .eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
+
+    // Find the recipient (employer). Get the employer_id from job or application
+    let recipientId = appData.employer_id;
+    const { data: job } = await supabase.from('jobs').select('employer_id, title').eq('id', appData.job_id).maybeSingle();
+    if (!recipientId && job) {
+      recipientId = job.employer_id;
+    }
+
+    if (status && recipientId) {
+      const studentName = appData.student_name || 'Uchádzač';
+      const jobTitle = job?.title || 'Pracovná ponuka';
+      
+      const statusLabels = {
+        'Interview-Confirmed': 'Potvrdený termín pohovoru',
+        'Counter-Offer': 'Protinávrh termínu',
+        'Declined': 'Odmietnuté pozvanie',
+        'Withdrawn': 'Stiahnutá prihláška',
+      };
+
+      const label = statusLabels[status] || status;
+      let msgText = `Uchádzač ${studentName} zmenil stav prihlášky pre "${jobTitle}" na: ${label}`;
+      let notificationType = 'general';
+
+      if (status === 'Interview-Confirmed') {
+        const dateVal = selected_date || updatePayload.selected_date;
+        const dateStr = dateVal ? new Date(dateVal).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        msgText = `Uchádzač ${studentName} potvrdil termín pohovoru na pozíciu "${jobTitle}" dňa: ${dateStr}.`;
+        notificationType = 'interview_confirmed';
+      } else if (status === 'Counter-Offer') {
+        const dateVal = selected_date || updatePayload.selected_date;
+        const dateStr = dateVal ? new Date(dateVal).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        msgText = `Uchádzač ${studentName} navrhol nový protinávrh termínu pre pohovor na pozíciu "${jobTitle}" dňa: ${dateStr}.`;
+        notificationType = 'counter_offer';
+      } else if (status === 'Declined') {
+        msgText = `Uchádzač ${studentName} odmietol vaše pozvanie na pohovor pre pozíciu "${jobTitle}".`;
+        notificationType = 'rejected';
+      } else if (status === 'Withdrawn') {
+        msgText = `Uchádzač ${studentName} stiahol svoju prihlášku na pozíciu "${jobTitle}".`;
+        notificationType = 'rejected';
+      }
+
+      await createSystemMessageAndNotification({
+        appId: req.params.id,
+        recipientId: recipientId,
+        type: notificationType,
+        title: `Aktualizácia: ${label}`,
+        message: msgText,
+        statusChangeValue: status
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

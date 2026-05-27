@@ -772,11 +772,20 @@ export default function Messages() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={async () => {
-                    const { error } = await supabase
-                      .from('applications')
-                      .update({ status: 'Interview-Confirmed' })
-                      .eq('id', activeConv.applicationId);
-                    if (!error) {
+                    const session = (await supabase.auth.getSession()).data.session;
+                    if (!session) return;
+                    const res = await fetch(`/api/employer/candidates/${activeConv.applicationId}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                      },
+                      body: JSON.stringify({ 
+                        status: 'Interview-Confirmed', 
+                        selected_date: activeConv.application.selected_date 
+                      })
+                    });
+                    if (res.ok) {
                       await fetchInbox();
                     }
                   }}
@@ -932,15 +941,24 @@ export default function Messages() {
             <div onClick={e => e.stopPropagation()}>
               <ModernDatePicker 
                 onSelect={async (dates) => {
-                  const { error } = await supabase.from('applications').update({ 
-                    status: 'Interview', 
-                    interview_dates: dates 
-                  }).eq('id', activeConv.applicationId);
-                  if (!error) {
+                  const session = (await supabase.auth.getSession()).data.session;
+                  if (!session) return;
+                  const res = await fetch(`/api/employer/candidates/${activeConv.applicationId}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({
+                      status: 'Interview',
+                      interview_dates: dates
+                    })
+                  });
+                  if (res.ok) {
                     setShowEmployerDatePicker(false);
                     await fetchInbox();
                   } else {
-                    alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
+                    alert(lang === 'sk' ? 'Chyba pri ukladaní termínov' : 'Error saving interview dates');
                   }
                 }}
                 onCancel={() => setShowEmployerDatePicker(false)}

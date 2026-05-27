@@ -183,8 +183,17 @@ export default function Applications() {
                               try {
                                 const { data: { session } } = await supabase.auth.getSession();
                                 if (!session) return;
-                                await supabase.from('applications').delete().eq('id', app.appId || app.id);
-                                fetchApplications();
+                                const res = await fetch(`/api/applications/${app.appId || app.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`
+                                  },
+                                  body: JSON.stringify({ status: 'Withdrawn' })
+                                });
+                                if (res.ok) {
+                                  fetchApplications();
+                                }
                               } catch (err) { console.error(err); }
                               setWithdrawConfirmId(null);
                               setWithdrawing(false);
@@ -255,10 +264,14 @@ export default function Applications() {
                               try {
                                 const { data: { session } } = await supabase.auth.getSession();
                                 if (!session) return;
-                                await supabase
-                                  .from('applications')
-                                  .update({ status: 'Declined' })
-                                  .eq('id', app.appId || app.id);
+                                await fetch(`/api/applications/${app.appId || app.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`
+                                  },
+                                  body: JSON.stringify({ status: 'Declined' })
+                                });
                               } catch (err) {
                                 console.error('Decline error:', err);
                               }
@@ -349,19 +362,25 @@ export default function Applications() {
                                   try {
                                     const { data: { session } } = await supabase.auth.getSession();
                                     if (!session) return;
-                                    const { error } = await supabase
-                                      .from('applications')
-                                      .update({ 
+                                    const res = await fetch(`/api/applications/${app.appId || app.id}`, {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${session.access_token}`
+                                      },
+                                      body: JSON.stringify({ 
                                         status: 'Interview-Confirmed',
                                         selected_date: date
                                       })
-                                      .eq('id', app.appId || app.id);
-                                    if (!error) {
+                                    });
+                                    if (res.ok) {
                                       setSuccessId(app.id);
                                       setTimeout(() => {
                                         setSuccessId(null);
                                         fetchApplications();
                                       }, 2000);
+                                    } else {
+                                      btn.disabled = false;
                                     }
                                   } catch (err) {
                                     btn.disabled = false;
@@ -421,11 +440,15 @@ export default function Applications() {
                                       try {
                                         const { data: { session } } = await supabase.auth.getSession();
                                         if (!session) return;
-                                        const { error } = await supabase
-                                          .from('applications')
-                                          .update({ status: 'Counter-Offer', selected_date: counterDate })
-                                          .eq('id', app.appId || app.id);
-                                        if (!error) {
+                                        const res = await fetch(`/api/applications/${app.appId || app.id}`, {
+                                          method: 'PATCH',
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${session.access_token}`
+                                          },
+                                          body: JSON.stringify({ status: 'Counter-Offer', selected_date: counterDate })
+                                        });
+                                        if (res.ok) {
                                           setCounterPickerId(null);
                                           setSuccessId(app.id);
                                           setTimeout(() => { setSuccessId(null); fetchApplications(); }, 2000);
