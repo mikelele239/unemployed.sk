@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Settings, LogOut, CheckCircle, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase, getAccessToken, getAccessTokenAsync } from '../supabase';
 import { useTranslation } from '../I18nContext';
 
@@ -289,6 +290,35 @@ export default function Profile() {
     { key: 'skills', label: lang === 'sk' ? '3+ zručnosti' : '3+ skills', done: (profile.skills || []).length >= 3 },
   ];
   const completionPercent = Math.round((strengthItems.filter(i => i.done).length / strengthItems.length) * 100);
+
+  const getProfileRank = (pct) => {
+    if (pct < 40) return lang === 'sk' ? 'Nový Hrdina 🌟' : 'New Hero 🌟';
+    if (pct < 80) return lang === 'sk' ? 'Kariérny Cestovateľ 🚀' : 'Career Explorer 🚀';
+    if (pct < 100) return lang === 'sk' ? 'Profi Kandidát 🏆' : 'Pro Candidate 🏆';
+    return lang === 'sk' ? 'Legenda Trhu 👑' : 'Market Legend 👑';
+  };
+
+  const handleSuggestionClick = (key) => {
+    if (key === 'cv') {
+      document.getElementById('cv-file-input')?.click();
+    } else if (key === 'avatar') {
+      document.getElementById('avatar-file-input')?.click();
+    } else if (key === 'skills') {
+      setAddingSkill(true);
+      setTimeout(() => {
+        skillInputRef.current?.focus();
+      }, 100);
+    } else {
+      setIsEditing(true);
+      setTimeout(() => {
+        if (key === 'name') {
+          document.getElementById('profile-name-input')?.focus();
+        } else if (key === 'loc') {
+          document.getElementById('profile-loc-input')?.focus();
+        }
+      }, 150);
+    }
+  };
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -364,7 +394,7 @@ export default function Profile() {
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = '0'}
             >
-              <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+              <input type="file" id="avatar-file-input" accept="image/*" hidden onChange={handleAvatarUpload} />
               📷
             </label>
           </div>
@@ -382,28 +412,101 @@ export default function Profile() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{lang === 'en' ? 'Profile Strength' : 'Sila profilu'}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{completionPercent}%</span>
+        <div style={{ 
+          background: 'linear-gradient(135deg, var(--bg-card), rgba(255,92,0,0.02))', 
+          border: '1.5px solid var(--border)', 
+          borderRadius: 20, 
+          padding: '20px', 
+          marginBottom: 24,
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {completionPercent === 100 && (
+            <motion.div 
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', damping: 10, stiffness: 100 }}
+              style={{ position: 'absolute', top: 12, right: 12, fontSize: 24 }}
+            >
+              🎉
+            </motion.div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+                {lang === 'en' ? 'Profile Level' : 'Úroveň profilu'}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
+                {getProfileRank(completionPercent)}
+              </span>
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--accent)', background: 'var(--accent-lighter)', padding: '4px 10px', borderRadius: 8 }}>
+              {completionPercent}%
+            </span>
           </div>
-          <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginBottom: 12 }}>
-            <div style={{ width: `${completionPercent}%`, height: '100%', background: 'var(--accent)' }} />
+          <div style={{ height: 8, background: 'var(--bg)', borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
+            <motion.div 
+              initial={{ width: 0 }} 
+              animate={{ width: `${completionPercent}%` }} 
+              transition={{ type: 'spring', stiffness: 60, damping: 12 }} 
+              style={{ height: '100%', background: 'linear-gradient(90deg, var(--accent) 0%, #a855f7 100%)', borderRadius: 4 }} 
+            />
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, fontWeight: 600 }}>
             {completionPercent === 100 
-              ? (lang === 'sk' ? 'Tvoj profil je kompletný! 🎉' : 'Your profile is complete! 🎉')
-              : (lang === 'sk' ? 'Doplň chýbajúce položky:' : 'Complete missing items:')}
+              ? (lang === 'sk' ? 'Gratulujeme! Tvoj profil je 100% kompletný a pripravený na hľadanie práce. 🚀' : 'Congratulations! Your profile is 100% complete and job-ready. 🚀')
+              : (lang === 'sk' ? 'Zlepši si profil pre lepšie pracovné ponuky:' : 'Boost your profile for better matching jobs:')}
           </p>
           {completionPercent < 100 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {strengthItems.map(item => (
-                <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <span style={{ width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, background: item.done ? 'var(--green)' : 'var(--bg)', border: item.done ? 'none' : '1.5px solid var(--border)', color: '#fff' }}>
+                <motion.div 
+                  layout
+                  key={item.key} 
+                  onClick={() => !item.done && handleSuggestionClick(item.key)}
+                  whileHover={!item.done ? { x: 4, background: 'rgba(255,92,0,0.03)' } : {}}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 10, 
+                    fontSize: 12,
+                    cursor: item.done ? 'default' : 'pointer',
+                    padding: '6px 8px',
+                    borderRadius: 8,
+                    background: item.done ? 'transparent' : 'rgba(0,0,0,0.01)',
+                    border: item.done ? '1px solid transparent' : '1px dashed var(--border)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{ 
+                    width: 18, 
+                    height: 18, 
+                    borderRadius: '50%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: 11, 
+                    background: item.done ? 'var(--green)' : 'var(--bg)', 
+                    border: item.done ? 'none' : '1.5px solid var(--border)', 
+                    color: '#fff',
+                    flexShrink: 0
+                  }}>
                     {item.done ? '✓' : ''}
                   </span>
-                  <span style={{ color: item.done ? 'var(--text-muted)' : 'var(--text)', fontWeight: item.done ? 500 : 700, textDecoration: item.done ? 'line-through' : 'none' }}>{item.label}</span>
-                </div>
+                  <span style={{ 
+                    color: item.done ? 'var(--text-muted)' : 'var(--text)', 
+                    fontWeight: item.done ? 500 : 700, 
+                    textDecoration: item.done ? 'line-through' : 'none',
+                    flex: 1
+                  }}>
+                    {item.label}
+                  </span>
+                  {!item.done && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', opacity: 0.8 }}>
+                      {lang === 'sk' ? 'DOPLNIŤ +' : 'COMPLETE +'}
+                    </span>
+                  )}
+                </motion.div>
               ))}
             </div>
           )}
@@ -707,7 +810,7 @@ export default function Profile() {
                   {lang === 'en' ? 'Preview' : 'Prezrieť'}
                 </button>
                 <label style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: uploading ? 'default' : 'pointer' }}>
-                  <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
+                  <input type="file" id="cv-file-input" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
                   {uploading ? '...' : (lang === 'en' ? 'Change' : 'Zmeniť')}
                 </label>
               </div>
@@ -718,7 +821,7 @@ export default function Profile() {
               padding: '14px', borderRadius: 12, border: '2px dashed var(--border)', 
               color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: uploading ? 'default' : 'pointer' 
             }}>
-              <input type="file" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
+              <input type="file" id="cv-file-input" onChange={handleCvUpload} hidden disabled={uploading} accept=".pdf,.doc,.docx" />
               {uploading ? '...' : (lang === 'en' ? '+ Upload CV' : '+ Nahrať životopis')}
             </label>
           )}
@@ -840,14 +943,14 @@ export default function Profile() {
             {/* Name */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Meno a priezvisko' : 'Full Name'}</label>
-              <input value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})}
+              <input id="profile-name-input" value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
             </div>
-
+ 
             {/* Location */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>{lang === 'sk' ? 'Lokalita' : 'Location'}</label>
-              <input value={profile.loc || ''} onChange={e => setProfile({...profile, loc: e.target.value})} placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'}
+              <input id="profile-loc-input" value={profile.loc || ''} onChange={e => setProfile({...profile, loc: e.target.value})} placeholder={lang === 'sk' ? 'napr. Bratislava' : 'e.g. Bratislava'}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' }} />
             </div>
 

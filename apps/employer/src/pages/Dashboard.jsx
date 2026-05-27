@@ -1,13 +1,184 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import StatCard from '../components/StatCard';
 import Chart from '../components/Chart';
+import { supabase } from '../supabase';
 
 const Dashboard = () => {
   const { t, lang } = useI18n();
-  const { companyProfile, analytics, refreshAnalytics } = useAppState();
+  const { companyProfile, analytics, refreshAnalytics, listings } = useAppState();
   const navigate = useNavigate();
+
+  const [tasks, setTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoadingTasks(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const jobIds = (listings || []).map(j => j.id);
+        if (jobIds.length === 0) {
+          setTasks([]);
+          setLoadingTasks(false);
+          return;
+        }
+
+        const { data: apps, error: appsErr } = await supabase
+          .from('applications')
+          .select('*')
+          .in('job_id', jobIds)
+          .order('created_at', { ascending: false });
+
+        if (appsErr || !apps || apps.length === 0) {
+          const coldJobs = (listings || []).map(j => ({
+            type: 'cold_job',
+            id: `cold_${j.id}`,
+            jobId: j.id,
+            title: lang === 'sk' ? `Zvýšiť dosah ponuky` : `Boost job listing`,
+            desc: lang === 'sk' 
+              ? `Pozícia "${j.title}" nemá zatiaľ žiadnych záujemcov. Skontrolujte kľúčové slová alebo upravte popis.`
+              : `Listing "${j.title}" has no applicants yet. Review description or adjust details.`,
+            actionLabel: lang === 'sk' ? 'Upraviť' : 'Edit Listing',
+            targetPath: '/listings'
+          }));
+          setTasks(coldJobs);
+          setLoadingTasks(false);
+          return;
+        }
+
+        const candidateIds = [...new Set(apps.map(a => a.candidate_id))];
+
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, location')
+          .in('user_id', candidateIds);
+
+        const profilesMap = {};
+        (profilesData || []).forEach(p => {
+          profilesMap[p.user_id] = p;
+        });
+
+        let scoresMap = {};
+        try {
+          const msRes = await fetch('/api/employer/match-scores-bulk', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ candidate_ids: candidateIds, job_ids: jobIds })
+          });
+          if (msRes.ok) {
+            const msData = await msRes.json();
+            scoresMap = msData.scores || {};
+          }
+        } catch (e) {
+          console.warn('Failed to fetch match scores in dashboard:', e.message);
+        }
+
+        const list = [];
+
+        // 1. Screen new high-match candidates (match score >= 80%)
+        apps.forEach(app => {
+          const status = app.status || 'Pending';
+          if (status === 'Pending' || status === 'Viewed') {
+            const scoreKey = `${app.candidate_id}_${app.job_id}`;
+            const scoreData = scoresMap[scoreKey];
+            const score = scoreData ? Math.round(scoreData.overall_score * 100) : null;
+            if (score && score >= 80) {
+              const profile = profilesMap[app.candidate_id] || {};
+              const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (lang === 'sk' ? 'Uchádzač' : 'Candidate');
+              const job = (listings || []).find(j => j.id === app.job_id) || {};
+              list.push({
+                type: 'screen_candidate',
+                id: `screen_${app.id}`,
+                appId: app.id,
+                jobId: app.job_id,
+                title: lang === 'sk' ? `Nový uchádzač s vysokou zhodou (${score}%)` : `New high-match candidate (${score}%)`,
+                desc: lang === 'sk' 
+                  ? `${name} sa prihlásil/a na pozíciu ${job.title || 'vašu ponuku'}.`
+                  : `${name} applied for ${job.title || 'your listing'}.`,
+                actionLabel: lang === 'sk' ? 'Prezrieť uchádzača' : 'Screen Candidate',
+                targetPath: '/candidates',
+                targetState: { activeJobId: app.job_id }
+              });
+            }
+          }
+        });
+
+        // 2. Action needed for Interview confirmation/counter-offer
+        apps.forEach(app => {
+          const status = app.status || 'Pending';
+          if (status === 'Interview' && app.selected_date) {
+            const profile = profilesMap[app.candidate_id] || {};
+            const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (lang === 'sk' ? 'Uchádzač' : 'Candidate');
+            const job = (listings || []).find(j => j.id === app.job_id) || {};
+            list.push({
+              type: 'interview_confirmed',
+              id: `interview_conf_${app.id}`,
+              appId: app.id,
+              jobId: app.job_id,
+              title: lang === 'sk' ? 'Pohovor bol potvrdený kandidátom' : 'Interview confirmed by candidate',
+              desc: lang === 'sk'
+                ? `${name} potvrdil termín pohovoru pre pozíciu ${job.title || ''}: ${new Date(app.selected_date).toLocaleString('sk-SK')}`
+                : `${name} confirmed interview for ${job.title || ''}: ${new Date(app.selected_date).toLocaleString()}`,
+              actionLabel: lang === 'sk' ? 'Ísť do chatu' : 'Go to Chat',
+              targetPath: '/messages',
+              targetState: { activeAppId: app.id }
+            });
+          } else if (status === 'Counter-Offer') {
+            const profile = profilesMap[app.candidate_id] || {};
+            const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (lang === 'sk' ? 'Uchádzač' : 'Candidate');
+            const job = (listings || []).find(j => j.id === app.job_id) || {};
+            list.push({
+              type: 'interview_counter',
+              id: `interview_count_${app.id}`,
+              appId: app.id,
+              jobId: app.job_id,
+              title: lang === 'sk' ? 'Nový protinávrh termínu pohovoru' : 'New interview counter-offer',
+              desc: lang === 'sk'
+                ? `${name} navrhol iný termín pre pozíciu ${job.title || ''}: ${new Date(app.selected_date).toLocaleString('sk-SK')}`
+                : `${name} suggested another date for ${job.title || ''}: ${new Date(app.selected_date).toLocaleString()}`,
+              actionLabel: lang === 'sk' ? 'Odpovedať' : 'Respond',
+              targetPath: '/messages',
+              targetState: { activeAppId: app.id }
+            });
+          }
+        });
+
+        // 3. Cold jobs (no applications)
+        const activeJobIds = [...new Set(apps.map(a => a.job_id))];
+        const coldJobs = (listings || []).filter(j => !activeJobIds.includes(j.id));
+        coldJobs.forEach(j => {
+          list.push({
+            type: 'cold_job',
+            id: `cold_${j.id}`,
+            jobId: j.id,
+            title: lang === 'sk' ? `Zvýšiť dosah ponuky` : `Boost job listing`,
+            desc: lang === 'sk'
+              ? `Pozícia "${j.title}" nemá zatiaľ žiadnych záujemcov. Skontrolujte kľúčové slová alebo upravte popis.`
+              : `Listing "${j.title}" has no applicants yet. Review description or adjust details.`,
+            actionLabel: lang === 'sk' ? 'Upraviť' : 'Edit Listing',
+            targetPath: '/listings'
+          });
+        });
+
+        setTasks(list.slice(0, 5));
+      } catch (err) {
+        console.error('Error compiling tasks:', err);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+
+    if (listings && listings.length > 0) {
+      fetchTasks();
+    }
+  }, [listings, lang]);
 
   useEffect(() => {
     refreshAnalytics();
@@ -87,6 +258,123 @@ const Dashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Recruitment Task Center */}
+      {tasks.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, var(--bg-card), rgba(99,102,241,0.02))',
+          border: '1.5px solid var(--border)',
+          borderRadius: 'var(--radius, 16px)',
+          padding: '24px',
+          marginBottom: '32px',
+          boxShadow: 'var(--shadow)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🎯</span> {lang === 'sk' ? 'Centrum náborových úloh' : 'Recruitment Task Center'}
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                {lang === 'sk' 
+                  ? `Máte ${tasks.length} ${tasks.length === 1 ? 'úlohu' : (tasks.length >= 2 && tasks.length <= 4) ? 'úlohy' : 'úloh'} vyžadujúce vašu pozornosť.`
+                  : `You have ${tasks.length} task${tasks.length === 1 ? '' : 's'} requiring attention.`}
+              </p>
+            </div>
+            <span style={{ 
+              fontSize: '11px', 
+              fontWeight: 800, 
+              background: 'var(--accent-light)', 
+              color: 'var(--accent)', 
+              padding: '4px 10px', 
+              borderRadius: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              {lang === 'sk' ? 'Aktívne' : 'Active'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {tasks.map(task => (
+              <div 
+                key={task.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: 'rgba(255,255,255,0.015)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer'
+                }}
+                onClick={() => navigate(task.targetPath, { state: task.targetState })}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.background = 'rgba(255,92,0,0.02)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: task.type === 'screen_candidate' 
+                      ? 'rgba(34,197,94,0.1)' 
+                      : task.type === 'cold_job' 
+                        ? 'rgba(239,68,68,0.1)' 
+                        : 'rgba(99,102,241,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    flexShrink: 0
+                  }}>
+                    {task.type === 'screen_candidate' ? '👤' : task.type === 'cold_job' ? '🔥' : '📅'}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text)' }}>
+                      {task.title}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {task.desc}
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    marginLeft: '16px',
+                    flexShrink: 0,
+                    transition: 'opacity 0.2s'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(task.targetPath, { state: task.targetState });
+                  }}
+                >
+                  {task.actionLabel}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-grid">
         <StatCard label={t('statApps')} value={stats.apps} unit="" changeText={appsSubtext} changeType="neutral" />

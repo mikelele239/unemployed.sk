@@ -26,7 +26,9 @@ import {
   CalendarCheck,
   TrendingUp,
   X,
-  Phone
+  Phone,
+  ShieldCheck,
+  ChevronDown
 } from 'lucide-react';
 
 // Helper: parse bilingual JSON strings {sk,en}
@@ -91,6 +93,8 @@ export default function CandidateProfile() {
   const [confirmReject, setConfirmReject] = useState(false);
   const [confirmHire, setConfirmHire] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [verificationData, setVerificationData] = useState(null);
+  const [showFullTranscript, setShowFullTranscript] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -179,6 +183,19 @@ export default function CandidateProfile() {
           } catch (cvErr) {
             console.error('[CandidateProfile] CV url fetch failed:', cvErr);
           }
+        }
+
+        // 6. Fetch AI verification data
+        try {
+          const verRes = await fetch(`/api/employer/candidate/${candidateId}/verification`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
+          if (verRes.ok) {
+            const verData = await verRes.json();
+            setVerificationData(verData.verification || null);
+          }
+        } catch (verErr) {
+          console.warn('[CandidateProfile] Verification fetch non-fatal:', verErr);
         }
       } catch (err) {
         console.error('[CandidateProfile] Load error:', err);
@@ -527,6 +544,151 @@ export default function CandidateProfile() {
               })()}
             </div>
           )}
+
+          {/* ── AI Verification Card ── */}
+          {(() => {
+            const ATTR_CONFIG = {
+              language:    { icon: '🌍', color: '#3b82f6', sk: 'Jazykové znalosti', en: 'Language Skills' },
+              skills:      { icon: '💻', color: '#8b5cf6', sk: 'Technické zručnosti', en: 'Technical Skills' },
+              experience:  { icon: '💼', color: '#f59e0b', sk: 'Pracovné skúsenosti', en: 'Work Experience' },
+              soft_skills: { icon: '🤝', color: '#22c55e', sk: 'Mäkké zručnosti', en: 'Soft Skills' },
+            };
+
+            if (!verificationData) {
+              return (
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <ShieldCheck size={16} style={{ color: 'var(--text-muted)' }} />
+                    <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+                      {lang === 'sk' ? 'Overenie profilu' : 'Profile Verification'}
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
+                    {lang === 'sk' ? 'Kandidát ešte neabsolvoval AI overovací pohovor.' : 'Candidate has not yet completed AI verification.'}
+                  </p>
+                </div>
+              );
+            }
+
+            const results = verificationData.results || {};
+            const overallPct = Math.round((verificationData.overall_score || 0) * 100);
+            const overallColor = overallPct >= 70 ? '#22c55e' : overallPct >= 45 ? '#f59e0b' : '#ef4444';
+
+            return (
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ShieldCheck size={16} style={{ color: '#22c55e' }} />
+                    <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+                      {lang === 'sk' ? 'Overenie profilu' : 'Profile Verification'}
+                    </h3>
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 900, color: overallColor,
+                    background: `${overallColor}15`, border: `1px solid ${overallColor}30`,
+                    borderRadius: 100, padding: '2px 10px',
+                  }}>
+                    {overallPct}%
+                  </div>
+                </div>
+
+                {/* Per-attribute badges */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {['language', 'skills', 'experience', 'soft_skills'].map(attr => {
+                    const r = results[attr];
+                    const cfg = ATTR_CONFIG[attr];
+                    if (!r) return null;
+                    const scorePct = Math.round((r.score || 0) * 100);
+                    return (
+                      <div key={attr} style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                        padding: '10px 12px', borderRadius: 10,
+                        background: r.verified ? 'rgba(34,197,94,0.04)' : 'rgba(239,68,68,0.04)',
+                        border: `1px solid ${r.verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)'}`,
+                      }}>
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>{cfg.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)' }}>
+                              {lang === 'sk' ? cfg.sk : cfg.en}
+                            </span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 800,
+                              color: r.verified ? '#22c55e' : '#ef4444',
+                              display: 'flex', alignItems: 'center', gap: 3,
+                            }}>
+                              {r.verified ? '✅' : '⚠️'} {scorePct}%
+                            </span>
+                          </div>
+                          {r.level && (
+                            <div style={{ fontSize: 10, color: cfg.color, fontWeight: 700, marginBottom: 3 }}>
+                              {r.level}
+                            </div>
+                          )}
+                          {r.summary && (
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+                              {r.summary}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Transcript toggle */}
+                {verificationData.full_transcript?.length > 0 && (
+                  <div>
+                    <button
+                      onClick={() => setShowFullTranscript(v => !v)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        background: 'none', border: 'none', color: 'var(--accent)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0,
+                        fontFamily: 'var(--font-body)',
+                      }}
+                    >
+                      <ChevronDown
+                        size={14}
+                        style={{ transform: showFullTranscript ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                      />
+                      {showFullTranscript
+                        ? (lang === 'sk' ? 'Skryť prepis' : 'Hide transcript')
+                        : (lang === 'sk' ? 'Zobraziť celý prepis' : 'Show full transcript')}
+                    </button>
+
+                    {showFullTranscript && (
+                      <div style={{
+                        marginTop: 10, maxHeight: 280, overflowY: 'auto',
+                        background: 'var(--bg)', borderRadius: 10, padding: 12,
+                        border: '1px solid var(--border)',
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                      }}>
+                        {verificationData.full_transcript
+                          .filter(t => t.role === 'ai' || t.role === 'student')
+                          .map((t, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <span style={{
+                                fontSize: 9, fontWeight: 800, flexShrink: 0, marginTop: 2,
+                                color: t.role === 'ai' ? 'var(--accent)' : 'var(--text-muted)',
+                                textTransform: 'uppercase', letterSpacing: '0.5px',
+                                minWidth: 32,
+                              }}>
+                                {t.role === 'ai' ? 'AI' : (lang === 'sk' ? 'KAN' : 'CND')}
+                              </span>
+                              <p style={{ margin: 0, fontSize: 11, color: 'var(--text)', lineHeight: 1.5 }}>
+                                {t.text}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Action Panel */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>

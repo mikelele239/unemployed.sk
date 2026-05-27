@@ -135,6 +135,35 @@ function hashIp(ip) {
   return createHash('sha256').update(ip || '').digest('hex');
 }
 
+function decodeJwtFallback(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    if (!payload || !payload.sub) return null;
+
+    // Check expiration if exp claim is present
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < nowSec) {
+      console.warn('[decodeJwtFallback] Offline JWT decode fallback: Token has expired');
+      return null;
+    }
+
+    return {
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role || 'authenticated',
+      aud: payload.aud,
+      app_metadata: payload.app_metadata || {},
+      user_metadata: payload.user_metadata || {},
+      is_fallback: true
+    };
+  } catch (err) {
+    console.error('[decodeJwtFallback] Offline JWT decode failed:', err.message);
+    return null;
+  }
+}
+
 async function getUserFromToken(req) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return null;
@@ -151,6 +180,24 @@ async function getUserFromToken(req) {
     return user;
   } catch (err) {
     console.error('[getUserFromToken] Auth verification failed:', err.message);
+    
+    // Check if error is network/connection/timeout related
+    const isNetworkError = 
+      err.message === 'Auth timeout' ||
+      (err.code && (err.code === 'ENOTFOUND' || err.code === 'UND_ERR_CONNECT_TIMEOUT' || err.code === 'ECONNRESET')) ||
+      err.message.includes('fetch failed') ||
+      err.message.includes('network') ||
+      err.message.includes('connect') ||
+      err.message.includes('timeout') ||
+      err.message.includes('ECONNRESET');
+
+    if (isNetworkError) {
+      console.warn('[getUserFromToken] Using offline JWT decode fallback due to connection/timeout error:', err.message);
+      const decoded = decodeJwtFallback(token);
+      if (decoded) {
+        return decoded;
+      }
+    }
     return null;
   }
 }

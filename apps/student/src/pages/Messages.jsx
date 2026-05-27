@@ -10,7 +10,8 @@ import {
   Sparkles,
   Calendar,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { useTranslation } from '../I18nContext';
 import { 
@@ -24,6 +25,10 @@ import {
 import { supabase } from '../supabase';
 import { useLocation } from 'react-router-dom';
 import ModernDatePicker from '../components/ModernDatePicker';
+import VerificationChat from '../components/VerificationChat';
+import { getVerificationStatus } from '../services/verificationService';
+
+const AI_VERIFY_ID = 'ai-verify';
 
 const formatSystemMessage = (body, lang) => {
   if (!body) return '';
@@ -72,6 +77,7 @@ export default function Messages() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showStudentCounterPicker, setShowStudentCounterPicker] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState(null); // null | 'in_progress' | 'completed'
 
   const messagesEndRef = useRef(null);
   const activeConvRef = useRef(null);
@@ -104,9 +110,20 @@ export default function Messages() {
       }
       await fetchInbox();
       setLoadingConv(false);
+
+      // Fetch verification status for the pinned AI thread
+      try {
+        const { verification } = await getVerificationStatus();
+        if (verification?.status) setVerificationStatus(verification.status);
+      } catch (_) {}
     };
 
     init();
+
+    // Handle navigation with pre-selected conversation or AI verify thread
+    if (location.state?.openVerification) {
+      setActiveConvId(AI_VERIFY_ID);
+    }
 
     // Subscribe to conversations/inbox updates
     const sub = subscribeToConversations(async () => {
@@ -253,6 +270,110 @@ export default function Messages() {
 
       {/* Conversations List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+        {/* ── Pinned: AI Verification Thread ── */}
+        {(() => {
+          const isActive = activeConvId === AI_VERIFY_ID;
+          const isDone = verificationStatus === 'completed';
+          const isInProgress = verificationStatus === 'in_progress';
+          return (
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              onClick={() => setActiveConvId(AI_VERIFY_ID)}
+              style={{
+                padding: '14px 16px',
+                borderRadius: 16,
+                background: isActive
+                  ? 'linear-gradient(135deg, rgba(255,92,0,0.12), rgba(255,140,50,0.06))'
+                  : isDone
+                    ? 'rgba(34,197,94,0.05)'
+                    : 'linear-gradient(135deg, rgba(255,92,0,0.06), rgba(255,140,50,0.03))',
+                border: isActive
+                  ? '1px solid var(--accent)'
+                  : isDone
+                    ? '1px solid rgba(34,197,94,0.3)'
+                    : '1px solid rgba(255,92,0,0.25)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                marginBottom: 8,
+                transition: 'all 0.2s ease',
+                boxShadow: isActive ? '0 4px 20px rgba(255,92,0,0.1)' : 'none',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Shimmer for not-done state */}
+              {!isDone && (
+                <motion.div
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'linear', repeatDelay: 3 }}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+
+              {/* Icon */}
+              <div style={{
+                width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+                background: isDone
+                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                  : 'linear-gradient(135deg, var(--accent), #FF8C32)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: isDone
+                  ? '0 4px 12px rgba(34,197,94,0.3)'
+                  : '0 4px 12px rgba(255,92,0,0.25)',
+              }}>
+                {isDone
+                  ? <ShieldCheck size={22} color="#fff" />
+                  : <Sparkles size={22} color="#fff" />}
+              </div>
+
+              {/* Text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                    unemployed.sk AI
+                  </h4>
+                  {isDone && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase',
+                      letterSpacing: '0.5px', background: 'rgba(34,197,94,0.12)',
+                      border: '1px solid rgba(34,197,94,0.25)', borderRadius: 100, padding: '1px 6px',
+                    }}>✓ {lang === 'sk' ? 'Overené' : 'Verified'}</span>
+                  )}
+                  {isInProgress && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase',
+                      letterSpacing: '0.5px', background: 'rgba(255,92,0,0.1)',
+                      border: '1px solid rgba(255,92,0,0.2)', borderRadius: 100, padding: '1px 6px',
+                    }}>{lang === 'sk' ? 'Rozpracované' : 'In progress'}</span>
+                  )}
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontWeight: 500,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isDone
+                    ? (lang === 'sk' ? '✅ Tvoj profil je overený' : '✅ Your profile is verified')
+                    : (lang === 'sk' ? '🎤 Overte si profil a získajte odznaky' : '🎤 Verify your profile to get badges')}
+                </p>
+              </div>
+
+              {/* Chevron or done dot */}
+              {!isDone && (
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: 'var(--accent)', flexShrink: 0,
+                  boxShadow: '0 0 8px rgba(255,92,0,0.6)',
+                  animation: 'pulse 2s infinite',
+                }} />
+              )}
+            </motion.div>
+          );
+        })()}
+
         {loadingConv ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0' }}>
             <div className="spinner" style={{
@@ -264,7 +385,7 @@ export default function Messages() {
             }} />
           </div>
         ) : conversations.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 20px' }}>
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 20px' }}>
             <span style={{ fontSize: 40, marginBottom: 12, display: 'block' }}>💬</span>
             <p style={{ fontWeight: 600 }}>{lang === 'sk' ? 'Zatiaľ žiadne správy' : 'No messages yet'}</p>
             <p style={{ fontSize: 12, marginTop: 4 }}>{lang === 'sk' ? 'Keď ťa zamestnávateľ kontaktuje alebo položíš otázku, uvidíš to tu.' : 'Once an employer contacts you, the thread will appear here.'}</p>
@@ -370,6 +491,52 @@ export default function Messages() {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+
+  // AI Verification Chat Thread
+  const renderVerificationThread = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-card)', flex: 1 }}>
+      {/* Header */}
+      <div style={{
+        padding: '16px 20px', borderBottom: '1px solid var(--border)',
+        background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        {isMobile && (
+          <button
+            onClick={() => setActiveConvId(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center' }}
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
+        <div style={{
+          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+          background: verificationStatus === 'completed'
+            ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+            : 'linear-gradient(135deg, var(--accent), #FF8C32)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {verificationStatus === 'completed'
+            ? <ShieldCheck size={20} color="#fff" />
+            : <Sparkles size={20} color="#fff" />}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>unemployed.sk AI</h3>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            {verificationStatus === 'completed'
+              ? (lang === 'sk' ? '✅ Overenie dokončené' : '✅ Verification complete')
+              : (lang === 'sk' ? '🎤 Overenie profilu' : '🎤 Profile Verification')}
+          </div>
+        </div>
+      </div>
+
+      {/* The VerificationChat component fills remaining space */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <VerificationChat
+          onComplete={(status) => setVerificationStatus(status)}
+        />
       </div>
     </div>
   );
@@ -796,7 +963,9 @@ export default function Messages() {
           /* On desktop, show side-by-side split screen */
           <>
             {renderInboxList()}
-            {activeConvId ? (
+            {activeConvId === AI_VERIFY_ID ? (
+              renderVerificationThread()
+            ) : activeConvId ? (
               renderChatThread()
             ) : (
               <div style={{ 
@@ -865,6 +1034,7 @@ export default function Messages() {
       <style>{`
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
       `}</style>
     </div>
   );

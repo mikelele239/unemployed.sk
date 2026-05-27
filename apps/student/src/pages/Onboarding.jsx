@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Sparkles, CheckCircle2, ChevronRight, FileText, BrainCircuit } from 'lucide-react';
+import { UploadCloud, Sparkles, CheckCircle2, ChevronRight, FileText, BrainCircuit, ShieldCheck, Mic } from 'lucide-react';
 import { useTranslation } from '../I18nContext';
 import { cvApi } from '../services/cvApi';
 import { supabase } from '../supabase';
@@ -13,6 +13,7 @@ const JOB_TYPES_EN = ['Part-time', 'Internship', 'Full-time', 'One-off gigs', 'R
 
 export default function Onboarding({ onComplete }) {
   const { t, lang } = useTranslation();
+  const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 480);
   useEffect(() => {
@@ -262,7 +263,8 @@ export default function Onboarding({ onComplete }) {
       step++;
       if (step >= 1) {
         clearInterval(interval);
-        setTimeout(() => typeof onComplete === 'function' && onComplete(), 1500);
+        // Show the verification boost prompt instead of immediately calling onComplete
+        setTimeout(() => setPhase('boost-profile'), 1500);
       }
     }, 1000);
   };
@@ -689,6 +691,133 @@ export default function Onboarding({ onComplete }) {
             <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: 24, letterSpacing: '-0.5px' }}>
               Hľadáme najlepšie ponuky...
             </motion.h2>
+          </motion.div>
+        )}
+
+        {/* BOOST PROFILE — Verification prompt */}
+        {phase === 'boost-profile' && (
+          <motion.div
+            key="boost-profile"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.04, filter: 'blur(8px)' }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: 40, textAlign: 'center', background: 'var(--bg)',
+            }}
+          >
+            {/* Green success pulse */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+              style={{
+                width: 72, height: 72, borderRadius: 24,
+                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 20,
+                boxShadow: '0 12px 40px rgba(34,197,94,0.35)',
+              }}
+            >
+              <CheckCircle2 size={36} color="#fff" />
+            </motion.div>
+
+            <motion.h2
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              style={{ fontSize: '1.7rem', fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.5px' }}
+            >
+              {lang === 'sk' ? 'Profil je pripravený!' : 'Profile is ready!'}
+            </motion.h2>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              style={{ fontSize: 15, color: 'var(--text-muted)', maxWidth: 400, lineHeight: 1.6, margin: '0 0 28px' }}
+            >
+              {lang === 'sk'
+                ? 'Teraz môžeš absolvovať krátky 2-3 minútový AI pohovor. Overeným kandidátom zamestnávatelia dôverujú viac.'
+                : 'Now you can complete a short 2-3 minute AI interview. Verified candidates get more trust from employers.'}
+            </motion.p>
+
+            {/* Feature chips */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.38 }}
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 28 }}
+            >
+              {[
+                { icon: '🌍', label: lang === 'sk' ? 'Jazyky' : 'Languages' },
+                { icon: '💻', label: lang === 'sk' ? 'Zručnosti' : 'Skills' },
+                { icon: '💼', label: lang === 'sk' ? 'Skúsenosti' : 'Experience' },
+                { icon: '🤝', label: lang === 'sk' ? 'Soft skills' : 'Soft skills' },
+              ].map(chip => (
+                <span
+                  key={chip.label}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '5px 12px', borderRadius: 100,
+                    background: 'rgba(255,92,0,0.08)', border: '1px solid rgba(255,92,0,0.2)',
+                    fontSize: 12, fontWeight: 700, color: 'var(--accent)',
+                  }}
+                >
+                  {chip.icon} {chip.label}
+                </span>
+              ))}
+            </motion.div>
+
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.46 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 340 }}
+            >
+              <button
+                onClick={() => {
+                  if (typeof onComplete === 'function') onComplete();
+                  setTimeout(() => navigate('/messages', { state: { openVerification: true } }), 200);
+                }}
+                style={{
+                  padding: '16px', borderRadius: 16, border: 'none',
+                  background: 'linear-gradient(135deg, var(--accent), #FF8C32)',
+                  color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: '0 8px 24px rgba(255,92,0,0.3)', fontFamily: 'var(--font-body)',
+                }}
+              >
+                <Mic size={18} />
+                {lang === 'sk' ? 'Začať overenie teraz' : 'Start verification now'}
+              </button>
+
+              <button
+                onClick={() => typeof onComplete === 'function' && onComplete()}
+                style={{
+                  padding: '14px', borderRadius: 16,
+                  border: '1px solid var(--border)', background: 'transparent',
+                  color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'var(--font-body)',
+                }}
+              >
+                {lang === 'sk' ? 'Preskočiť — spraviť neskôr' : 'Skip — do it later'}
+              </button>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 16, maxWidth: 300 }}
+            >
+              {lang === 'sk'
+                ? '⚠️ Jedno pokus. Pohovor nie je možné opakovať.'
+                : '⚠️ One attempt only. The interview cannot be repeated.'}
+            </motion.p>
           </motion.div>
         )}
 

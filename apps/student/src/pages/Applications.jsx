@@ -8,6 +8,118 @@ import { useTranslation } from '../I18nContext';
 import { supabase } from '../supabase';
 import { getOrCreateConversationForApplication } from '../services/messagingService';
 
+const getStatusStepIndex = (status) => {
+  switch(status) {
+    case 'Pending': return 0;
+    case 'Viewed': return 1;
+    case 'Interview':
+    case 'Interview-Confirmed':
+    case 'Counter-Offer': return 2;
+    case 'Hired':
+    case 'Rejected':
+    case 'Declined':
+    case 'Withdrawn': return 3;
+    default: return 0;
+  }
+};
+
+function StatusTimeline({ status, lang }) {
+  const stepIndex = getStatusStepIndex(status);
+  const isFailed = ['Rejected', 'Declined', 'Withdrawn'].includes(status);
+  const isSuccess = status === 'Hired';
+
+  const steps = [
+    { label: lang === 'sk' ? 'Odoslané' : 'Submitted', desc: lang === 'sk' ? 'Žiadosť doručená' : 'App received' },
+    { label: lang === 'sk' ? 'Pozreté' : 'Viewed', desc: lang === 'sk' ? 'Zamestnávateľ videl' : 'Employer viewed' },
+    { label: lang === 'sk' ? 'Pohovor' : 'Interview', desc: lang === 'sk' ? 'Plánovanie termínu' : 'Scheduling' },
+    { 
+      label: isFailed 
+        ? (status === 'Withdrawn' ? (lang === 'sk' ? 'Stiahnuté' : 'Withdrawn') : (lang === 'sk' ? 'Zamietnuté' : 'Rejected'))
+        : isSuccess 
+          ? (lang === 'sk' ? 'Prijaté 🎉' : 'Hired 🎉') 
+          : (lang === 'sk' ? 'Rozhodnutie' : 'Decision'),
+      desc: isFailed 
+        ? (lang === 'sk' ? 'Nábor ukončený' : 'Process ended')
+        : isSuccess 
+          ? (lang === 'sk' ? 'Ponuka odoslaná!' : 'Offer extended!') 
+          : (lang === 'sk' ? 'Vyhodnotenie' : 'Awaiting result')
+    }
+  ];
+
+  return (
+    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1.5px solid var(--border)', display: 'flex', justifyContent: 'space-between', position: 'relative' }} onClick={e => e.stopPropagation()}>
+      {/* Background Line */}
+      <div style={{ position: 'absolute', top: '24px', left: '12%', right: '12%', height: '3px', background: 'var(--border)', zIndex: 1 }} />
+      
+      {/* Active Line Fill */}
+      <motion.div 
+        initial={{ width: 0 }}
+        animate={{ width: `${(stepIndex / 3) * 76}%` }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        style={{ 
+          position: 'absolute', 
+          top: '24px', 
+          left: '12%', 
+          height: '3px', 
+          background: isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)', 
+          zIndex: 2 
+        }} 
+      />
+
+      {steps.map((step, idx) => {
+        const done = idx < stepIndex;
+        const current = idx === stepIndex;
+        const pending = idx > stepIndex;
+
+        let nodeBg = 'var(--bg-card)';
+        let nodeBorder = '2px solid var(--border)';
+        let labelColor = 'var(--text-muted)';
+
+        if (done) {
+          nodeBg = isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)';
+          nodeBorder = `2px solid ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
+          labelColor = 'var(--text)';
+        } else if (current) {
+          nodeBg = 'var(--bg-card)';
+          nodeBorder = `2px solid ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
+          labelColor = isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)';
+        }
+
+        return (
+          <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '25%', textAlign: 'center', zIndex: 3, position: 'relative' }}>
+            <motion.div 
+              animate={current ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+              transition={current ? { repeat: Infinity, duration: 2.5, ease: 'easeInOut' } : {}}
+              style={{ 
+                width: '16px', 
+                height: '16px', 
+                borderRadius: '50%', 
+                background: nodeBg, 
+                border: nodeBorder,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: current ? `0 0 10px ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}66` : 'none',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+            >
+              {done && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 900 }}>✓</span>}
+              {current && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)' }} />}
+            </motion.div>
+            <span style={{ fontSize: '11px', fontWeight: current || done ? 800 : 500, color: labelColor, marginTop: '8px' }}>
+              {step.label}
+            </span>
+            <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: 500 }}>
+              {step.desc}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Applications() {
   const { t, lang } = useTranslation();
   const navigate = useNavigate();
@@ -100,127 +212,130 @@ export default function Applications() {
                     borderRadius: 20, 
                     padding: '20px',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 18,
+                    flexDirection: 'column',
+                    gap: 16,
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ 
-                    width: 52, height: 52, borderRadius: 14, background: app.color || '#6366f1', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0,
-                    boxShadow: `0 8px 16px ${(app.color || '#6366f1')}33`,
-                    overflow: 'hidden'
-                  }}>
-                    {app.logo_url ? (
-                      <img src={app.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      app.logo || (app.company || '?').charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.title}</h3>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
-                      <span 
-                        onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(app.company)}`); }}
-                        style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                        onMouseEnter={e => e.target.style.color = 'var(--accent)'}
-                        onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
-                      >{app.company}</span>
-                    </div>
-                    {/* Inline confirmed/counter-offer date badge */}
-                    {app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date && (
-                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#22c55e' }}>
-                        <span>✅</span>
-                        <span>{new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                      </div>
-                    )}
-                    {app.status === 'Counter-Offer' && app.interviewInfo?.selected_date && (
-                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
-                        <span>📅</span>
-                        <span>Protinávrh: {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: getStatusColor(app.status), display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: getStatusColor(app.status), boxShadow: `0 0 8px ${getStatusColor(app.status)}88` }} />
-                      {app.status === 'Pending' ? (t('apps.pending') || 'Čaká sa') : (t(`apps.${app.status.toLowerCase()}`) || app.status)}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>
-                      {new Date(app.created_at || app.timestamp).toLocaleDateString('sk-SK')}
-                    </div>
-                    <button 
-                      onClick={(e) => handleOpenChat(e, app)}
-                      style={{
-                        marginTop: 8,
-                        background: 'var(--accent-light)',
-                        border: '1px solid var(--accent)',
-                        color: 'var(--accent)',
-                        borderRadius: 8,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      💬 {lang === 'sk' ? 'Správy' : 'Chat'}
-                    </button>
-                    {/* Withdraw button — only for Pending/Viewed apps */}
-                    {(app.status === 'Pending' || app.status === 'Viewed') && (
-                      withdrawConfirmId === (app.appId || app.id) ? (
-                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
-                          <button
-                            disabled={withdrawing}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              setWithdrawing(true);
-                              try {
-                                const { data: { session } } = await supabase.auth.getSession();
-                                if (!session) return;
-                                const res = await fetch(`/api/applications/${app.appId || app.id}`, {
-                                  method: 'PATCH',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${session.access_token}`
-                                  },
-                                  body: JSON.stringify({ status: 'Withdrawn' })
-                                });
-                                if (res.ok) {
-                                  fetchApplications();
-                                }
-                              } catch (err) { console.error(err); }
-                              setWithdrawConfirmId(null);
-                              setWithdrawing(false);
-                            }}
-                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                          >
-                            {withdrawing ? '...' : (lang === 'sk' ? 'Áno' : 'Yes')}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(null); }}
-                            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                          >
-                            {lang === 'sk' ? 'Nie' : 'No'}
-                          </button>
-                        </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                    <div style={{ 
+                      width: 52, height: 52, borderRadius: 14, background: app.color || '#6366f1', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                      color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0,
+                      boxShadow: `0 8px 16px ${(app.color || '#6366f1')}33`,
+                      overflow: 'hidden'
+                    }}>
+                      {app.logo_url ? (
+                        <img src={app.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(app.appId || app.id); }}
-                          style={{ marginTop: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
-                        >
-                          {lang === 'sk' ? 'Stiahnuť' : 'Withdraw'}
-                        </button>
-                      )
-                    )}
+                        app.logo || (app.company || '?').charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.title}</h3>
+                      <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
+                        <span 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/company/${encodeURIComponent(app.company)}`); }}
+                          style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                          onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+                          onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+                        >{app.company}</span>
+                      </div>
+                      {/* Inline confirmed/counter-offer date badge */}
+                      {app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date && (
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#22c55e' }}>
+                          <span>✅</span>
+                          <span>{new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                        </div>
+                      )}
+                      {app.status === 'Counter-Offer' && app.interviewInfo?.selected_date && (
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
+                          <span>📅</span>
+                          <span>Protinávrh: {new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: getStatusColor(app.status), display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: getStatusColor(app.status), boxShadow: `0 0 8px ${getStatusColor(app.status)}88` }} />
+                        {app.status === 'Pending' ? (t('apps.pending') || 'Čaká sa') : (t(`apps.${app.status.toLowerCase()}`) || app.status)}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>
+                        {new Date(app.created_at || app.timestamp).toLocaleDateString('sk-SK')}
+                      </div>
+                      <button 
+                        onClick={(e) => handleOpenChat(e, app)}
+                        style={{
+                          marginTop: 8,
+                          background: 'var(--accent-light)',
+                          border: '1px solid var(--accent)',
+                          color: 'var(--accent)',
+                          borderRadius: 8,
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        💬 {lang === 'sk' ? 'Správy' : 'Chat'}
+                      </button>
+                      {/* Withdraw button — only for Pending/Viewed apps */}
+                      {(app.status === 'Pending' || app.status === 'Viewed') && (
+                        withdrawConfirmId === (app.appId || app.id) ? (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
+                            <button
+                              disabled={withdrawing}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setWithdrawing(true);
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  if (!session) return;
+                                  const res = await fetch(`/api/applications/${app.appId || app.id}`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${session.access_token}`
+                                    },
+                                    body: JSON.stringify({ status: 'Withdrawn' })
+                                  });
+                                  if (res.ok) {
+                                    fetchApplications();
+                                  }
+                                } catch (err) { console.error(err); }
+                                setWithdrawConfirmId(null);
+                                setWithdrawing(false);
+                              }}
+                              style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              {withdrawing ? '...' : (lang === 'sk' ? 'Áno' : 'Yes')}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(null); }}
+                              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              {lang === 'sk' ? 'Nie' : 'No'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(app.appId || app.id); }}
+                            style={{ marginTop: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                          >
+                            {lang === 'sk' ? 'Stiahnuť' : 'Withdraw'}
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
+                  <StatusTimeline status={app.status} lang={lang} />
                 </motion.div>
 
               {/* Interview Scheduler Notice — only when action is needed */}
