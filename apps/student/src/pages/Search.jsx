@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight, Sparkles } from 'lucide-react';
+import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJobs } from '../hooks/useJobs';
 import { useApplications } from '../hooks/useApplications';
@@ -29,7 +29,6 @@ export default function Search() {
   // Filter states
   const [minRate, setMinRate] = useState(null);
   const [selectedFocus, setSelectedFocus] = useState([]);
-  const [activePathway, setActivePathway] = useState(null);
   
   // Fetch registered employers via server API (bypasses RLS)
   const [employers, setEmployers] = useState([]);
@@ -70,29 +69,6 @@ export default function Search() {
     if (activeTab === (t('search.internships') || 'Stáže') && job.type !== 'internship') return false;
     if (activeTab === (t('search.gigs') || 'Jednorázovky') && job.type !== 'gig') return false;
     if (filterQuery && !job.title.toLowerCase().includes(filterQuery.toLowerCase()) && !job.company.toLowerCase().includes(filterQuery.toLowerCase()) && !job.location.toLowerCase().includes(filterQuery.toLowerCase())) return false;
-    
-    // Pathway filters
-    if (activePathway === 'no-experience') {
-      const text = [job.title, ...(job.tags || []), job.requirements].join(' ').toLowerCase();
-      const matchesNoExp = text.includes('junior') || text.includes('stáž') || text.includes('no experience') || text.includes('bez praxe') || text.includes('absolvent') || job.type === 'internship';
-      if (!matchesNoExp) return false;
-    }
-    
-    if (activePathway === 'high-pay') {
-      if (parseRate(job.rate) < 8) return false;
-    }
-    
-    if (activePathway === 'remote') {
-      const text = [job.location, ...(job.tags || []), job.work_model].join(' ').toLowerCase();
-      const matchesRemote = text.includes('remote') || text.includes('domu') || text.includes('home') || text.includes('distanc');
-      if (!matchesRemote) return false;
-    }
-    
-    if (activePathway === 'gigs') {
-      if (job.type !== 'gig' && !(job.tags || []).some(t => t.toLowerCase().includes('gig') || t.toLowerCase().includes('jednoraz'))) return false;
-    }
-
-    // Min rate filter
     if (minRate && parseRate(job.rate) < minRate) return false;
     
     // Focus area filter — match against tags or title
@@ -108,7 +84,6 @@ export default function Search() {
   const handleClearFilters = () => {
     setMinRate(null);
     setSelectedFocus([]);
-    setActivePathway(null);
   };
 
   const toggleFocus = (area) => {
@@ -152,64 +127,6 @@ export default function Search() {
           </button>
         </div>
 
-        {/* Curated Explore Pathways Banners */}
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <Sparkles size={14} color="var(--accent)" />
-            <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-              {lang === 'sk' ? 'Objavuj cesty' : 'Explore Pathways'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '6px', margin: '0 -20px', padding: '0 20px 6px' }}>
-            {[
-              { id: 'no-experience', label: lang === 'sk' ? 'Bez praxe' : 'No Exp Needed', gradient: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', icon: '👶' },
-              { id: 'high-pay', label: lang === 'sk' ? '8€+/hod a viac' : '8€+/hr and more', gradient: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', icon: '💰' },
-              { id: 'remote', label: lang === 'sk' ? 'Home Office' : 'Remote / WFH', gradient: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', icon: '🏠' },
-              { id: 'gigs', label: lang === 'sk' ? 'Rýchle brigády' : 'One-off Gigs', gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', icon: '⚡' },
-            ].map(p => {
-              const isActive = activePathway === p.id;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => setActivePathway(isActive ? null : p.id)}
-                  style={{
-                    flex: '0 0 135px',
-                    height: '80px',
-                    borderRadius: '12px',
-                    background: p.gradient,
-                    padding: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    border: isActive ? '3px solid #fff' : '1px solid transparent',
-                    boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.4), 0 8px 16px rgba(0,0,0,0.15)' : '0 4px 10px rgba(0,0,0,0.08)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) e.currentTarget.style.transform = 'none';
-                  }}
-                >
-                  {/* Subtle Floating Icon */}
-                  <span style={{ position: 'absolute', right: '4px', top: '2px', fontSize: '28px', opacity: 0.18 }}>
-                    {p.icon}
-                  </span>
-                  
-                  <span style={{ fontSize: '16px' }}>{p.icon}</span>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#fff', lineHeight: '1.2', textShadow: '0 1px 2px rgba(0,0,0,0.2)', zIndex: 1 }}>
-                    {p.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Active filter pills */}
         {activeFilterCount > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -223,13 +140,6 @@ export default function Search() {
                 {f} <X size={12} />
               </span>
             ))}
-            {activePathway && (
-              <span onClick={() => setActivePathway(null)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                {activePathway === 'no-experience' ? (lang === 'sk' ? 'Bez praxe' : 'No Exp') :
-                 activePathway === 'high-pay' ? (lang === 'sk' ? '8€+/hod' : '8€+/hr') :
-                 activePathway === 'remote' ? 'Home Office' : 'Gigy'} <X size={12} />
-              </span>
-            )}
             <span onClick={handleClearFilters} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
               {lang === 'en' ? 'Clear all' : 'Vymazať'}
             </span>
