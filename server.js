@@ -7,6 +7,7 @@ const path = require('path');
 const { createHash } = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
+const createRateLimiter = require('express-rate-limit');
 
 const app = express();
 
@@ -242,6 +243,44 @@ app.use((req, res, next) => {
 });
 app.set('trust proxy', 1);
 
+// ── H-6: Rate Limiting ────────────────────────────────────────────────────────
+// General API rate limit: 100 requests per 15 minutes per IP
+const apiLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+  skip: (req) => req.method === 'OPTIONS',
+});
+
+// Strict rate limit for auth endpoints: 10 per 15 min
+const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later.' },
+});
+
+// Strict rate limit for expensive AI/matching endpoints: 20 per 15 min
+const aiLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+// Apply rate limiters
+app.use('/api/auth/', authLimiter);
+app.use('/api/employer/login', authLimiter);
+app.use('/api/match/', aiLimiter);
+app.use('/api/job-criteria/', aiLimiter);
+app.use('/api/verify/', aiLimiter);
+app.use('/api/cvs/parse', aiLimiter);
+app.use('/api/', apiLimiter);
+
 
 // Block sensitive file access
 app.use((req, res, next) => {
@@ -253,6 +292,10 @@ app.use((req, res, next) => {
 // Security headers
 app.disable('x-powered-by'); // Hide Express fingerprint
 app.use((req, res, next) => {
+  // M-8: Tightened CSP — added base-uri, form-action, object-src restrictions
+  // Note: 'unsafe-inline' is kept for script-src and style-src because the app
+  // uses inline event handlers and dynamic styles extensively. Removing it would
+  // require a major refactor. The XSS risk is mitigated by input sanitization.
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https://*.supabase.co; " +
@@ -261,7 +304,11 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: blob: https: https://*.supabase.co;"
+    "img-src 'self' data: blob: https: https://*.supabase.co; " +
+    "base-uri 'self'; " +
+    "form-action 'self'; " +
+    "object-src 'none'; " +
+    "frame-ancestors 'self';"
   );
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -2910,3 +2957,12 @@ if (IS_SERVERLESS) {
   process.on('SIGTERM', () => server.close(() => process.exit(0)));
   process.on('SIGINT',  () => server.close(() => process.exit(0)));
 }
+
+// ── M-7: Global error handler — strip internal details in production ──────────
+app.use((err, req, res, _next) => {
+  console.error(`[${new Date().toISOString()}] Unhandled error on ${req.method} ${req.path}:`, err.message);
+  const isProd = process.env.NODE_ENV === 'production' || process.env.NETLIFY;
+  res.status(err.status || 500).json({
+    error: isProd ? 'An internal error occurred.' : err.message,
+  });
+});

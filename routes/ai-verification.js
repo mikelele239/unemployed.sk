@@ -609,7 +609,6 @@ module.exports = function aiVerificationRouter(app, supabase, { getUserFromToken
       }
 
       const lang = req.body.lang || 'sk';
-      const collectMode = !!req.body.collectMode;
 
       // ── Does the user have a CV? Check profiles.cv_id AND ai_profiles ──────
       const [{ data: profile }, { data: aiProfileRow }] = await Promise.all([

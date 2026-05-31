@@ -47,11 +47,11 @@
       // sync theme to demo iframes
       var demoIframe = document.getElementById('demoIframe');
       if (demoIframe && demoIframe.contentWindow) {
-        demoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+        demoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
       }
       var empDemoIframe = document.getElementById('empDemoIframe');
       if (empDemoIframe && empDemoIframe.contentWindow) {
-        empDemoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+        empDemoIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
       }
     }
 
@@ -748,11 +748,11 @@
       // sync language to demo iframe
       var demoIframe = document.getElementById('demoIframe');
       if (demoIframe && demoIframe.contentWindow) {
-        demoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, '*');
+        demoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, window.location.origin);
       }
       var empDemoIframe = document.getElementById('empDemoIframe');
       if (empDemoIframe && empDemoIframe.contentWindow) {
-        empDemoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, '*');
+        empDemoIframe.contentWindow.postMessage({ type: 'lang', lang: lang }, window.location.origin);
       }
     }
 
@@ -1055,10 +1055,10 @@
           var iframe = document.getElementById('demoIframe');
           if (iframe && iframe.contentWindow) {
             // Reset so onboarding always shows fresh, pass lang so it renders correctly from the start
-            iframe.contentWindow.postMessage({ type: 'reset', lang: currentLang }, '*');
+            iframe.contentWindow.postMessage({ type: 'reset', lang: currentLang }, window.location.origin);
             var isLight = document.body.classList.contains('light-mode');
-            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
-            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
+            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, window.location.origin);
           }
           // Also set a flag so if the iframe fires 'ready' after this, we re-send
           iframe && (iframe.dataset.pendingLang = currentLang);
@@ -1071,7 +1071,7 @@
         if (cursorGlow) cursorGlow.style.display = '';
         var iframe = document.getElementById('demoIframe');
         if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'reset' }, '*');
+          iframe.contentWindow.postMessage({ type: 'reset' }, window.location.origin);
         }
       }
 
@@ -1104,8 +1104,8 @@
           var iframe = document.getElementById('empDemoIframe');
           if (iframe && iframe.contentWindow) {
             var isLight = document.body.classList.contains('light-mode');
-            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
-            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
+            iframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
+            iframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, window.location.origin);
           }
           iframe && (iframe.dataset.pendingLang = currentLang);
         }
@@ -1117,7 +1117,7 @@
         if (cursorGlow) cursorGlow.style.display = '';
         var iframe = document.getElementById('empDemoIframe');
         if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'reset' }, '*');
+          iframe.contentWindow.postMessage({ type: 'reset' }, window.location.origin);
         }
       }
 
@@ -1131,18 +1131,21 @@
     })();
 
     // ── IFRAME READY LISTENER — re-sends lang when iframe signals it's ready ──
+    // H-15: Only accept messages from our own origin (same-origin demo iframes)
+    var TRUSTED_ORIGINS = [window.location.origin, 'https://unemployed.sk', 'https://www.unemployed.sk'];
     window.addEventListener('message', function(e) {
+      if (!TRUSTED_ORIGINS.includes(e.origin) && e.origin !== window.location.origin) return;
       if (e.data && e.data.type === 'ready') {
         var isLight = document.body.classList.contains('light-mode');
         var studentIframe = document.getElementById('demoIframe');
         if (studentIframe && studentIframe.contentWindow) {
-          studentIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
-          studentIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+          studentIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, window.location.origin);
+          studentIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
         }
         var empIframe = document.getElementById('empDemoIframe');
         if (empIframe && empIframe.contentWindow) {
-          empIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, '*');
-          empIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, '*');
+          empIframe.contentWindow.postMessage({ type: 'lang', lang: currentLang }, window.location.origin);
+          empIframe.contentWindow.postMessage({ type: 'theme', theme: isLight ? 'light' : 'dark' }, window.location.origin);
         }
       }
     });
