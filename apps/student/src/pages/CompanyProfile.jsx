@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Globe, Briefcase, Zap, MapPin } from 'lucide-react';
@@ -219,7 +219,7 @@ export default function CompanyProfile() {
                 padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                 minWidth: 80
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, #3b82f6)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--blue, var(--color-info))' }}>
                   <MapPin size={14} />
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.3px' }}>
@@ -319,7 +319,7 @@ export default function CompanyProfile() {
                     {job.rate} <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{job.rateUnit}</span>
                   </div>
                   {hasApplied(job.id) ? (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--green, #22c55e)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--green, var(--color-success))', display: 'flex', alignItems: 'center', gap: 4 }}>
                       ✓ {lang === 'en' ? 'Applied' : 'Prihlásené'}
                     </span>
                   ) : (

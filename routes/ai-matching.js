@@ -52,7 +52,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
       // Fetch full job data (including description, requirements, tags) for description mining
       const { data: jobs } = await supabase.from('jobs').select('*')
-        .or('status.eq.Active,status.is.null');
+        .or('status.eq.Active,status.is.null')
+        .limit(500);
       if (!jobs?.length) return 0;
 
       const { data: criteriaRows } = await supabase.from('job_match_criteria')
@@ -60,7 +61,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       const cMap = {};
       (criteriaRows || []).forEach(c => { cMap[c.job_id] = c; });
 
-      let count = 0;
+      const v3Batch = [];
+      const baseBatch = [];
       for (const job of jobs) {
         const result = calculateCandidateJobMatch(profile, job, cMap[job.id] || {});
         const basePayload = {
@@ -75,7 +77,6 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           }),
           calculated_at: new Date().toISOString(),
         };
-        // Try V3 fields, fallback to basic if columns don't exist
         const v3Payload = {
           ...basePayload,
           match_band: result.match_band,
@@ -84,12 +85,15 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           insights: result.insights || [],
           executive_summary: result.executive_summary || null,
         };
-        const { error: v3Err } = await supabase.from('match_scores').upsert(v3Payload, { onConflict: 'user_id,job_id' });
-        if (v3Err) {
-          await supabase.from('match_scores').upsert(basePayload, { onConflict: 'user_id,job_id' });
-        }
-        count++;
+        v3Batch.push(v3Payload);
+        baseBatch.push(basePayload);
       }
+      // Batch upsert — single DB round trip instead of N
+      const { error: v3Err } = await supabase.from('match_scores').upsert(v3Batch, { onConflict: 'user_id,job_id' });
+      if (v3Err) {
+        await supabase.from('match_scores').upsert(baseBatch, { onConflict: 'user_id,job_id' });
+      }
+      const count = v3Batch.length;
       return count;
     } catch (err) {
       console.warn('[recalculateForStudent] Non-fatal:', err.message);
@@ -108,10 +112,12 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         .select('*').eq('job_id', jobId).maybeSingle();
 
       const { data: profiles } = await supabase.from('ai_profiles')
-        .select('*').neq('parse_status', 'failed');
+        .select('*').neq('parse_status', 'failed')
+        .limit(1000);
       if (!profiles?.length) return 0;
 
-      let count = 0;
+      const v3Batch = [];
+      const baseBatch = [];
       for (const p of profiles) {
         const result = calculateCandidateJobMatch(p, job, criteria || {});
         const basePayload = {
@@ -134,12 +140,15 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           insights: result.insights || [],
           executive_summary: result.executive_summary || null,
         };
-        const { error: v3Err } = await supabase.from('match_scores').upsert(v3Payload, { onConflict: 'user_id,job_id' });
-        if (v3Err) {
-          await supabase.from('match_scores').upsert(basePayload, { onConflict: 'user_id,job_id' });
-        }
-        count++;
+        v3Batch.push(v3Payload);
+        baseBatch.push(basePayload);
       }
+      // Batch upsert — single DB round trip instead of N
+      const { error: v3Err } = await supabase.from('match_scores').upsert(v3Batch, { onConflict: 'user_id,job_id' });
+      if (v3Err) {
+        await supabase.from('match_scores').upsert(baseBatch, { onConflict: 'user_id,job_id' });
+      }
+      const count = v3Batch.length;
       return count;
     } catch (err) {
       console.warn('[recalculateForJob] Non-fatal:', err.message);
@@ -265,7 +274,7 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
         ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
         ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
         experience_level: parsed.experience_level || 'entry',
-        ai_profile_approved: false,
+        ai_profile_approved: true,
         ai_generated_at: new Date().toISOString(),
         profile_completion_score: 0,
         updated_at: new Date().toISOString(),
@@ -378,6 +387,19 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       // Validate extra fields
       if (b.full_name !== undefined) updates.full_name = b.full_name;
       if (b.phone !== undefined) updates.phone = b.phone;
+      if (b.ai_headline !== undefined) updates.ai_headline = b.ai_headline;
+      if (b.ai_strengths !== undefined) {
+        if (!Array.isArray(b.ai_strengths)) errs.push('ai_strengths must be array');
+        else updates.ai_strengths = b.ai_strengths;
+      }
+      if (b.ai_suggested_roles !== undefined) {
+        if (!Array.isArray(b.ai_suggested_roles)) errs.push('ai_suggested_roles must be array');
+        else updates.ai_suggested_roles = b.ai_suggested_roles;
+      }
+      if (b.ai_missing_fields !== undefined) {
+        if (!Array.isArray(b.ai_missing_fields)) errs.push('ai_missing_fields must be array');
+        else updates.ai_missing_fields = b.ai_missing_fields;
+      }
       if (b.work_mode_preference !== undefined) {
         if (b.work_mode_preference && !['remote','hybrid','on-site','any'].includes(b.work_mode_preference)) {
           errs.push('Invalid work mode preference');
@@ -538,7 +560,8 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
       const { data: jobs } = await supabase.from('jobs').select('*')
         .or('status.eq.Active,status.is.null')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       let scores = null;
       // Try V3 columns first, fallback to basic if columns don't exist
@@ -671,7 +694,7 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
       const payload = { job_id };
       const arrFields = ['required_skills','preferred_skills','preferred_fields','trainable_skills','nice_to_haves'];
-      const intFields = ['min_experience_years','weight_skills','weight_education','weight_experience','weight_location','weight_languages','criteria_version'];
+      const intFields = ['min_experience_years','weight_skills','weight_education','weight_experience','weight_location','weight_language','criteria_version'];
       const strFields = ['min_education_level','work_model','team_size','pace','industry','role_family','role_level'];
       const boolFields = ['location_strict'];
       const jsonFields = ['required_languages','hard_gates','success_factors','calibration_snapshot'];
@@ -711,6 +734,10 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
 
   app.get('/api/job-criteria/:jobId', async (req, res) => {
     try {
+      // H-12: Add authentication — job criteria should not be publicly accessible
+      const user = await getUserFromToken(req);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
       const { data, error } = await supabase.from('job_match_criteria')
         .select('*').eq('job_id', req.params.jobId).maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
@@ -733,9 +760,24 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
       const { user_id, job_id } = req.body;
       let count = 0;
-      if (user_id) count = await recalculateForStudent(user_id);
-      else if (job_id) count = await recalculateForJob(job_id);
-      else count = await recalculateForStudent(user.id);
+
+      // H-11: Restrict recalculation to own user or own jobs only
+      if (user_id) {
+        if (user_id !== user.id) {
+          return res.status(403).json({ error: 'Cannot recalculate for other users' });
+        }
+        count = await recalculateForStudent(user_id);
+      } else if (job_id) {
+        // Verify employer owns this job
+        const { data: job } = await supabase.from('jobs')
+          .select('employer_id').eq('id', job_id).maybeSingle();
+        if (!job || job.employer_id !== user.id) {
+          return res.status(403).json({ error: 'Not your job' });
+        }
+        count = await recalculateForJob(job_id);
+      } else {
+        count = await recalculateForStudent(user.id);
+      }
       res.json({ success: true, scores_updated: count });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -782,7 +824,7 @@ function aiMatchingRouter(app, supabase, { getUserFromToken }) {
           ai_profile_quality_notes: aiResult.profile_quality_notes,
           ai_normalized_skills: aiResult.normalized_skills,
           experience_level: aiResult.experience_level,
-          ai_profile_approved: false, // Must be approved by candidate
+          ai_profile_approved: true, // Auto approved
           ai_generated_at: new Date().toISOString(),
           profile_completion_score: completion.score,
           updated_at: new Date().toISOString(),

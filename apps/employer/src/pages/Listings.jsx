@@ -75,7 +75,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
   };
 
   const handleCardClick = () => { if (!expanded) fetchApplicants(); setExpanded(!expanded); };
-  const appStatusColor = (s) => { switch ((s||'').toLowerCase()) { case 'hired': return '#22c55e'; case 'interview': return '#6366f1'; case 'interview-confirmed': return '#22c55e'; case 'counter-offer': return 'var(--accent)'; case 'rejected': case 'declined': return '#ef4444'; default: return 'var(--text-muted)'; } };
+  const appStatusColor = (s) => { switch ((s||'').toLowerCase()) { case 'hired': return 'var(--color-success)'; case 'interview': return 'var(--color-premium)'; case 'interview-confirmed': return 'var(--color-success)'; case 'counter-offer': return 'var(--accent)'; case 'rejected': case 'declined': return 'var(--color-error)'; default: return 'var(--text-muted)'; } };
 
   // Fire-and-forget notification to student when status changes
   const notifyStatusChange = async (applicant, newStatus) => {
@@ -100,7 +100,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
       initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderLeft: '4px solid transparent', borderRadius: 'var(--radius)', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', boxShadow: 'var(--shadow)', position: 'relative', overflow: 'hidden' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 30px rgba(255, 92, 0, 0.15)'; e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.borderLeftColor = 'var(--accent)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 30px var(--accent-light)'; e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.borderLeftColor = 'var(--accent)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.borderLeftColor = 'transparent'; }}
       className="listing-card"
     >
@@ -123,7 +123,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               <button onClick={(e) => { e.stopPropagation(); onEdit(l); }} style={{ padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', transition: 'all 0.2s' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setIsConfirming(true); }} style={{ padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(255, 71, 71, 0.1)', color: '#ff4747', cursor: 'pointer', transition: 'all 0.2s' }} title={t('delete')}>
+              <button onClick={(e) => { e.stopPropagation(); setIsConfirming(true); }} style={{ padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'rgba(255, 71, 71, 0.1)', color: 'var(--color-error)', cursor: 'pointer', transition: 'all 0.2s' }} title={t('delete')}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path></svg>
               </button>
             </div>
@@ -183,8 +183,8 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                       {app.matchScore && typeof app.matchScore.overall_score === 'number' && (
                         <div style={{
                           fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px',
-                          background: app.matchScore.overall_score >= 70 ? 'rgba(34,197,94,0.12)' : app.matchScore.overall_score >= 40 ? 'rgba(255,170,0,0.12)' : 'rgba(239,68,68,0.12)',
-                          color: app.matchScore.overall_score >= 70 ? '#22c55e' : app.matchScore.overall_score >= 40 ? '#ffaa00' : '#ef4444',
+                          background: app.matchScore.overall_score >= 70 ? 'var(--color-success-bg)' : app.matchScore.overall_score >= 40 ? 'var(--color-warning-bg)' : 'var(--color-error-bg)',
+                          color: app.matchScore.overall_score >= 70 ? 'var(--color-success)' : app.matchScore.overall_score >= 40 ? 'var(--color-warning)' : 'var(--color-error)',
                           display: 'flex', alignItems: 'center', gap: 3,
                         }}>
                           ★ {app.matchScore.overall_score}%
@@ -210,7 +210,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
             onClick={() => setSelectedApplicant(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+              style={{ width: '100%', maxWidth: 520, maxHeight: '85vh', background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', padding: 28, overflowY: 'auto', boxShadow: '0 20px 60px var(--overlay-dark)' }}>
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -240,11 +240,11 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               {/* Interview Status */}
               {(selectedApplicant.status === 'Interview-Confirmed' || selectedApplicant.status === 'Counter-Offer') && selectedApplicant.selected_date && (
                 <div style={{ padding: 16, borderRadius: 14, marginBottom: 20,
-                  background: selectedApplicant.status === 'Counter-Offer' ? 'rgba(255,92,0,0.06)' : 'rgba(34,197,94,0.06)',
-                  border: `1px solid ${selectedApplicant.status === 'Counter-Offer' ? 'rgba(255,92,0,0.2)' : 'rgba(34,197,94,0.2)'}`
+                  background: selectedApplicant.status === 'Counter-Offer' ? 'var(--accent-lighter)' : 'var(--color-success-bg)',
+                  border: `1px solid ${selectedApplicant.status === 'Counter-Offer' ? 'var(--shadow-accent)' : 'var(--color-success-bg)'}`
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8,
-                    color: selectedApplicant.status === 'Counter-Offer' ? 'var(--accent)' : '#22c55e'
+                    color: selectedApplicant.status === 'Counter-Offer' ? 'var(--accent)' : 'var(--color-success)'
                   }}>
                     {selectedApplicant.status === 'Counter-Offer' 
                       ? (lang === 'sk' ? '📅 Kandidát navrhuje iný termín' : '📅 Candidate proposes different date')
@@ -267,7 +267,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                             notifyStatusChange(selectedApplicant, 'Interview-Confirmed');
                           }
                         }}
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                       >
                         ✓ {lang === 'sk' ? 'Súhlasím s termínom' : 'Accept date'}
                       </motion.button>
@@ -284,8 +284,8 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
               )}
 
               {selectedApplicant.status === 'Interview' && selectedApplicant.interview_dates && selectedApplicant.interview_dates.length > 0 && (
-                <div style={{ padding: 14, borderRadius: 14, marginBottom: 20, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                <div style={{ padding: 14, borderRadius: 14, marginBottom: 20, background: 'var(--color-premium-bg)', border: '1px solid var(--color-premium-bg)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-premium)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
                     {lang === 'sk' ? '⏳ Čaká sa na odpoveď kandidáta' : '⏳ Waiting for candidate response'}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -303,7 +303,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{lang === 'sk' ? 'Zručnosti' : 'Skills'}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {selectedApplicant.skills.map(s => (
-                      <span key={s} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.08)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.15)' }}>{s}</span>
+                      <span key={s} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--accent-lighter)', color: 'var(--accent)', border: '1px solid var(--accent-light)' }}>{s}</span>
                     ))}
                   </div>
                 </div>
@@ -314,9 +314,9 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{lang === 'sk' ? 'Životopis' : 'CV'}</div>
                 {selectedApplicant.cv_id ? (
                   <button onClick={async () => {
-                    console.log('[Popup] Opening CV:', selectedApplicant.cv_id);
+
                     const { data, error: cvErr } = await supabase.storage.from('cvs').createSignedUrl(selectedApplicant.cv_id, 3600);
-                    console.log('[Popup] CV signed URL result:', data, cvErr);
+
                     if (data?.signedUrl) {
                       window.open(data.signedUrl, '_blank');
                     } else {
@@ -382,14 +382,14 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 const matchData = selectedApplicant.matchScore || null;
                 const score = matchData?.overall_score;
                 const bd = matchData?.breakdown || {};
-                const scoreColor = score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : '#ef4444';
+                const scoreColor = score >= 75 ? 'var(--color-success)' : score >= 50 ? 'var(--color-warning)' : score >= 25 ? 'var(--accent)' : 'var(--color-error)';
 
                 return (
-                  <div style={{ padding: 14, borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', marginBottom: 20 }}>
+                  <div style={{ padding: 14, borderRadius: 12, background: 'var(--color-premium-bg)', border: '1px solid var(--color-premium-bg)', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: matchData ? 12 : 0 }}>
                       <span style={{ fontSize: 18 }}>🤖</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#6366f1' }}>{lang === 'sk' ? 'AI Zhoda' : 'AI Match'}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-premium)' }}>{lang === 'sk' ? 'AI Zhoda' : 'AI Match'}</div>
                         {!matchData && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Žiadne dáta – kandidát nemá AI profil' : 'No data – candidate has no AI profile'}</div>}
                       </div>
                       {matchData && <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor, fontFamily: 'var(--font-body)' }}>{score}%</div>}
@@ -406,7 +406,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                           <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 11, fontWeight: 600, width: 70, color: 'var(--text-muted)' }}>{d.label}</span>
                             <div style={{ flex: 1, height: 5, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
-                              <div style={{ width: `${bd[d.key] || 0}%`, height: '100%', background: (bd[d.key]||0) >= 70 ? '#22c55e' : (bd[d.key]||0) >= 40 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.5s ease' }} />
+                              <div style={{ width: `${bd[d.key] || 0}%`, height: '100%', background: (bd[d.key]||0) >= 70 ? 'var(--color-success)' : (bd[d.key]||0) >= 40 ? 'var(--color-warning)' : 'var(--color-error)', borderRadius: 3, transition: 'width 0.5s ease' }} />
                             </div>
                             <span style={{ fontSize: 11, fontWeight: 700, width: 30, textAlign: 'right', color: 'var(--text)' }}>{bd[d.key] || 0}%</span>
                           </div>
@@ -438,7 +438,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                   {showInterviewPicker && (
                     <motion.div 
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
+                      style={{ position: 'fixed', inset: 0, background: 'var(--overlay-modal)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
                       onClick={() => setShowInterviewPicker(false)}
                     >
                       <div onClick={e => e.stopPropagation()}>
@@ -448,7 +448,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                               status: 'Interview', 
                               interview_dates: dates 
                             }).eq('id', selectedApplicant.id);
-                            console.log('[Popup] Interview with dates:', error || 'OK', dates);
+
                             if (!error) {
                               setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Interview', interview_dates: dates } : a));
                               setSelectedApplicant({ ...selectedApplicant, status: 'Interview', interview_dates: dates });
@@ -465,13 +465,13 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
 
                 {!showInterviewPicker && !['hired', 'rejected'].includes((selectedApplicant.status || '').toLowerCase()) && (
                   <motion.button 
-                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(99,102,241,0.25)' }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px var(--color-premium-bg)' }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => setShowInterviewPicker(true)}
                     style={{ 
                       flex: 1, padding: '14px 18px', borderRadius: 12, border: 'none', 
                       background: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
-                        ? 'var(--bg)' : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                        ? 'var(--bg)' : 'linear-gradient(135deg, var(--color-premium), #4f46e5)',
                       color: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
                         ? 'var(--text)' : '#fff',
                       fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -479,7 +479,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                       border: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
                         ? '1px solid var(--border)' : 'none',
                       boxShadow: ['interview', 'interview-confirmed', 'counter-offer'].includes((selectedApplicant.status || '').toLowerCase())
-                        ? 'none' : '0 4px 14px rgba(99,102,241,0.25)',
+                        ? 'none' : '0 4px 14px var(--color-premium-bg)',
                       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -490,11 +490,11 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                 )}
                 {(selectedApplicant.status || '').toLowerCase() !== 'hired' && (
                   <motion.button 
-                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34,197,94,0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', borderColor: 'transparent' }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 8px 24px var(--color-success-bg)', background: 'linear-gradient(135deg, var(--color-success), var(--color-success))', borderColor: 'transparent' }}
                     whileTap={{ scale: 0.96 }}
                     onClick={async () => {
                     const { error } = await supabase.from('applications').update({ status: 'Hired' }).eq('id', selectedApplicant.id);
-                    console.log('[Popup] Hire update:', error || 'OK');
+
                     if (!error) {
                       setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Hired' } : a));
                       setSelectedApplicant({ ...selectedApplicant, status: 'Hired' });
@@ -503,8 +503,8 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                       alert(lang === 'sk' ? `Chyba: ${error.message}` : `Error: ${error.message}`);
                     }
                   }} style={{ 
-                    flex: 1, padding: '14px 18px', borderRadius: 12, border: '1.5px solid #22c55e', 
-                    background: 'rgba(34,197,94,0.06)', color: '#22c55e', 
+                    flex: 1, padding: '14px 18px', borderRadius: 12, border: '1.5px solid var(--color-success)', 
+                    background: 'var(--color-success-bg)', color: 'var(--color-success)', 
                     fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -514,11 +514,11 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
                   </motion.button>
                 )}
                 <motion.button 
-                  whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444', color: '#ef4444' }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 8px 24px var(--color-error-bg)', background: 'var(--color-error-bg)', borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
                   whileTap={{ scale: 0.96 }}
                   onClick={async () => {
                   const { error } = await supabase.from('applications').update({ status: 'Rejected' }).eq('id', selectedApplicant.id);
-                  console.log('[Popup] Reject update:', error || 'OK');
+
                   if (!error) {
                     setApplicants(prev => (prev || []).map(a => a.id === selectedApplicant.id ? { ...a, status: 'Rejected' } : a));
                     setSelectedApplicant(null);
@@ -550,7 +550,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
           >
             <p style={{ color: '#fff', fontSize: '14px', fontWeight: '600', marginBottom: '16px' }}>{t('deleteConfirm')}</p>
             <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
-              <button onClick={(e) => { e.stopPropagation(); onDelete(l.id); }} style={{ flex: 1, padding: '10px', borderRadius: '8px', background: '#ff4747', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer' }}>{t('delete')}</button>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(l.id); }} style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'var(--color-error)', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer' }}>{t('delete')}</button>
               <button onClick={(e) => { e.stopPropagation(); setIsConfirming(false); }} style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', fontWeight: '600', cursor: 'pointer' }}>Zrušiť</button>
             </div>
           </motion.div>
@@ -564,6 +564,7 @@ const ListingCard = ({ l, lang, t, onDelete, onEdit, getStatusColor, translateSt
 const Listings = () => {
   const { t, lang } = useI18n();
   const { listings, setListings } = useAppState();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [editingListing, setEditingListing] = useState(null);
@@ -577,9 +578,9 @@ const Listings = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Active': return 'var(--green)';
-      case 'Paused': return '#f59e0b';
-      case 'Filled': return '#6366f1';
-      case 'Expired': return '#ef4444';
+      case 'Paused': return 'var(--color-warning)';
+      case 'Filled': return 'var(--color-premium)';
+      case 'Expired': return 'var(--color-error)';
       default: return 'var(--accent)';
     }
   };
@@ -670,9 +671,23 @@ const Listings = () => {
 
   return (
     <div style={{ animation: 'tabSlideIn 0.4s ease' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '400' }}>{t('listingsTitle')}</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('listingsSub')}</p>
+      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: '400' }}>{t('listingsTitle')}</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('listingsSub')}</p>
+        </div>
+        <button 
+          onClick={() => navigate('/create-listing')}
+          className="btn-main"
+          style={{ 
+            width: 'auto',
+            padding: '10px 18px',
+            background: 'linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%)' 
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 4 }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>{lang === 'sk' ? 'Pridať ponuku' : 'New Listing'}</span>
+        </button>
       </div>
 
       {/* Filters & Sort */}

@@ -26,11 +26,11 @@ function biLangArr(arr, lang) {
 
 // Match band display config
 const BAND_DISPLAY = {
-  A: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '🟢' },
-  B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔵' },
-  C: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡' },
-  D: { color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: '🟠' },
-  E: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴' },
+  A: { color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '🟢' },
+  B: { color: 'var(--color-info)',    bg: 'var(--color-info-bg)',    icon: '🔵' },
+  C: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '🟡' },
+  D: { color: 'var(--accent)',        bg: 'var(--accent-light)',      icon: '🟠' },
+  E: { color: 'var(--color-error)',   bg: 'var(--color-error-bg)',   icon: '🔴' },
 };
 const BAND_LABELS = {
   A: { sk: 'Silná zhoda', en: 'Strong fit' },
@@ -50,9 +50,9 @@ function getScoreBand(score) {
 
 // Eligibility tier display
 const ELIG_DISPLAY = {
-  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '✓' },
-  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '≈' },
-  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '✗' },
+  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '✓' },
+  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '≈' },
+  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: 'var(--color-error)',   bg: 'var(--color-error-bg)',   icon: '✗' },
 };
 
 const CandidateCard = ({ candidate, onInvite }) => {
@@ -102,10 +102,10 @@ const CandidateCard = ({ candidate, onInvite }) => {
 
   const getStatusDisplay = () => {
     switch(status) {
-      case 'hired': return { label: 'ZMLUVNE PRIJATÝ', color: '#22c55e', bg: 'var(--green-light)' };
-      case 'rejected': case 'declined': return { label: status === 'declined' ? 'ODMIETNUTÝ KANDIDÁTOM' : 'NEPRIJATÝ', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
-      case 'interview': return { label: 'POHOVOR V PROCESE', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' };
-      case 'interview-confirmed': return { label: 'POHOVOR POTVRDENÝ', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' };
+      case 'hired': return { label: 'ZMLUVNE PRIJATÝ', color: 'var(--color-success)', bg: 'var(--color-success-bg)' };
+      case 'rejected': case 'declined': return { label: status === 'declined' ? 'ODMIETNUTÝ KANDIDÁTOM' : 'NEPRIJATÝ', color: 'var(--color-error)', bg: 'var(--color-error-bg)' };
+      case 'interview': return { label: 'POHOVOR V PROCESE', color: 'var(--color-premium)', bg: 'var(--color-premium-bg)' };
+      case 'interview-confirmed': return { label: 'POHOVOR POTVRDENÝ', color: 'var(--color-success)', bg: 'var(--color-success-bg)' };
       case 'counter-offer': return { label: 'PROTINÁVRH TERMÍNU', color: 'var(--accent)', bg: 'var(--accent-light)' };
       default: return null;
     }
@@ -125,8 +125,14 @@ const CandidateCard = ({ candidate, onInvite }) => {
         <CandidateAvatar userId={candidate.candidate_id} avatarUrl={profile.avatar_url} name={candidate.student_name} size={46} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '12px', letterSpacing: '-0.2px' }}>
+            <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '12px', letterSpacing: '-0.2px', flexWrap: 'wrap' }}>
               {candidate.student_name}
+              {candidate.verification_status?.status === 'completed' && (
+                <span style={{ fontSize: '9px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontWeight: '900', letterSpacing: '0.3px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                  {lang === 'sk' ? 'OVERENÝ' : 'VERIFIED'}
+                </span>
+              )}
               {statusInfo && (
                 <span style={{ fontSize: '9px', padding: '3px 10px', borderRadius: '4px', background: statusInfo.bg, color: statusInfo.color, fontWeight: '900', letterSpacing: '0.5px' }}>
                   {statusInfo.label}
@@ -179,7 +185,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             onClick={(e) => e.stopPropagation()} 
-            style={{ borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)', padding: window.innerWidth <= 900 ? '20px' : '32px' }}
+            style={{ borderTop: '1px solid var(--border)', background: 'var(--overlay-light)', padding: window.innerWidth <= 900 ? '20px' : '32px' }}
           >
             {/* Compact CV Preview Chip */}
             <div style={{ marginBottom: '32px' }}>
@@ -192,7 +198,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                    width: '100%', maxWidth: '300px', padding: '16px', background: 'var(--bg-card)', 
                    borderRadius: '12px', border: '1px solid var(--border)', cursor: cvId ? 'pointer' : 'default',
                    display: 'flex', alignItems: 'center', gap: '16px', transition: 'all 0.2s ease',
-                   boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                   boxShadow: '0 4px 12px var(--overlay-card)'
                  }}
                >
                  <div style={{ 
@@ -238,7 +244,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                          &times;
                        </button>
                      </div>
-                     <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+                     <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px var(--overlay-dark)' }}>
                        <iframe 
                          src={cvUrl} 
                          style={{ width: '100%', height: '100%', border: 'none' }}
@@ -312,7 +318,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                       const allSame = pcts.length > 0 && pcts.every(p => p === pcts[0]);
                       if (allSame) {
                         return (
-                          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.12)', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--color-premium-bg)', border: '1px solid var(--color-premium-border)', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                             💡 {lang === 'sk'
                               ? 'Pre detailnejšie porovnanie kandidátov nastavte kritériá zhody v ponuke (zručnosti, jazyky, vzdelanie...).'
                               : 'Configure match criteria in your listing (skills, languages, education...) for detailed candidate comparison.'}
@@ -334,7 +340,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                               .map(([key, val]) => {
                                 const maxVal = maxScores[key] || 10;
                                 const pct = Math.min(100, Math.round((val / maxVal) * 100));
-                                const dimColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                                const dimColor = pct >= 70 ? 'var(--color-success)' : pct >= 40 ? 'var(--color-warning)' : 'var(--color-error)';
                                 const label = labels[key] ? (labels[key][lang] || labels[key].sk) : key;
                                 return (
                                   <div key={key} style={{ padding: '8px 10px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
@@ -357,10 +363,10 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   {/* Match reasons (strengths) */}
                   {(candidate.match_reasons || []).length > 0 && (
                     <div style={{ marginTop: '16px' }}>
-                      <div style={{ fontSize: '10px', color: '#22c55e', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Silné stránky zhody' : 'Match strengths'}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--color-success)', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase' }}>{lang === 'sk' ? 'Silné stránky zhody' : 'Match strengths'}</div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {biLangArr(candidate.match_reasons, lang).slice(0, 6).map((r, i) => (
-                          <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: 'rgba(34,197,94,0.1)', color: '#22c55e', fontWeight: 600 }}>✓ {r}</span>
+                          <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: 'var(--radius-xs)', background: 'var(--color-success-bg)', color: 'var(--color-success)', fontWeight: 600 }}>✓ {r}</span>
                         ))}
                       </div>
                     </div>
@@ -374,7 +380,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                         {biLangArr(candidate.match_gaps, lang).slice(0, 5).map((g, i) => {
                           const isTrainable = g.includes('trénovateľné') || g.includes('trainable');
                           return (
-                            <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '3px', background: isTrainable ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)', color: isTrainable ? '#3b82f6' : '#ef4444', fontWeight: 600 }}>
+                            <span key={i} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: 'var(--radius-xs)', background: isTrainable ? 'var(--color-info-bg)' : 'var(--color-error-bg)', color: isTrainable ? 'var(--color-info)' : 'var(--color-error)', fontWeight: 600 }}>
                               {isTrainable ? '⚡' : '✗'} {g}
                             </span>
                           );
@@ -384,8 +390,43 @@ const CandidateCard = ({ candidate, onInvite }) => {
                   )}
                 </div>
 
+                {/* AI CV Verification Results */}
+                {candidate.verification_status?.status === 'completed' && candidate.verification_status.overall_score != null && (
+                  <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.04)', border: '1px solid rgba(34, 197, 94, 0.15)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {lang === 'sk' ? 'AI CV Overenie dokončené' : 'AI CV Verification Complete'}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: 900, color: '#22c55e', marginLeft: 'auto' }}>
+                        {Math.round(candidate.verification_status.overall_score * 100)}%
+                      </span>
+                    </div>
+                    {candidate.verification_status.results && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                        {Object.entries(candidate.verification_status.results).map(([attr, result]) => {
+                          const labels = { language: { sk: 'Jazyky', en: 'Languages' }, skills: { sk: 'Zručnosti', en: 'Skills' }, experience: { sk: 'Skúsenosti', en: 'Experience' }, soft_skills: { sk: 'Soft skills', en: 'Soft Skills' } };
+                          const score = result.score || 0;
+                          const color = score >= 0.7 ? '#22c55e' : score >= 0.4 ? 'var(--accent)' : 'var(--color-error)';
+                          return (
+                            <div key={attr} style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{labels[attr]?.[lang] || attr}</span>
+                                <span style={{ fontSize: '10px', fontWeight: 800, color }}>{Math.round(score * 100)}%</span>
+                              </div>
+                              <div style={{ width: '100%', height: '2px', background: 'var(--border)', borderRadius: '1px' }}>
+                                <div style={{ width: `${Math.round(score * 100)}%`, height: '100%', borderRadius: '1px', background: color }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* AI Decision Support Disclaimer */}
-                <div style={{ marginTop: '16px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.1)', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                <div style={{ marginTop: '16px', padding: '8px 12px', borderRadius: 'var(--radius-xs)', background: 'var(--color-premium-bg)', border: '1px solid var(--color-premium-border)', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                   {lang === 'sk'
                     ? '🤖 AI skóre je len pomôcka pre vaše rozhodovanie. Vždy si overte kandidáta na pohovore.'
                     : '🤖 AI scores are decision support only. Always validate candidates through interviews.'}
@@ -400,7 +441,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                       <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         style={{ 
-                          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', 
+                          position: 'fixed', inset: 0, background: 'var(--overlay-modal)', 
                           display: 'flex', alignItems: 'center', justifyContent: 'center', 
                           zIndex: 10000, padding: '20px', backdropFilter: 'blur(8px)'
                         }}
@@ -440,12 +481,12 @@ const CandidateCard = ({ candidate, onInvite }) => {
                       </div>
 
                       {/* Interview Scheduling Status */}
-                      <div style={{ background: 'rgba(0,0,0,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      <div style={{ background: 'var(--overlay-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Plánovanie pohovoru</div>
                         
                         {candidate.interviewInfo?.declined ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-error)' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-error)' }} />
                             <div style={{ fontSize: '13px', fontWeight: '700' }}>Kandidát odmietol pozvanie.</div>
                           </div>
                         ) : status === 'counter-offer' && candidate.interviewInfo?.selected_date ? (
@@ -459,7 +500,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                             <div style={{ display: 'flex', gap: 8 }}>
                               <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => onInvite(candidate.id, 'Interview-Confirmed', candidate.interview_dates)}
-                                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: '#22c55e', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'var(--color-success)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                               >✓ Súhlasím</motion.button>
                               <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => setShowPicker(true)}
@@ -469,8 +510,8 @@ const CandidateCard = ({ candidate, onInvite }) => {
                           </div>
                         ) : candidate.interviewInfo?.selected_date && status === 'interview-confirmed' ? (
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#22c55e', marginBottom: 10 }}>
-                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-success)', marginBottom: 10 }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-success)' }} />
                               <div style={{ fontSize: '13px', fontWeight: '700' }}>
                                 Potvrdený: {new Date(candidate.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                               </div>
@@ -531,16 +572,16 @@ const CandidateCard = ({ candidate, onInvite }) => {
                             style={{ width: '100%', textAlign: 'center', padding: '24px', background: 'var(--bg-card)', borderRadius: '14px', border: '1px solid var(--border)' }}
                           >
                             <div style={{ fontSize: '36px', marginBottom: '10px' }}>{localSuccess === 'Hired' ? '🤝' : '✅'}</div>
-                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', color: localSuccess === 'Hired' ? '#22c55e' : 'var(--text-muted)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: '700', color: localSuccess === 'Hired' ? 'var(--color-success)' : 'var(--text-muted)' }}>
                               {localSuccess === 'Hired' ? 'Kandidát prijatý!' : 'Kandidát odmietnutý'}
                             </div>
                           </motion.div>
                         ) : confirmReject ? (
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            style={{ width: '100%', padding: '20px', background: 'rgba(239,68,68,0.04)', borderRadius: '14px', border: '1px solid rgba(239,68,68,0.15)' }}
+                            style={{ width: '100%', padding: '20px', background: 'var(--color-error-bg)', borderRadius: '14px', border: '1px solid rgba(217,64,64,0.15)' }}
                           >
-                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: '#ef4444', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: 'var(--color-error)', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
                               Naozaj chcete odmietnuť tohto kandidáta?
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
@@ -550,12 +591,12 @@ const CandidateCard = ({ candidate, onInvite }) => {
                                 style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
                               >Zrušiť</motion.button>
                               <motion.button 
-                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(239,68,68,0.3)' }} whileTap={{ scale: 0.97 }}
+                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px var(--color-error-bg)' }} whileTap={{ scale: 0.97 }}
                                 onClick={() => {
                                   onInvite(candidate.id, 'Rejected');
                                   setLocalSuccess('Rejected');
                                 }}
-                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(239,68,68,0.25)', transition: 'all 0.2s' }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-error)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px var(--color-error-bg)', transition: 'all 0.2s' }}
                               >
                                 Odmietnuť
                               </motion.button>
@@ -564,9 +605,9 @@ const CandidateCard = ({ candidate, onInvite }) => {
                         ) : confirmHire ? (
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            style={{ width: '100%', padding: '20px', background: 'rgba(34,197,94,0.04)', borderRadius: '14px', border: '1px solid rgba(34,197,94,0.15)' }}
+                            style={{ width: '100%', padding: '20px', background: 'var(--color-success-bg)', borderRadius: '14px', border: '1px solid var(--color-success-border)' }}
                           >
-                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: '#22c55e', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: '600', color: 'var(--color-success)', marginBottom: '16px', textAlign: 'center', lineHeight: 1.5 }}>
                               Chcete oficiálne prijať tohto kandidáta?
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
@@ -576,12 +617,12 @@ const CandidateCard = ({ candidate, onInvite }) => {
                                 style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: 'var(--text)', transition: 'all 0.2s' }}
                               >Zrušiť</motion.button>
                               <motion.button 
-                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(34,197,94,0.3)' }} whileTap={{ scale: 0.97 }}
+                                whileHover={{ scale: 1.02, boxShadow: '0 6px 20px var(--color-success-bg)' }} whileTap={{ scale: 0.97 }}
                                 onClick={() => {
                                   onInvite(candidate.id, 'Hired');
                                   setLocalSuccess('Hired');
                                 }}
-                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(34,197,94,0.25)', transition: 'all 0.2s' }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--color-success), #118830)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px var(--color-success-bg)', transition: 'all 0.2s' }}
                               >
                                 Potvrdiť prijatie
                               </motion.button>
@@ -607,12 +648,12 @@ const CandidateCard = ({ candidate, onInvite }) => {
                             </div>
                             <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
                               <motion.button 
-                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(34, 197, 94, 0.25)', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', borderColor: 'transparent' }}
+                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px var(--color-success-bg)', background: 'linear-gradient(135deg, var(--color-success), #118830)', color: '#fff', borderColor: 'transparent' }}
                                 whileTap={{ scale: 0.96 }}
                                 onClick={() => setConfirmHire(true)}
                                 style={{
-                                  flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid #22c55e', 
-                                  background: 'rgba(34,197,94,0.06)', color: '#22c55e', cursor: 'pointer', 
+                                  flex: 1, padding: '16px 20px', borderRadius: '12px', border: '1.5px solid var(--color-success)', 
+                                  background: 'var(--color-success-bg)', color: 'var(--color-success)', cursor: 'pointer', 
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
                                   fontFamily: 'var(--font-body)', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}
@@ -622,7 +663,7 @@ const CandidateCard = ({ candidate, onInvite }) => {
                               </motion.button>
 
                               <motion.button 
-                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(239, 68, 68, 0.15)', background: 'rgba(239,68,68,0.08)', borderColor: '#ef4444' }}
+                                whileHover={{ scale: 1.02, boxShadow: '0 8px 24px var(--color-error-bg)', background: 'var(--color-error-bg)', borderColor: 'var(--color-error)' }}
                                 whileTap={{ scale: 0.96 }}
                                 onClick={() => setConfirmReject(true)}
                                 style={{

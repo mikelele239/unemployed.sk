@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const GATE_TYPES = [
   { value: 'language',      sk: 'Jazyková požiadavka',   en: 'Language Requirement', icon: '🌍' },
@@ -72,10 +72,10 @@ const HardGates = ({ gates, onChange, lang = 'sk' }) => {
             <div key={idx} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '10px 12px', borderRadius: '10px',
-              background: 'var(--bg)', border: '1px solid rgba(239,68,68,0.2)',
+              background: 'var(--bg)', border: '1px solid var(--color-error-bg)',
             }}>
               <span style={{ fontSize: '14px' }}>{typeDef.icon}</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', minWidth: '60px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-error)', minWidth: '60px' }}>
                 {typeDef[lang] || typeDef.sk}
               </span>
 
@@ -116,8 +116,8 @@ const HardGates = ({ gates, onChange, lang = 'sk' }) => {
 
               <button onClick={() => removeGate(idx)} style={{
                 width: '22px', height: '22px', borderRadius: '50%',
-                border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
-                color: '#ef4444', fontSize: '13px', cursor: 'pointer',
+                border: '1px solid var(--color-error-bg)', background: 'transparent',
+                color: 'var(--color-error)', fontSize: '13px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>×</button>
             </div>
@@ -133,8 +133,8 @@ const HardGates = ({ gates, onChange, lang = 'sk' }) => {
             defaultValue=""
             style={{
               padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-              background: 'transparent', color: '#ef4444',
-              border: '1px dashed rgba(239,68,68,0.4)', cursor: 'pointer',
+              background: 'transparent', color: 'var(--color-error)',
+              border: '1px dashed var(--color-error-bg)', cursor: 'pointer',
               fontFamily: 'var(--font-body)',
             }}
           >

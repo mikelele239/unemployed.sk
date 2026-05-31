@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -258,11 +258,11 @@ export default function NotificationBell({ lang }) {
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid var(--border)',
                   display: 'flex', gap: 12, cursor: 'pointer',
-                  background: n.read ? 'transparent' : 'rgba(255,92,0,0.04)',
+                  background: n.read ? 'transparent' : 'var(--accent-lighter)',
                   transition: 'background 0.2s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,92,0,0.06)'}
-                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,92,0,0.04)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-lighter)'}
+                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'var(--accent-lighter)'}
               >
                 <div style={{ fontSize: 20, flexShrink: 0 }}>{getIcon(n.type)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -301,7 +301,7 @@ export default function NotificationBell({ lang }) {
           cursor: 'pointer', padding: 8, borderRadius: 10,
           transition: 'all 0.2s',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-lighter, rgba(255,92,0,0.08))'}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-lighter, var(--accent-lighter))'}
         onMouseLeave={e => e.currentTarget.style.background = 'none'}
       >
         <Bell size={20} strokeWidth={2} />
@@ -309,7 +309,7 @@ export default function NotificationBell({ lang }) {
           <span style={{
             position: 'absolute', top: 2, right: 2,
             width: 18, height: 18, borderRadius: '50%',
-            background: '#ef4444', color: '#fff',
+            background: 'var(--color-error)', color: '#fff',
             fontSize: 10, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid var(--bg)',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useI18n } from '../contexts';
 
 const Chart = ({ data = [], title }) => {
@@ -44,7 +44,7 @@ const Chart = ({ data = [], title }) => {
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px',
-      padding: '24px', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+      padding: '24px', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px var(--overlay-card)',
       display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

@@ -9,7 +9,7 @@ module.exports = function jobsRouter(app, supabase, { getUserFromToken } = {}) {
       let data, error;
       const result = await supabase
         .from('jobs')
-        .select('*')
+        .select('id, employer_id, title, company, logo, color, location, rate, rate_unit, hours, type, tags, schedule, match_score, reason, description, requirements, lat, lng, duration, start_date, work_model, status, views, created_at')
         .or('status.eq.Active,status.is.null')
         .order('created_at', { ascending: false });
       
@@ -20,7 +20,7 @@ module.exports = function jobsRouter(app, supabase, { getUserFromToken } = {}) {
       if (error && error.message && error.message.includes('status')) {
         const fallback = await supabase
           .from('jobs')
-          .select('*')
+          .select('id, employer_id, title, company, logo, color, location, rate, rate_unit, hours, type, tags, schedule, match_score, reason, description, requirements, lat, lng, duration, start_date, work_model, views, created_at')
           .order('created_at', { ascending: false });
         data = fallback.data;
         error = fallback.error;

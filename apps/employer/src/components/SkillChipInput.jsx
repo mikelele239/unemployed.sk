@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 
 const SKILL_SUGGESTIONS = [
   'Python','JavaScript','TypeScript','React','Node.js','SQL','HTML','CSS','Git',
@@ -70,8 +70,8 @@ export default function SkillChipInput({ value = [], onChange, label, placeholde
             <span key={skill} style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               padding: '4px 12px', borderRadius: 100, fontSize: '12px', fontWeight: 600,
-              background: 'rgba(255,92,0,0.08)', color: 'var(--accent)',
-              border: '1px solid rgba(255,92,0,0.15)',
+              background: 'var(--accent-lighter)', color: 'var(--accent)',
+              border: '1px solid var(--accent-light)',
             }}>
               {skill}
               <span onClick={() => removeSkill(skill)} style={{
@@ -113,7 +113,7 @@ export default function SkillChipInput({ value = [], onChange, label, placeholde
               padding: '10px 14px', fontSize: '13px', fontWeight: 600,
               cursor: 'pointer', transition: 'background 0.15s', color: 'var(--text)',
             }}
-            onMouseEnter={e => e.target.style.background = 'rgba(255,92,0,0.06)'}
+            onMouseEnter={e => e.target.style.background = 'var(--accent-lighter)'}
             onMouseLeave={e => e.target.style.background = 'transparent'}>
               {s}
             </div>

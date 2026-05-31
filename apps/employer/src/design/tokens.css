@@ -1,37 +1,104 @@
+/* ─────────────────────────────────────────────────────────────
+   EMPLOYER PORTAL — Design Tokens
+   Identity: Efficient · Corporate · Data-dense · Cool-tinted
+   ───────────────────────────────────────────────────────────── */
+
 :root {
-  --bg: #0A0A0A;
-  --bg-card: #141414;
-  --bg-card-hover: #1C1C1C;
-  --sidebar-bg: #0F0F0F;
-  --text: #F5F5F5;
-  --text-muted: #888;
-  --accent: #FF5C00;
-  --accent-hover: #FF7A2E;
-  --accent-light: rgba(255,92,0,0.1);
-  --accent-lighter: rgba(255,92,0,0.05);
-  --border: #222;
-  --pro-border: #2A2A2A;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --sidebar-width: 260px;
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
-  --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  /* ── Dark Mode (default) ── */
+  --bg:              #0A0A0A;
+  --bg-card:         #111115;   /* subtle cool tint */
+  --bg-card-hover:   #18181E;
+  --sidebar-bg:      #0C0C10;
+
+  --text:            #EEEEF2;   /* cool white — clinical efficiency */
+  --text-muted:      #7A7A8A;   /* cool grey */
+
+  /* ── Accent ── */
+  --accent:          #FF5C00;
+  --accent-hover:    #FF7A2E;
+  --accent-light:    rgba(255, 92, 0, 0.1);
+  --accent-lighter:  rgba(255, 92, 0, 0.05);
+
+  /* ── Borders ── */
+  --border:          #1E1E28;   /* cool-tinted dark border */
+  --pro-border:      #26262E;
+
+  /* ── Semantic Status Colours (muted/editorial) ── */
+  --color-success:        #1FAD54;
+  --color-success-bg:     rgba(31, 173, 84, 0.1);
+  --color-success-border: rgba(31, 173, 84, 0.2);
+
+  --color-info:           #2F7DE1;
+  --color-info-bg:        rgba(47, 125, 225, 0.08);
+  --color-info-border:    rgba(47, 125, 225, 0.18);
+
+  --color-premium:        #7C52E8;
+  --color-premium-bg:     rgba(124, 82, 232, 0.08);
+  --color-premium-border: rgba(124, 82, 232, 0.18);
+
+  --color-error:          #D94040;
+  --color-error-bg:       rgba(217, 64, 64, 0.1);
+  --color-error-border:   rgba(217, 64, 64, 0.2);
+
+  --color-warning:        #D97706;
+  --color-warning-bg:     rgba(217, 119, 6, 0.1);
+
+  /* ── Overlay / Glass utilities ── */
+  --overlay-dark:    rgba(0, 0, 0, 0.45);
+  --overlay-darker:  rgba(0, 0, 0, 0.65);
+  --overlay-modal:   rgba(0, 0, 0, 0.85);
+  --overlay-card:    rgba(0, 0, 0, 0.03);
+  --overlay-light:   rgba(255, 255, 255, 0.06);
+  --overlay-border:  rgba(255, 255, 255, 0.1);
+  --accent-glow:     rgba(255, 92, 0, 0.2);
+  --color-warning-border: rgba(217, 119, 6, 0.2);
+  --color-info-border:    rgba(47, 125, 225, 0.18);
+
+  /* ── Typography ── */
+  --font-display:    'Instrument Serif', Georgia, serif;
+  --font-body:       'DM Sans', -apple-system, sans-serif;
+
+  /* ── Radii (balanced) ── */
+  --radius:          16px;
+  --radius-sm:       10px;
+  --radius-xs:       6px;
+
+  /* ── Shadows ── */
+  --shadow:          0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-card:     0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-accent:   0 4px 20px rgba(255, 92, 0, 0.25);
+
+  /* ── Layout ── */
+  --sidebar-width:   260px;
 }
 
+/* ── Light Mode ── */
 html.light {
-  --bg: #FFFFFF;
-  --bg-card: #F7F7F7;
-  --bg-card-hover: #F0F0F0;
-  --sidebar-bg: #FAFAFA;
-  --text: #1A1A1A;
-  --text-muted: #666;
-  --border: #E0E0E0;
-  --pro-border: #D5D5D5;
-  --accent-light: rgba(255,92,0,0.08);
-  --accent-lighter: rgba(255,92,0,0.04);
-  --green-light: rgba(34,197,94,0.1);
-  --blue-light: rgba(59,130,246,0.08);
-  --purple-light: rgba(139,92,246,0.08);
-  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --bg:              #FFFFFF;
+  --bg-card:         #F7F7F9;   /* subtle cool */
+  --bg-card-hover:   #EFEFF3;
+  --sidebar-bg:      #FAFAFA;
+
+  --text:            #1A1A24;   /* cool dark */
+  --text-muted:      #666678;
+
+  --border:          #DCDCE8;   /* cool-tinted border */
+  --pro-border:      #CECEDD;
+
+  --accent-light:    rgba(255, 92, 0, 0.08);
+  --accent-lighter:  rgba(255, 92, 0, 0.04);
+
+  --color-success-bg:     rgba(31, 173, 84, 0.08);
+  --color-info-bg:        rgba(47, 125, 225, 0.06);
+  --color-premium-bg:     rgba(124, 82, 232, 0.06);
+  --color-error-bg:       rgba(217, 64, 64, 0.07);
+
+  --overlay-dark:    rgba(0, 0, 0, 0.35);
+  --overlay-darker:  rgba(0, 0, 0, 0.55);
+  --overlay-light:   rgba(0, 0, 0, 0.04);
+  --overlay-border:  rgba(0, 0, 0, 0.08);
+
+  --shadow:          0 2px 12px rgba(0, 0, 0, 0.07);
+  --shadow-card:     0 8px 30px rgba(0, 0, 0, 0.1);
+  --shadow-accent:   0 4px 20px rgba(255, 92, 0, 0.18);
 }

@@ -1,6 +1,17 @@
 <!doctype html>
-<html lang="sk" data-theme="light">
+<html lang="sk">
   <head>
+    <script>
+      (function() {
+        var match = document.cookie.match(new RegExp('(^| )theme=([^;]+)'));
+        var theme = match ? match[2] : (localStorage.getItem('student_theme') || 'dark');
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

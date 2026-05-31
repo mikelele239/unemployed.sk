@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApplications } from '../hooks/useApplications';
@@ -61,7 +61,7 @@ function StatusTimeline({ status, lang }) {
           top: '24px', 
           left: '12%', 
           height: '3px', 
-          background: isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)', 
+          background: isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)', 
           zIndex: 2 
         }} 
       />
@@ -76,13 +76,13 @@ function StatusTimeline({ status, lang }) {
         let labelColor = 'var(--text-muted)';
 
         if (done) {
-          nodeBg = isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)';
-          nodeBorder = `2px solid ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
+          nodeBg = isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)';
+          nodeBorder = `2px solid ${isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
           labelColor = 'var(--text)';
         } else if (current) {
           nodeBg = 'var(--bg-card)';
-          nodeBorder = `2px solid ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
-          labelColor = isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)';
+          nodeBorder = `2px solid ${isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)'}`;
+          labelColor = isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)';
         }
 
         return (
@@ -99,13 +99,13 @@ function StatusTimeline({ status, lang }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: current ? `0 0 10px ${isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)'}66` : 'none',
+                boxShadow: current ? `0 0 10px ${isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)'}66` : 'none',
                 transition: 'all 0.2s',
                 boxSizing: 'border-box'
               }}
             >
               {done && <span style={{ fontSize: '9px', color: '#fff', fontWeight: 900 }}>✓</span>}
-              {current && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isFailed ? '#ef4444' : isSuccess ? 'var(--green)' : 'var(--accent)' }} />}
+              {current && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isFailed ? 'var(--color-error)' : isSuccess ? 'var(--green)' : 'var(--accent)' }} />}
             </motion.div>
             <span style={{ fontSize: '11px', fontWeight: current || done ? 800 : 500, color: labelColor, marginTop: '8px' }}>
               {step.label}
@@ -144,12 +144,12 @@ export default function Applications() {
   const getStatusColor = (status) => {
     switch(status) {
       case 'Pending': return 'var(--text-muted)';
-      case 'Viewed': return 'var(--blue, #3b82f6)';
-      case 'Interview': return '#6366f1';
-      case 'Interview-Confirmed': return '#22c55e';
+      case 'Viewed': return 'var(--blue, var(--color-info))';
+      case 'Interview': return 'var(--color-premium)';
+      case 'Interview-Confirmed': return 'var(--color-success)';
       case 'Counter-Offer': return 'var(--accent)';
       case 'Hired': return 'var(--green)';
-      case 'Rejected': case 'Declined': return '#ef4444';
+      case 'Rejected': case 'Declined': return 'var(--color-error)';
       default: return 'var(--text-muted)';
     }
   };
@@ -220,10 +220,10 @@ export default function Applications() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                     <div style={{ 
-                      width: 52, height: 52, borderRadius: 14, background: app.color || '#6366f1', 
+                      width: 52, height: 52, borderRadius: 14, background: app.color || 'var(--color-premium)', 
                       display: 'flex', alignItems: 'center', justifyContent: 'center', 
                       color: '#fff', fontSize: 18, fontWeight: 800, flexShrink: 0,
-                      boxShadow: `0 8px 16px ${(app.color || '#6366f1')}33`,
+                      boxShadow: `0 8px 16px ${(app.color || 'var(--color-premium)')}33`,
                       overflow: 'hidden'
                     }}>
                       {app.logo_url ? (
@@ -244,7 +244,7 @@ export default function Applications() {
                       </div>
                       {/* Inline confirmed/counter-offer date badge */}
                       {app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date && (
-                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#22c55e' }}>
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--color-success)' }}>
                           <span>✅</span>
                           <span>{new Date(app.interviewInfo.selected_date).toLocaleString('sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                         </div>
@@ -311,7 +311,7 @@ export default function Applications() {
                                 setWithdrawConfirmId(null);
                                 setWithdrawing(false);
                               }}
-                              style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: 'var(--color-error)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                             >
                               {withdrawing ? '...' : (lang === 'sk' ? 'Áno' : 'Yes')}
                             </button>
@@ -326,7 +326,7 @@ export default function Applications() {
                           <button
                             onClick={(e) => { e.stopPropagation(); setWithdrawConfirmId(app.appId || app.id); }}
                             style={{ marginTop: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-error)'; e.currentTarget.style.color = 'var(--color-error)'; }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                           >
                             {lang === 'sk' ? 'Stiahnuť' : 'Withdraw'}
@@ -358,9 +358,9 @@ export default function Applications() {
                     ) : confirmDeclineId === app.id ? (
                       <motion.div 
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                        style={{ background: 'rgba(239,68,68,0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}
+                        style={{ background: 'var(--color-error-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-error-bg)' }}
                       >
-                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#ef4444', marginBottom: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--color-error)', marginBottom: '12px', textAlign: 'center' }}>
                           {lang === 'en' ? 'Do you really want to decline this invitation?' : 'Naozaj chceš odmietnuť toto pozvanie?'}
                         </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -393,26 +393,26 @@ export default function Applications() {
                               setConfirmDeclineId(null);
                               fetchApplications();
                             }}
-                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
+                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--color-error)', color: '#fff', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}
                           >
                             {lang === 'en' ? 'Yes, decline' : 'Áno, odmietnuť'}
                           </button>
                         </div>
                       </motion.div>
                     ) : app.interviewInfo?.declined ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-error)' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--color-error-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           🚫
                         </div>
                         <div style={{ fontSize: '13px', fontWeight: '800' }}>{lang === 'en' ? 'You declined the interview invitation.' : 'Pozvanie na pohovor si odmietol/la.'}</div>
                       </div>
                     ) : app.status === 'Interview-Confirmed' && app.interviewInfo?.selected_date ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--color-success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           ✅
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{lang === 'en' ? 'Confirmed date' : 'Potvrdený termín'}</div>
+                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{lang === 'en' ? 'Confirmed date' : 'Potvrdený termín'}</div>
                           <div style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
                             {new Date(app.interviewInfo.selected_date).toLocaleString(lang === 'en' ? 'en-US' : 'sk-SK', { dateStyle: 'medium', timeStyle: 'short' })}
                           </div>
@@ -420,7 +420,7 @@ export default function Applications() {
                       </div>
                     ) : app.status === 'Counter-Offer' && app.interviewInfo?.selected_date ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(255,92,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                           📅
                         </div>
                         <div>
@@ -453,7 +453,7 @@ export default function Applications() {
                           </div>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setConfirmDeclineId(app.id); }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--color-error)', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textDecoration: 'underline' }}
                           >
                             {lang === 'en' ? 'Decline' : 'Odmietnuť'}
                           </button>
@@ -523,7 +523,7 @@ export default function Applications() {
                                 onClick={(e) => { e.stopPropagation(); setCounterPickerId(app.id); }}
                                 style={{
                                   width: '100%', padding: '12px 16px', borderRadius: 12,
-                                  border: '1.5px dashed var(--accent)', background: 'rgba(255,92,0,0.04)',
+                                  border: '1.5px dashed var(--accent)', background: 'var(--accent-lighter)',
                                   color: 'var(--accent)', fontSize: 12, fontWeight: 700,
                                   cursor: 'pointer', fontFamily: 'var(--font-body)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
@@ -540,7 +540,7 @@ export default function Applications() {
                               <motion.div
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                 style={{
-                                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+                                  position: 'fixed', inset: 0, background: 'var(--overlay-modal)',
                                   backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
                                   justifyContent: 'center', zIndex: 10001, padding: 20
                                 }}

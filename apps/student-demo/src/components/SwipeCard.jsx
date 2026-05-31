@@ -47,8 +47,8 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
   };
 
   // Stack styling logic
-  const scale = 1 - index * 0.05;
-  const yOffset = index * 12;
+  const scale = Math.max(0.85, 1 - index * 0.05);
+  const yOffset = Math.min(3, index) * 10;
   const cardOpacity = index === 0 ? 1 : index === 1 ? 0.8 : 0.5;
 
   return (
@@ -90,8 +90,8 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
       whileDrag={{ scale: 1.02 }}
     >
       {/* ── MAP HERO ── */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '65%', pointerEvents: 'none' }}>
-        {job.lat && job.lng ? (
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '72%', pointerEvents: 'none' }}>
+        {isTop && job.lat && job.lng ? (
           <MapContainer
             center={[Number(job.lat), Number(job.lng)]}
             zoom={13}
@@ -105,19 +105,19 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
             <Marker position={[Number(job.lat), Number(job.lng)]} />
           </MapContainer>
         ) : (
-          <div style={{ height: '100%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-            {t('card.unknownLocation')}
+          <div style={{ height: '100%', background: isTop ? 'var(--border)' : 'var(--bg-card-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            {isTop ? t('card.unknownLocation') : ''}
           </div>
         )}
         <div style={{
-          position: 'absolute', bottom: 12, left: 12, zIndex: 10,
+          position: 'absolute', bottom: 10, left: 10, zIndex: 10,
           background: 'var(--bg-card)', backdropFilter: 'blur(12px)', opacity: 0.95,
-          padding: '6px 12px', borderRadius: 10,
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 12, fontWeight: 700, color: 'var(--text)',
+          padding: '4px 10px', borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 11, fontWeight: 700, color: 'var(--text)',
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
@@ -129,7 +129,7 @@ export default function SwipeCard({ job, index, total, onSwipe, onClick }) {
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: '16px 20px 80px', background: 'var(--bg-card)',
-          borderTop: '1px solid var(--border)', top: '32%',
+          borderTop: '1px solid var(--border)', top: '28%',
           display: 'flex', flexDirection: 'column', gap: 8,
           visibility: index > 1 ? 'hidden' : 'visible' // Performance & anti-glitch
         }}

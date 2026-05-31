@@ -21,7 +21,8 @@ import {
   Award,
   X,
   ExternalLink,
-  Phone
+  Phone,
+  Trash2
 } from 'lucide-react';
 import { useI18n } from '../contexts';
 import { 
@@ -30,14 +31,22 @@ import {
   sendMessage, 
   markAsRead, 
   subscribeToMessages, 
-  subscribeToConversations 
+  subscribeToConversations,
+  deleteConversation
 } from '../services/messagingService';
 import { supabase } from '../supabase';
 import ModernDatePicker from '../components/ModernDatePicker';
 import CandidateAvatar from '../components/CandidateAvatar';
 
-const formatSystemMessage = (body, lang) => {
+const formatSystemMessage = (body, lang, candidateName) => {
   if (!body) return '';
+  // Application submitted → show candidate name for employer
+  if (body.includes('Prihláška odoslaná.') || body.includes('Prihláška bola úspešne odoslaná.')) {
+    if (candidateName) {
+      return lang === 'sk' ? `Nový uchádzač: ${candidateName}` : `New applicant: ${candidateName}`;
+    }
+    return lang === 'sk' ? 'Nová prihláška prijatá' : 'New application received';
+  }
   // Slovak translations / rewrites for employer view
   if (body.includes('Boli ste pozvaný na pohovor pre pozíciu')) {
     return body.replace('Boli ste pozvaný na pohovor pre pozíciu', lang === 'sk' ? 'Pozvali ste uchádzača na pohovor pre pozíciu' : 'You invited the candidate to an interview for');
@@ -79,11 +88,11 @@ function biLangArr(arr, lang) {
 }
 
 const BAND_DISPLAY = {
-  A: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '🟢', label: { sk: 'Silná zhoda', en: 'Strong fit' } },
-  B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔵', label: { sk: 'Dobrá zhoda', en: 'Good fit' } },
-  C: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡', label: { sk: 'Potenciálna zhoda', en: 'Potential fit' } },
+  A: { color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '🟢', label: { sk: 'Silná zhoda', en: 'Strong fit' } },
+  B: { color: 'var(--color-info)', bg: 'var(--color-info-bg)', icon: '🔵', label: { sk: 'Dobrá zhoda', en: 'Good fit' } },
+  C: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '🟡', label: { sk: 'Potenciálna zhoda', en: 'Potential fit' } },
   D: { color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: '🟠', label: { sk: 'Čiastočná zhoda', en: 'Partial fit' } },
-  E: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴', label: { sk: 'Nízka zhoda', en: 'Low fit' } },
+  E: { color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: '🔴', label: { sk: 'Nízka zhoda', en: 'Low fit' } },
 };
 
 function getScoreBand(score) {
@@ -95,9 +104,9 @@ function getScoreBand(score) {
 }
 
 const ELIG_DISPLAY = {
-  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '✓' },
-  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '≈' },
-  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '✗' },
+  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '✓' },
+  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '≈' },
+  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: '✗' },
 };
 
 const formatStatusDetail = (app, lang) => {
@@ -401,6 +410,24 @@ export default function Messages() {
     }
   };
 
+  const handleDeleteConversation = async (convId) => {
+    if (!convId) return;
+    const confirmMsg = lang === 'sk'
+      ? 'Naozaj chcete vymazať túto konverzáciu? Vymažú sa aj všetky správy a prihláška uchádzača.'
+      : 'Are you sure you want to delete this conversation? This will also delete all messages and the candidate\'s application.';
+    
+    if (window.confirm(confirmMsg)) {
+      try {
+        await deleteConversation(convId);
+        setActiveConvId(null);
+        await fetchInbox();
+      } catch (err) {
+        console.error('Failed to delete conversation:', err);
+        alert(lang === 'sk' ? 'Nepodarilo sa vymazať konverzáciu.' : 'Failed to delete conversation.');
+      }
+    }
+  };
+
   const activeConv = conversations.find(c => c.id === activeConvId);
 
   const formatTime = (isoString) => {
@@ -441,7 +468,7 @@ export default function Messages() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0' }}>
             <div className="spinner" style={{
               width: 24, height: 24,
-              border: '2px solid rgba(255,255,255,0.05)',
+              border: '2px solid var(--overlay-light)',
               borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
@@ -459,7 +486,7 @@ export default function Messages() {
               const isActive = conv.id === activeConvId;
               const hasUnread = conv.unreadCount > 0;
               const lastMsgText = conv.lastMessage 
-                ? (conv.lastMessage.message_type === 'system' ? `⚙️ ${formatSystemMessage(conv.lastMessage.body, lang)}` : conv.lastMessage.body)
+                ? (conv.lastMessage.message_type === 'system' ? `⚙️ ${formatSystemMessage(conv.lastMessage.body, lang, conv.candidateName)}` : conv.lastMessage.body)
                 : (lang === 'sk' ? 'Začnite konverzáciu...' : 'Start conversation...');
 
               return (
@@ -630,6 +657,28 @@ export default function Messages() {
           <FileText size={14} style={{ color: 'var(--accent)' }} />
           <span className="desktop-only">{lang === 'sk' ? 'Profil' : 'Profile'}</span>
         </button>
+
+        {/* Delete Chat Button */}
+        <button
+          onClick={() => handleDeleteConversation(activeConvId)}
+          title={lang === 'sk' ? 'Vymazať konverzáciu' : 'Delete conversation'}
+          style={{
+            padding: '8px',
+            borderRadius: 8,
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error)'; e.currentTarget.style.background = 'var(--color-error-bg)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
+        >
+          <Trash2 size={20} />
+        </button>
       </div>
 
 
@@ -648,7 +697,7 @@ export default function Messages() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <div className="spinner" style={{
               width: 24, height: 24,
-              border: '2px solid rgba(255,255,255,0.05)',
+              border: '2px solid var(--overlay-light)',
               borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
@@ -681,13 +730,13 @@ export default function Messages() {
                     gap: 6
                   }}>
                     {msg.body.includes('potvrdený') ? (
-                      <CheckCircle2 size={12} style={{ color: '#22c55e' }} />
+                      <CheckCircle2 size={12} style={{ color: 'var(--color-success)' }} />
                     ) : msg.body.includes('pohovor') ? (
                       <Calendar size={12} style={{ color: 'var(--accent)' }} />
                     ) : (
                       <AlertCircle size={12} style={{ color: 'var(--text-muted)' }} />
                     )}
-                    <span>{formatSystemMessage(msg.body, lang)}</span>
+                    <span>{formatSystemMessage(msg.body, lang, activeConv?.candidateName)}</span>
                   </div>
                 </div>
               );
@@ -744,11 +793,11 @@ export default function Messages() {
       {/* Interactive Interview/Status Popup Banner */}
       {activeConv?.application && (
         <div style={{
-          background: 'rgba(59, 130, 246, 0.08)',
-          border: '1.5px solid rgba(59, 130, 246, 0.2)',
-          borderRadius: 12,
-          padding: '14px 18px',
-          margin: '0 24px 12px',
+          background: 'var(--color-info-bg)',
+          border: '1px solid var(--color-info-border)',
+          borderRadius: 16,
+          padding: '18px 24px',
+          margin: '0 24px 16px',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
@@ -790,7 +839,7 @@ export default function Messages() {
                     }
                   }}
                   style={{
-                    padding: '6px 12px', borderRadius: 6, background: '#22c55e', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                    padding: '8px 16px', borderRadius: 8, background: 'var(--color-success)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer'
                   }}
                 >
                   {lang === 'sk' ? 'Prijať termín' : 'Accept Date'}
@@ -798,7 +847,7 @@ export default function Messages() {
                 <button
                   onClick={() => setShowEmployerDatePicker(true)}
                   style={{
-                    padding: '6px 12px', borderRadius: 6, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                    padding: '8px 16px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer'
                   }}
                 >
                   {lang === 'sk' ? 'Zmeniť' : 'Change'}
@@ -811,8 +860,8 @@ export default function Messages() {
               <button
                 onClick={() => setShowEmployerDatePicker(true)}
                 style={{
-                  padding: '8px 16px', borderRadius: 8, background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)'
+                  padding: '10px 20px', borderRadius: 8, background: 'linear-gradient(135deg, #2563eb 0%, var(--color-info) 100%)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px var(--color-info-bg)'
                 }}
               >
                 {lang === 'sk' ? 'Naplánovať pohovor' : 'Schedule Interview'}
@@ -878,7 +927,7 @@ export default function Messages() {
 
 
   return (
-    <div style={{ height: '100%', width: '100%', display: 'flex', overflow: 'hidden' }}>
+    <div className="messages-fullpage" style={{ height: '100%', width: '100%', display: 'flex', overflow: 'hidden' }}>
       {isMobile ? (
         activeConvId ? (
           <div style={{ width: '100%', height: '100%' }}>
@@ -927,7 +976,7 @@ export default function Messages() {
         }
         .chat-input-focus:focus {
           border-color: var(--accent) !important;
-          box-shadow: 0 0 0 2px rgba(255, 92, 0, 0.1) !important;
+          box-shadow: 0 0 0 2px var(--accent-light) !important;
         }
       `}</style>
 
@@ -935,7 +984,7 @@ export default function Messages() {
       <AnimatePresence>
         {showEmployerDatePicker && activeConv?.application && (
           <div 
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-modal)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
             onClick={() => setShowEmployerDatePicker(false)}
           >
             <div onClick={e => e.stopPropagation()}>
@@ -973,7 +1022,7 @@ export default function Messages() {
         {showProfileModal && (
           <div 
             style={{ 
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', 
+              position: 'fixed', inset: 0, background: 'var(--overlay-modal)', backdropFilter: 'blur(10px)', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10002, padding: isMobile ? 12 : 24 
             }}
             onClick={() => setShowProfileModal(false)}
@@ -986,7 +1035,7 @@ export default function Messages() {
               style={{ 
                 width: '100%', maxWidth: '900px', height: isMobile ? '100%' : '85vh', 
                 background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: isMobile ? 0 : 16, 
-                display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 50px var(--overlay-dark)',
                 position: 'relative'
               }}
             >
@@ -1016,7 +1065,7 @@ export default function Messages() {
                   )}
                   <button 
                     onClick={() => setShowProfileModal(false)}
-                    style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text)', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ background: 'var(--overlay-light)', border: 'none', color: 'var(--text)', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <X size={16} />
                   </button>
@@ -1027,12 +1076,12 @@ export default function Messages() {
               <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                 {loadingProfile ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
-                    <div className="spinner" style={{ width: 32, height: 32, border: '2px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
+                    <div className="spinner" style={{ width: 32, height: 32, border: '2px solid var(--overlay-light)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{lang === 'sk' ? 'Načítavam údaje...' : 'Loading details...'}</span>
                   </div>
                 ) : !profileData ? (
                   <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                    <AlertCircle size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
+                    <AlertCircle size={32} style={{ color: 'var(--color-error)', marginBottom: 12 }} />
                     <p>{lang === 'sk' ? 'Nepodarilo sa načítať profil.' : 'Failed to load profile.'}</p>
                   </div>
                 ) : (() => {
@@ -1095,14 +1144,14 @@ export default function Messages() {
 
                       {/* Strengths & Gaps (Split) */}
                       {matchScore && (matchScore.match_reasons || matchScore.gaps) && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="grid-responsive cols-1">
+                        <div className="grid-responsive cols-2" style={{ gap: 20 }}>
                           <div>
-                            <h5 style={{ fontSize: 11, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 0 }}>
+                            <h5 style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 0 }}>
                               ✓ {lang === 'sk' ? 'Silné stránky zhody' : 'Match strengths'}
                             </h5>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {biLangArr(matchScore.match_reasons || aiProfile?.ai_strengths || [], lang).slice(0, 4).map((r, i) => (
-                                <span key={i} style={{ fontSize: 12, background: 'rgba(34,197,94,0.05)', color: '#22c55e', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(34,197,94,0.1)', fontWeight: 600 }}>
+                                <span key={i} style={{ fontSize: 12, background: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '5px 10px', borderRadius: 6, border: '1px solid var(--color-success-bg)', fontWeight: 600 }}>
                                   {r}
                                 </span>
                               ))}
@@ -1116,7 +1165,7 @@ export default function Messages() {
                               {biLangArr(matchScore.gaps || aiProfile?.ai_missing_fields || [], lang).slice(0, 4).map((g, i) => {
                                 const isTrainable = g.includes('trénovateľné') || g.includes('trainable');
                                 return (
-                                  <span key={i} style={{ fontSize: 12, background: isTrainable ? 'rgba(59,130,246,0.05)' : 'rgba(239,68,68,0.05)', color: isTrainable ? '#3b82f6' : '#ef4444', padding: '5px 10px', borderRadius: 6, border: `1px solid ${isTrainable ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)'}`, fontWeight: 600 }}>
+                                  <span key={i} style={{ fontSize: 12, background: isTrainable ? 'var(--color-info-bg)' : 'var(--color-error-bg)', color: isTrainable ? 'var(--color-info)' : 'var(--color-error)', padding: '5px 10px', borderRadius: 6, border: `1px solid ${isTrainable ? 'var(--color-info-bg)' : 'var(--color-error-bg)'}`, fontWeight: 600 }}>
                                     {isTrainable ? '⚡' : '✗'} {g}
                                   </span>
                                 );
@@ -1127,7 +1176,7 @@ export default function Messages() {
                       )}
 
                       {/* Education & Experience & Skills & Languages Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }} className="grid-responsive cols-1">
+                      <div className="grid-responsive cols-2" style={{ gap: 24 }}>
                         {/* Skills */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
@@ -1154,7 +1203,7 @@ export default function Messages() {
                               {aiProfile.languages.map((l, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--border)' }}>
                                   <span>{l.lang}</span>
-                                  <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)' }}>{l.level}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: 'var(--accent-light)', color: 'var(--accent)' }}>{l.level}</span>
                                 </div>
                               ))}
                             </div>
@@ -1261,7 +1310,7 @@ export default function Messages() {
                 <X size={20} style={{ margin: '0 auto' }} />
               </button>
             </div>
-            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px var(--overlay-dark)' }}>
               <iframe src={profileCvUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Full CV Preview" />
             </div>
           </motion.div>

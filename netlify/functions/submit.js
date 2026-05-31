@@ -2,8 +2,11 @@
 // Uses only the PUBLIC Supabase anon key — no secrets needed.
 // Duplicate detection is handled by Supabase's UNIQUE constraint on email.
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://jofrxyimqhbgxwwbqyvs.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_x88V1MKZnvNi5YW1T6ozmA_j9XmzHXf';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables');
+}
 
 const VALID_TYPES = new Set(['Stredoškolák', 'Vysokoškolák', 'Absolvent', 'Zamestnávateľ']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

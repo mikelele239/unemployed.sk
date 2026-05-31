@@ -1,6 +1,13 @@
 // Quick test of the AI profiles endpoint
 const http = require('http');
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 const body = JSON.stringify({ candidate_ids: ['aee46dd0-3a38-4890-bfe8-912750778593'] });
 
 const req = http.request({

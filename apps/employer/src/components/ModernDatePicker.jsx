@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ModernDatePicker = ({ onSelect, onCancel }) => {
@@ -43,7 +43,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
         style={{
           background: '#000', color: '#fff', padding: 40, borderRadius: 20,
-          border: '1px solid #222', boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+          border: '1px solid #222', boxShadow: '0 30px 60px var(--overlay-darker)',
           width: 'min(calc(100vw - 32px), 300px)', textAlign: 'center',
           fontFamily: 'var(--font-body)'
         }}
@@ -56,7 +56,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
             width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
             background: 'linear-gradient(135deg, #FF8C32, #FF5C00)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 30px rgba(255,92,0,0.4)'
+            boxShadow: '0 8px 30px var(--shadow-accent)'
           }}
         >
           <motion.svg
@@ -104,16 +104,16 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
         background: '#000', color: '#fff', 
         padding: window.innerWidth <= 900 ? '20px' : '28px', 
         borderRadius: '20px',
-        border: '1px solid #222', boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+        border: '1px solid #222', boxShadow: '0 30px 60px var(--overlay-darker)',
         width: 'min(calc(100vw - 32px), 360px)', zIndex: 1000, position: 'relative',
         fontFamily: 'var(--font-body)'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent)' }}>Plánovač Pohovorov</h3>
-        <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+        <button onClick={onCancel} style={{ background: 'var(--overlay-light)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
           onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--overlay-light)'}
         >&times;</button>
       </div>
 
@@ -151,10 +151,10 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
                   height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '13px', fontWeight: isSelected ? '900' : '600', borderRadius: '10px', 
                   cursor: isPast ? 'default' : 'pointer',
-                  background: isSelected ? 'var(--accent)' : isActive ? 'rgba(255,92,0,0.15)' : 'transparent',
+                  background: isSelected ? 'var(--accent)' : isActive ? 'var(--accent-light)' : 'transparent',
                   color: isPast ? '#2a2a2a' : isSelected ? '#fff' : isActive ? 'var(--accent)' : '#888',
                   border: 'none',
-                  boxShadow: isSelected ? '0 4px 16px rgba(255,92,0,0.4)' : 'none',
+                  boxShadow: isSelected ? '0 4px 16px var(--shadow-accent)' : 'none',
                   position: 'relative',
                   zIndex: isSelected ? 2 : 1,
                   userSelect: 'none',
@@ -192,7 +192,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={addDate}
-                style={{ padding: '10px 18px', background: 'var(--accent)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '800', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', boxShadow: '0 4px 12px rgba(255,92,0,0.3)' }}
+                style={{ padding: '10px 18px', background: 'var(--accent)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '800', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-body)', boxShadow: '0 4px 12px var(--shadow-accent)' }}
               >
                 +
               </motion.button>
@@ -219,7 +219,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
                 <motion.span 
                   whileHover={{ scale: 1.3 }} whileTap={{ scale: 0.8 }}
                   onClick={() => removeDate(iso)} 
-                  style={{ cursor: 'pointer', color: '#ef4444', fontWeight: '900', fontSize: '16px', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}
+                  style={{ cursor: 'pointer', color: 'var(--color-error)', fontWeight: '900', fontSize: '16px', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}
                 >&times;</motion.span>
               </motion.div>
             ))}
@@ -228,7 +228,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
       </div>
 
       <motion.button
-        whileHover={offeredDates.length > 0 ? { scale: 1.02, boxShadow: '0 8px 30px rgba(255,92,0,0.4)' } : {}}
+        whileHover={offeredDates.length > 0 ? { scale: 1.02, boxShadow: '0 8px 30px var(--shadow-accent)' } : {}}
         whileTap={offeredDates.length > 0 ? { scale: 0.97 } : {}}
         disabled={offeredDates.length === 0}
         onClick={() => {
@@ -241,7 +241,7 @@ const ModernDatePicker = ({ onSelect, onCancel }) => {
           color: offeredDates.length === 0 ? '#333' : '#fff',
           fontSize: '13px', fontWeight: '800', cursor: offeredDates.length === 0 ? 'default' : 'pointer',
           fontFamily: 'var(--font-body)',
-          boxShadow: offeredDates.length > 0 ? '0 6px 20px rgba(255,92,0,0.3)' : 'none',
+          boxShadow: offeredDates.length > 0 ? '0 6px 20px var(--shadow-accent)' : 'none',
           transition: 'background 0.2s'
         }}
       >

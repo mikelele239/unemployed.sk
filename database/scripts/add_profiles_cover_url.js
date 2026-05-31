@@ -1,5 +1,3 @@
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
 const { Client } = require('pg');
 
 // ── Production Safety Guard ──────────────────────────────────────────────────
@@ -20,11 +18,11 @@ const pg = new Client({
 });
 
 pg.connect().then(async () => {
-  // Sample profiles to see cv_id values
-  const { rows } = await pg.query(
-    "SELECT user_id, cv_id, onboarding_complete FROM profiles LIMIT 10"
-  );
-  console.log('Sample profiles:');
-  rows.forEach(r => console.log(' ', r.user_id.substring(0,8), '| cv_id:', r.cv_id, '| onboarding:', r.onboarding_complete));
+  console.log('Connected to database.');
+  await pg.query("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cover_url TEXT;");
+  console.log('Added cover_url column to public.profiles table (if not exists).');
   await pg.end();
-}).catch(e => { console.error(e.message); pg.end(); });
+}).catch(e => {
+  console.error('Error running migration:', e.message);
+  pg.end();
+});

@@ -9,6 +9,13 @@ const sb = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 const JOBS = [
   {
     title: 'Social Media Manager',

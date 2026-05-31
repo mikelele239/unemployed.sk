@@ -126,6 +126,7 @@ export default function ForYou() {
           <AnimatePresence>
             {cards.map((job, index) => {
               const cardIndex = cards.length - 1 - index; // 0 is top
+              if (cardIndex >= 4) return null;
               return (
                 <SwipeCard 
                   key={job.id} 

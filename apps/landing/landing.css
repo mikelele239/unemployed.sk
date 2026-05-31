@@ -4,25 +4,52 @@
     a, button, input, select, textarea, label, [role="button"] { touch-action: manipulation; }
 
     :root {
-      --bg: #0D0D0D;
-      --bg-card: #1A1A1A;
-      --bg-card-hover: #222;
-      --text: #F5F0E8;
-      --text-muted: #999;
-      --accent: #FF5C00;
-      --accent-hover: #FF7A2E;
-      --border: #2A2A2A;
-      --font-display: 'Instrument Serif', Georgia, serif;
-      --font-body: 'DM Sans', sans-serif;
+      --bg:              #0A0A0A;
+      --bg-card:         #161612;
+      --bg-card-hover:   #1E1E18;
+      --text:            #F5F0E8;
+      --text-muted:      #8A8078;
+      --accent:          #FF5C00;
+      --accent-hover:    #FF7A2E;
+      --accent-light:    rgba(255, 92, 0, 0.1);
+      --border:          #2A2520;
+      --font-display:    'Instrument Serif', Georgia, serif;
+      --font-body:       'DM Sans', sans-serif;
+
+      /* Semantic Status Colours */
+      --color-success:        #1FAD54;
+      --color-success-bg:     rgba(31, 173, 84, 0.1);
+      --color-info:           #2F7DE1;
+      --color-info-bg:        rgba(47, 125, 225, 0.08);
+      --color-premium:        #7C52E8;
+      --color-premium-bg:     rgba(124, 82, 232, 0.08);
+      --color-error:          #D94040;
+      --color-error-bg:       rgba(217, 64, 64, 0.1);
+
+      /* Overlay utilities */
+      --overlay-dark:    rgba(0, 0, 0, 0.45);
+      --overlay-darker:  rgba(0, 0, 0, 0.65);
+      --overlay-border:  rgba(255, 255, 255, 0.12);
+
+      /* Radii & shadows */
+      --radius:          16px;
+      --radius-sm:       10px;
+      --shadow-accent:   0 4px 20px rgba(255, 92, 0, 0.25);
     }
 
     body.light-mode {
-      --bg: #FFFFFF;
-      --bg-card: #F7F7F7;
-      --bg-card-hover: #F0F0F0;
-      --text: #1A1A1A;
-      --text-muted: #666;
-      --border: #E0E0E0;
+      --bg:              #FFFFFF;
+      --bg-card:         #F7F7F5;
+      --bg-card-hover:   #EEEEE9;
+      --text:            #1A1A14;
+      --text-muted:      #6B6460;
+      --border:          #E8E4DF;
+      --color-success-bg:  rgba(31, 173, 84, 0.08);
+      --color-info-bg:     rgba(47, 125, 225, 0.06);
+      --color-premium-bg:  rgba(124, 82, 232, 0.06);
+      --overlay-dark:    rgba(0, 0, 0, 0.35);
+      --overlay-darker:  rgba(0, 0, 0, 0.55);
+      --overlay-border:  rgba(0, 0, 0, 0.08);
     }
 
     html { scroll-behavior: smooth; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
@@ -158,6 +185,19 @@
       gap: 12px;
       flex: 1;
       justify-content: flex-end;
+    }
+
+    .nav-login-link {
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.875rem;
+      margin-right: 20px;
+      transition: color 0.2s;
+    }
+
+    .nav-login-link:hover {
+      color: var(--accent);
     }
 
     .theme-toggle {

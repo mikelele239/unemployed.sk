@@ -26,7 +26,7 @@ function biLang(val, lang) {
 }
 
 // Custom hook for responsive detection
-function useIsMobile(breakpoint = 820) {
+function useIsMobile(breakpoint = 900) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < breakpoint);
@@ -45,9 +45,9 @@ const Candidates = () => {
   const columns = [
     { id: 'Pending',  label: lang === 'sk' ? 'Noví'       : 'New',        color: '#FF5C00' },
     { id: 'Viewed',   label: lang === 'sk' ? 'Posúdení'   : 'Shortlisted', color: '#2563eb' },
-    { id: 'Interview',label: lang === 'sk' ? 'Pohovory'   : 'Interviews',  color: '#8b5cf6' },
-    { id: 'Hired',    label: lang === 'sk' ? 'Prijatí'    : 'Hired',       color: '#22c55e' },
-    { id: 'Rejected', label: lang === 'sk' ? 'Zamietnutí' : 'Rejected',    color: '#ef4444' },
+    { id: 'Interview',label: lang === 'sk' ? 'Pohovory'   : 'Interviews',  color: 'var(--color-premium)' },
+    { id: 'Hired',    label: lang === 'sk' ? 'Prijatí'    : 'Hired',       color: 'var(--color-success)' },
+    { id: 'Rejected', label: lang === 'sk' ? 'Zamietnutí' : 'Rejected',    color: 'var(--color-error)' },
   ];
 
   const [applications, setApplications] = useState([]);
@@ -59,6 +59,7 @@ const Candidates = () => {
   const [profiles, setProfiles] = useState({});
   const [aiProfiles, setAiProfiles] = useState({});
   const [matchScores, setMatchScores] = useState({});
+  const [verifications, setVerifications] = useState({});
 
   // Column page limits
   const [visibleCounts, setVisibleCounts] = useState({
@@ -190,6 +191,7 @@ const Candidates = () => {
     const job = jobs.find(j => j.id === app.job_id) || {};
     const matchKey = `${app.candidate_id}_${app.job_id}`;
     const matchData = matchScores[matchKey] || {};
+    const verification = verifications[app.candidate_id] || null;
     return {
       ...app,
       student_name: (profile.first_name || profile.last_name)
@@ -201,13 +203,14 @@ const Candidates = () => {
       ai_score: matchData.overall_score || 0,
       match_band: matchData.match_band || null,
       job_title: job.title || '—',
+      verification_status: verification,
       interviewInfo: {
         offered_dates: app.interview_dates || [],
         selected_date: app.selected_date || null,
         declined: app.status === 'Declined',
       },
     };
-  }, [profiles, aiProfiles, matchScores, jobs]);
+  }, [profiles, aiProfiles, matchScores, verifications, jobs]);
 
   // ── Column Filter & Pagination ──
   const getColumnCandidates = useCallback((columnId, allFiltered = false) => {
@@ -273,20 +276,27 @@ const Candidates = () => {
       let updatedProfiles = { ...profiles };
       let updatedAiProfiles = { ...aiProfiles };
       let updatedMatchScores = { ...matchScores };
+      let updatedVerifications = { ...verifications };
       let updated = false;
 
-      // A. Fetch student profiles
+      // A. Fetch student profiles + verification status
       if (uniqueMissingCids.length > 0) {
         for (let i = 0; i < uniqueMissingCids.length; i += 50) {
           const chunk = uniqueMissingCids.slice(i, i + 50);
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('user_id', chunk);
+          const [{ data: profilesData }, { data: verificationsData }] = await Promise.all([
+            supabase.from('profiles').select('*').in('user_id', chunk),
+            supabase.from('cv_verifications').select('user_id, status, overall_score, results, completed_at').in('user_id', chunk),
+          ]);
 
           if (profilesData) {
             profilesData.forEach(p => {
               updatedProfiles[p.user_id] = p;
+            });
+            updated = true;
+          }
+          if (verificationsData) {
+            verificationsData.forEach(v => {
+              updatedVerifications[v.user_id] = { status: v.status, overall_score: v.overall_score, results: v.results, completed_at: v.completed_at };
             });
             updated = true;
           }
@@ -352,6 +362,7 @@ const Candidates = () => {
         setProfiles(updatedProfiles);
         setAiProfiles(updatedAiProfiles);
         setMatchScores(updatedMatchScores);
+        setVerifications(updatedVerifications);
       }
     } catch (err) {
       console.error('Lazy loading details error:', err);
@@ -397,7 +408,7 @@ const Candidates = () => {
   // ── Candidate Card (shared between desktop + mobile) ───────────────────────
   const CandidateCard = ({ c, colColor }) => {
     const score = c.ai_score || 0;
-    const scoreColor = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+    const scoreColor = score >= 80 ? 'var(--color-success)' : score >= 50 ? 'var(--color-warning)' : 'var(--color-error)';
     const subStatus = (c.status || 'Pending').toLowerCase();
 
     const matchKey = `${c.candidate_id}_${c.job_id}`;
@@ -421,7 +432,7 @@ const Candidates = () => {
           padding: '10px 12px',
           cursor: isMobile ? 'pointer' : 'grab',
           transition: 'all 0.18s',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          boxShadow: '0 2px 6px var(--overlay-card)',
           position: 'relative',
           userSelect: 'none',
         }}
@@ -431,7 +442,7 @@ const Candidates = () => {
         } : undefined}
         onMouseLeave={!isMobile ? (e) => {
           e.currentTarget.style.transform = 'none';
-          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+          e.currentTarget.style.boxShadow = '0 2px 6px var(--overlay-card)';
         } : undefined}
       >
         {/* Top row: avatar + name + score */}
@@ -439,8 +450,13 @@ const Candidates = () => {
           <CandidateAvatar userId={c.candidate_id} avatarUrl={c.student_profile?.avatar_url} name={c.student_name} size={32} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'calc(100% - 44px)' }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 'calc(100% - 44px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 {c.student_name}
+                {c.verification_status?.status === 'completed' && (
+                  <span title={lang === 'sk' ? 'AI CV Overený' : 'AI CV Verified'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#22c55e', color: '#fff', flexShrink: 0 }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M20 6L9 17l-5-5"/></svg>
+                  </span>
+                )}
               </span>
               {!scoreLoaded ? (
                 <span style={{
@@ -473,15 +489,15 @@ const Candidates = () => {
 
         {/* Sub-status badges */}
         {subStatus === 'interview-confirmed' && c.selected_date && (
-          <div style={{ marginTop: 7, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 6, padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ marginTop: 7, background: 'var(--color-success-bg)', border: '1px solid var(--color-success-bg)', borderRadius: 6, padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontSize: 10 }}>✅</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-success)' }}>
               {new Date(c.selected_date).toLocaleDateString('sk-SK')} {new Date(c.selected_date).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         )}
         {subStatus === 'counter-offer' && c.selected_date && (
-          <div style={{ marginTop: 7, background: 'rgba(255,92,0,0.08)', border: '1px solid rgba(255,92,0,0.15)', borderRadius: 6, padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ marginTop: 7, background: 'var(--accent-lighter)', border: '1px solid var(--accent-light)', borderRadius: 6, padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontSize: 10 }}>📅</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>
               Protinávrh: {new Date(c.selected_date).toLocaleDateString('sk-SK')}
@@ -760,7 +776,7 @@ const Candidates = () => {
                       if (appId) handleColumnDrop(appId, col.id);
                     }}
                     style={{
-                      background: isDraggingOver ? 'rgba(255, 92, 0, 0.02)' : 'var(--bg-card)',
+                      background: isDraggingOver ? 'var(--accent-lighter)' : 'var(--bg-card)',
                       border: isDraggingOver ? '1.5px dashed var(--accent)' : '1px solid var(--border)',
                       borderRadius: 14,
                       padding: '12px 10px',
@@ -769,7 +785,7 @@ const Candidates = () => {
                       gap: 8,
                       overflow: 'hidden',
                       transition: 'all 0.18s ease',
-                      boxShadow: isDraggingOver ? '0 0 12px rgba(255,92,0,0.06) inset' : 'none',
+                      boxShadow: isDraggingOver ? '0 0 12px var(--accent-lighter) inset' : 'none',
                     }}
                   >
                     {/* Column Header */}
@@ -855,7 +871,7 @@ const Candidates = () => {
       <AnimatePresence>
         {activeDatePickerApp && (
           <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-modal)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
             onClick={() => setActiveDatePickerApp(null)}
           >
             <div onClick={e => e.stopPropagation()}>
@@ -890,7 +906,7 @@ const Candidates = () => {
                   {lang === 'sk' ? 'Zrušiť' : 'Cancel'}
                 </button>
                 <button onClick={() => { handleInvite(activeRejectApp.id, 'Rejected'); setActiveRejectApp(null); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--color-error)', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                   {lang === 'sk' ? 'Zamietnuť' : 'Reject'}
                 </button>
               </div>
@@ -918,7 +934,7 @@ const Candidates = () => {
                   {lang === 'sk' ? 'Zrušiť' : 'Cancel'}
                 </button>
                 <button onClick={() => { handleInvite(activeHireApp.id, 'Hired'); setActiveHireApp(null); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, background: '#22c55e', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--color-success)', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                   {lang === 'sk' ? 'Prijať' : 'Hire'}
                 </button>
               </div>

@@ -1,4 +1,12 @@
 const fs = require('fs');
+
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 let content = fs.readFileSync('lib/ai-cv-parser.js', 'utf8');
 
 // Find the ai_profile block and replace it

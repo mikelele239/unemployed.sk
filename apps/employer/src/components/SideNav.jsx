@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import { supabase } from '../supabase';
 import { getUnreadCount, subscribeToConversations } from '../services/messagingService';
@@ -10,6 +10,7 @@ const SideNav = () => {
   const { t, lang, setLang } = useI18n();
   const { companyProfile } = useAppState();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -96,6 +97,11 @@ const SideNav = () => {
             key={item.id} 
             to={item.path}
             className={({ isActive }) => `sidebar-link mobile-sidebar-link ${isActive ? 'active' : ''}`}
+            onClick={() => {
+              if (location.pathname.startsWith(item.path)) {
+                window.dispatchEvent(new CustomEvent('active-nav-click', { detail: { path: item.path } }));
+              }
+            }}
           >
             {({ isActive }) => (
               <>
@@ -117,7 +123,7 @@ const SideNav = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 0 8px rgba(255, 92, 0, 0.4)',
+                      boxShadow: '0 0 8px rgba(255, 92, 0, 0.25)',
                       zIndex: 2
                     }}>
                       {unreadCount}
@@ -137,7 +143,7 @@ const SideNav = () => {
             className="btn-main"
             style={{ 
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
-              fontSize: '14px', padding: '12px', background: 'linear-gradient(135deg, #FF8C32 0%, #FF5C00 100%)' 
+              fontSize: '14px', padding: '12px', background: 'linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%)' 
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -151,7 +157,7 @@ const SideNav = () => {
 
         {/* Logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), #FF8C32)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 800, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 800, overflow: 'hidden', flexShrink: 0 }}>
             {companyProfile?.logo_url ? (
               <img src={companyProfile.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
@@ -172,11 +178,11 @@ const SideNav = () => {
             }}
             title="Odhlásiť sa"
             style={{
-              background: 'none', border: 'none', color: '#ff4747',
-              padding: '8px', cursor: 'pointer', borderRadius: '6px',
+              background: 'none', border: 'none', color: 'var(--color-error)',
+              padding: '8px', cursor: 'pointer', borderRadius: 'var(--radius-xs)',
               display: 'flex', alignItems: 'center', transition: 'background 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 71, 71, 0.1)'}
+            onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-error-bg)'}
             onMouseOut={(e) => e.currentTarget.style.background = 'none'}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>

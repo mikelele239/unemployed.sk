@@ -50,11 +50,11 @@ function biLangArr(arr, lang) {
 }
 
 const BAND_DISPLAY = {
-  A: { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '🟢', label: { sk: 'Silná zhoda', en: 'Strong fit' } },
-  B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔵', label: { sk: 'Dobrá zhoda', en: 'Good fit' } },
-  C: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡', label: { sk: 'Potenciálna zhoda', en: 'Potential fit' } },
+  A: { color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '🟢', label: { sk: 'Silná zhoda', en: 'Strong fit' } },
+  B: { color: 'var(--color-info)', bg: 'var(--color-info-bg)', icon: '🔵', label: { sk: 'Dobrá zhoda', en: 'Good fit' } },
+  C: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '🟡', label: { sk: 'Potenciálna zhoda', en: 'Potential fit' } },
   D: { color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: '🟠', label: { sk: 'Čiastočná zhoda', en: 'Partial fit' } },
-  E: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴', label: { sk: 'Nízka zhoda', en: 'Low fit' } },
+  E: { color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: '🔴', label: { sk: 'Nízka zhoda', en: 'Low fit' } },
 };
 
 function getScoreBand(score) {
@@ -66,9 +66,9 @@ function getScoreBand(score) {
 }
 
 const ELIG_DISPLAY = {
-  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: '✓' },
-  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '≈' },
-  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '✗' },
+  eligible:     { sk: 'Spĺňa podmienky',       en: 'Eligible',      color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '✓' },
+  near_miss:    { sk: 'Takmer spĺňa',           en: 'Near miss',     color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '≈' },
+  not_eligible: { sk: 'Nespĺňa podmienky',      en: 'Not eligible',  color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: '✗' },
 };
 
 export default function CandidateProfile() {
@@ -348,7 +348,7 @@ export default function CandidateProfile() {
   if (loading) {
     return (
       <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 16 }}>
-        <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ width: 40, height: 40, border: '3px solid var(--overlay-light)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         <span style={{ fontSize: 14 }}>{lang === 'sk' ? 'Načítavam profil kandidáta...' : 'Loading candidate profile...'}</span>
       </div>
     );
@@ -357,7 +357,7 @@ export default function CandidateProfile() {
   if (!profile) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-        <AlertCircle size={48} style={{ color: '#ef4444', marginBottom: 16 }} />
+        <AlertCircle size={48} style={{ color: 'var(--color-error)', marginBottom: 16 }} />
         <h3>{lang === 'sk' ? 'Uchádzač nebol nájdený' : 'Candidate not found'}</h3>
         <button onClick={() => navigate('/candidates')} style={{ marginTop: 20, padding: '10px 20px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
           {lang === 'sk' ? 'Návrat na kandidátov' : 'Back to Candidates'}
@@ -450,8 +450,8 @@ export default function CandidateProfile() {
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{lang === 'sk' ? 'Stav prihlášky:' : 'App Status:'}</span>
                 <span style={{ 
                   fontSize: 11, padding: '4px 12px', borderRadius: 6, fontWeight: 800,
-                  background: selectedApp.status === 'Hired' ? 'rgba(34,197,94,0.1)' : selectedApp.status === 'Rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(255,92,0,0.1)',
-                  color: selectedApp.status === 'Hired' ? '#22c55e' : selectedApp.status === 'Rejected' ? '#ef4444' : 'var(--accent)'
+                  background: selectedApp.status === 'Hired' ? 'var(--color-success-bg)' : selectedApp.status === 'Rejected' ? 'var(--color-error-bg)' : 'var(--accent-light)',
+                  color: selectedApp.status === 'Hired' ? 'var(--color-success)' : selectedApp.status === 'Rejected' ? 'var(--color-error)' : 'var(--accent)'
                 }}>
                   {selectedApp.status.toUpperCase()}
                 </span>
@@ -482,7 +482,7 @@ export default function CandidateProfile() {
                           <path
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             fill="none"
-                            stroke="rgba(255,255,255,0.05)"
+                            stroke="var(--overlay-light)"
                             strokeWidth="3.5"
                           />
                           <path
@@ -514,7 +514,7 @@ export default function CandidateProfile() {
                           .map(([dim, val]) => {
                             const maxScores = { skills: 30, location: 15, job_type: 10, category: 8, education: 10, experience_level: 10, language: 5 };
                             const pct = Math.min(100, Math.round((val / (maxScores[dim] || 10)) * 100));
-                            const barColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                            const barColor = pct >= 70 ? 'var(--color-success)' : pct >= 40 ? 'var(--color-warning)' : 'var(--color-error)';
                             
                             const dimLabels = {
                               skills: { sk: 'Zručnosti', en: 'Skills' },
@@ -545,13 +545,13 @@ export default function CandidateProfile() {
             </div>
           )}
 
-          {/* ── AI Verification Card ── */}
+          {/* ── AI CV Verification Card ── */}
           {(() => {
             const ATTR_CONFIG = {
-              language:    { icon: '🌍', color: '#3b82f6', sk: 'Jazykové znalosti', en: 'Language Skills' },
-              skills:      { icon: '💻', color: '#8b5cf6', sk: 'Technické zručnosti', en: 'Technical Skills' },
-              experience:  { icon: '💼', color: '#f59e0b', sk: 'Pracovné skúsenosti', en: 'Work Experience' },
-              soft_skills: { icon: '🤝', color: '#22c55e', sk: 'Mäkké zručnosti', en: 'Soft Skills' },
+              language:    { icon: '🌍', color: 'var(--color-info)', sk: 'Jazykové znalosti', en: 'Language Skills' },
+              skills:      { icon: '💻', color: 'var(--color-premium)', sk: 'Technické zručnosti', en: 'Technical Skills' },
+              experience:  { icon: '💼', color: 'var(--color-warning)', sk: 'Pracovné skúsenosti', en: 'Work Experience' },
+              soft_skills: { icon: '🤝', color: 'var(--color-success)', sk: 'Mäkké zručnosti', en: 'Soft Skills' },
             };
 
             if (!verificationData) {
@@ -560,7 +560,7 @@ export default function CandidateProfile() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <ShieldCheck size={16} style={{ color: 'var(--text-muted)' }} />
                     <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-                      {lang === 'sk' ? 'Overenie profilu' : 'Profile Verification'}
+                      {lang === 'sk' ? 'AI CV Overenie' : 'AI CV Verification'}
                     </h3>
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
@@ -572,16 +572,16 @@ export default function CandidateProfile() {
 
             const results = verificationData.results || {};
             const overallPct = Math.round((verificationData.overall_score || 0) * 100);
-            const overallColor = overallPct >= 70 ? '#22c55e' : overallPct >= 45 ? '#f59e0b' : '#ef4444';
+            const overallColor = overallPct >= 70 ? 'var(--color-success)' : overallPct >= 45 ? 'var(--color-warning)' : 'var(--color-error)';
 
             return (
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ShieldCheck size={16} style={{ color: '#22c55e' }} />
+                    <ShieldCheck size={16} style={{ color: 'var(--color-success)' }} />
                     <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-                      {lang === 'sk' ? 'Overenie profilu' : 'Profile Verification'}
+                      {lang === 'sk' ? 'AI CV Overenie' : 'AI CV Verification'}
                     </h3>
                   </div>
                   <div style={{
@@ -604,8 +604,8 @@ export default function CandidateProfile() {
                       <div key={attr} style={{
                         display: 'flex', alignItems: 'flex-start', gap: 10,
                         padding: '10px 12px', borderRadius: 10,
-                        background: r.verified ? 'rgba(34,197,94,0.04)' : 'rgba(239,68,68,0.04)',
-                        border: `1px solid ${r.verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)'}`,
+                        background: r.verified ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
+                        border: `1px solid ${r.verified ? 'var(--color-success-bg)' : 'var(--color-error-bg)'}`,
                       }}>
                         <span style={{ fontSize: 16, flexShrink: 0 }}>{cfg.icon}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -615,7 +615,7 @@ export default function CandidateProfile() {
                             </span>
                             <span style={{
                               fontSize: 10, fontWeight: 800,
-                              color: r.verified ? '#22c55e' : '#ef4444',
+                              color: r.verified ? 'var(--color-success)' : 'var(--color-error)',
                               display: 'flex', alignItems: 'center', gap: 3,
                             }}>
                               {r.verified ? '✅' : '⚠️'} {scorePct}%
@@ -730,13 +730,13 @@ export default function CandidateProfile() {
 
                 {/* Confirm/Accept/Reject Controls */}
                 {selectedApp.status === 'Counter-Offer' && (
-                  <div style={{ padding: 12, borderRadius: 8, background: 'rgba(255, 92, 0, 0.04)', border: '1px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ padding: 12, borderRadius: 8, background: 'var(--accent-lighter)', border: '1px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>PROTINÁVRH TERMÍNU:</div>
                     <div style={{ fontSize: 12, fontWeight: 700 }}>
                       {new Date(selectedApp.selected_date).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' })}
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => handleUpdateStatus('Interview-Confirmed')} style={{ flex: 1, padding: 8, borderRadius: 6, background: '#22c55e', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Prijať</button>
+                      <button onClick={() => handleUpdateStatus('Interview-Confirmed')} style={{ flex: 1, padding: 8, borderRadius: 6, background: 'var(--color-success)', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Prijať</button>
                       <button onClick={() => setShowDatePicker(true)} style={{ flex: 1, padding: 8, borderRadius: 6, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Iné termíny</button>
                     </div>
                   </div>
@@ -747,13 +747,13 @@ export default function CandidateProfile() {
                   <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                     <button 
                       onClick={() => setConfirmHire(true)} 
-                      style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1.5px solid #22c55e', background: 'rgba(34,197,94,0.05)', color: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1.5px solid var(--color-success)', background: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Prijať
                     </button>
                     <button 
                       onClick={() => setConfirmReject(true)} 
-                      style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1.5px solid #ef4444', background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1.5px solid var(--color-error)', background: 'var(--color-error-bg)', color: 'var(--color-error)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Odmietnuť
                     </button>
@@ -815,15 +815,15 @@ export default function CandidateProfile() {
 
             {/* Strengths & Gaps Row */}
             {selectedApp && matchData && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }} className="grid-responsive cols-1">
+              <div className="grid-responsive cols-2" style={{ gap: 24 }}>
                 {/* Strengths */}
                 <div>
-                  <h4 style={{ fontSize: 12, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, marginTop: 0 }}>
+                  <h4 style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, marginTop: 0 }}>
                     ✓ {lang === 'sk' ? 'Silné stránky' : 'Strengths'}
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {biLangArr(matchData.match_reasons || aiProfile?.ai_strengths || [], lang).map((s, i) => (
-                      <span key={i} style={{ fontSize: 12, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)', color: '#22c55e', padding: '6px 12px', borderRadius: 8, fontWeight: 600 }}>
+                      <span key={i} style={{ fontSize: 12, background: 'var(--color-success-bg)', border: '1px solid var(--color-success-bg)', color: 'var(--color-success)', padding: '6px 12px', borderRadius: 8, fontWeight: 600 }}>
                         {s}
                       </span>
                     ))}
@@ -839,7 +839,7 @@ export default function CandidateProfile() {
                     {biLangArr(matchData.gaps || aiProfile?.ai_missing_fields || [], lang).map((g, i) => {
                       const isTrainable = g.includes('trénovateľné') || g.includes('trainable');
                       return (
-                        <span key={i} style={{ fontSize: 12, background: isTrainable ? 'rgba(59,130,246,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${isTrainable ? 'rgba(59,130,246,0.12)' : 'rgba(239,68,68,0.12)'}`, color: isTrainable ? '#3b82f6' : '#ef4444', padding: '6px 12px', borderRadius: 8, fontWeight: 600 }}>
+                        <span key={i} style={{ fontSize: 12, background: isTrainable ? 'var(--color-info-bg)' : 'var(--color-error-bg)', border: `1px solid ${isTrainable ? 'var(--color-info-bg)' : 'var(--color-error-bg)'}`, color: isTrainable ? 'var(--color-info)' : 'var(--color-error)', padding: '6px 12px', borderRadius: 8, fontWeight: 600 }}>
                           {isTrainable ? '⚡' : '✗'} {g}
                         </span>
                       );
@@ -851,7 +851,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Education & Experience Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }} className="grid-responsive cols-1">
+          <div className="grid-responsive cols-2" style={{ gap: 32 }}>
             
             {/* Education Card */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -912,7 +912,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Skills & Languages Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }} className="grid-responsive cols-1">
+          <div className="grid-responsive cols-2" style={{ gap: 32 }}>
             {/* Skills */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
@@ -948,8 +948,8 @@ export default function CandidateProfile() {
                       <span style={{ color: 'var(--text)' }}>{l.lang}</span>
                       <span style={{
                         fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
-                        background: l.level?.startsWith('C') ? 'rgba(34,197,94,0.12)' : l.level?.startsWith('B') ? 'rgba(99,102,241,0.12)' : 'rgba(255,170,0,0.12)',
-                        color: l.level?.startsWith('C') ? '#22c55e' : l.level?.startsWith('B') ? '#6366f1' : '#ffaa00',
+                        background: l.level?.startsWith('C') ? 'var(--color-success-bg)' : l.level?.startsWith('B') ? 'var(--color-premium-bg)' : 'var(--color-warning-bg)',
+                        color: l.level?.startsWith('C') ? 'var(--color-success)' : l.level?.startsWith('B') ? 'var(--color-premium)' : 'var(--color-warning)',
                       }}>{l.level}</span>
                     </div>
                   ))
@@ -973,7 +973,7 @@ export default function CandidateProfile() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,92,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📄</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📄</div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                         {profile.original_filename || 'Zivotopis.pdf'}
@@ -1009,7 +1009,7 @@ export default function CandidateProfile() {
       <AnimatePresence>
         {showDatePicker && selectedApp && (
           <div 
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-modal)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001, padding: 20 }}
             onClick={() => setShowDatePicker(false)}
           >
             <div onClick={e => e.stopPropagation()}>
@@ -1036,7 +1036,7 @@ export default function CandidateProfile() {
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setConfirmReject(false)} style={{ flex: 1, padding: 10, borderRadius: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600, cursor: 'pointer' }}>Zrušiť</button>
-                <button onClick={() => handleUpdateStatus('Rejected')} style={{ flex: 1, padding: 10, borderRadius: 8, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Zamietnuť</button>
+                <button onClick={() => handleUpdateStatus('Rejected')} style={{ flex: 1, padding: 10, borderRadius: 8, background: 'var(--color-error)', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Zamietnuť</button>
               </div>
             </motion.div>
           </div>
@@ -1057,7 +1057,7 @@ export default function CandidateProfile() {
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setConfirmHire(false)} style={{ flex: 1, padding: 10, borderRadius: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 600, cursor: 'pointer' }}>Zrušiť</button>
-                <button onClick={() => handleUpdateStatus('Hired')} style={{ flex: 1, padding: 10, borderRadius: 8, background: '#22c55e', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Prijať</button>
+                <button onClick={() => handleUpdateStatus('Hired')} style={{ flex: 1, padding: 10, borderRadius: 8, background: 'var(--color-success)', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Prijať</button>
               </div>
             </motion.div>
           </div>
@@ -1078,12 +1078,12 @@ export default function CandidateProfile() {
               </div>
               <button 
                 onClick={() => setFullscreenCV(false)}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifycontent: 'center', fontSize: '24px' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}
               >
                 <X size={20} style={{ margin: '0 auto' }} />
               </button>
             </div>
-            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 50px var(--overlay-dark)' }}>
               <iframe src={cvUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Full CV Preview" />
             </div>
           </motion.div>

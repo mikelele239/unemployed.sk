@@ -97,7 +97,7 @@ const translations = {
     'ob.reviewNamePlaceholder': 'Zadaj svoje meno...',
     'ob.reviewEdu': 'Vzdelanie',
     'ob.reviewLoc': 'Lokalita',
-    'ob.reviewSkills': 'Extrahované zručnosti',
+    'ob.reviewSkills': 'Zručnosti',
     'ob.reviewAddMore': '+ Pridať ďalšie',
     'ob.reviewConfirm': 'To sedí! Nájdi mi prácu',
     'ob.climax1': 'Hľadáme tvoj match...',
@@ -213,7 +213,7 @@ const translations = {
     'ob.reviewNamePlaceholder': 'Enter your name...',
     'ob.reviewEdu': 'Education',
     'ob.reviewLoc': 'Location',
-    'ob.reviewSkills': 'Extracted skills',
+    'ob.reviewSkills': 'Skills',
     'ob.reviewAddMore': '+ Add more',
     'ob.reviewConfirm': 'Looks good! Find me a job',
     'ob.climax1': 'Finding your match...',
@@ -243,7 +243,9 @@ export const I18nProvider = ({ children }) => {
   });
 
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('student_theme') || 'light';
+    const match = document.cookie.match(new RegExp('(^| )theme=([^;]+)'));
+    if (match) return match[2];
+    return localStorage.getItem('student_theme') || 'dark';
   });
 
   // Persist language changes
@@ -277,7 +279,7 @@ export const I18nProvider = ({ children }) => {
   }, []);
 
   const t = (key) => {
-    return translations[lang] && translations[lang][key];
+    return (translations[lang] && translations[lang][key]) || key;
   };
 
   return (

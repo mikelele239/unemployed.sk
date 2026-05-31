@@ -43,7 +43,11 @@ export const useI18n = () => useContext(I18nContext);
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => localStorage.getItem('employer_theme') || 'light');
+  const [theme, setTheme] = useState(() => {
+    const match = document.cookie.match(new RegExp('(^| )theme=([^;]+)'));
+    if (match) return match[2];
+    return localStorage.getItem('employer_theme') || 'dark';
+  });
 
   useEffect(() => {
     localStorage.setItem('employer_theme', theme);

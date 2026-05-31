@@ -31,7 +31,7 @@ export function useApplications() {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('*')
+          .select('first_name, last_name, education, location, skills, cv_id, original_filename')
           .eq('user_id', uid)
           .maybeSingle();
 

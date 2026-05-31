@@ -40,7 +40,7 @@ html, body, #root {
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 .btn-main:active { transform:scale(0.97); }
-.btn-main:hover { background:var(--accent-hover); box-shadow:0 4px 16px rgba(255,92,0,0.3); }
+.btn-main:hover { background:var(--accent-hover); box-shadow:0 4px 16px var(--shadow-accent); }
 
 .main-app {
   display: flex;
@@ -114,7 +114,7 @@ html, body, #root {
 
 .text-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 92, 0, 0.1);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .side-nav {
@@ -177,7 +177,7 @@ html, body, #root {
     box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
   }
   .app-content {
-    padding: 0;
+    padding: 16px;
     flex: 1;
     height: auto;
     overflow-y: auto;
@@ -185,8 +185,13 @@ html, body, #root {
     order: 1;
   }
   .kanban-fullpage {
-    margin: 0;
-    height: 100%;
+    margin: -16px;
+    height: calc(100vh - 65px);
+  }
+  .messages-fullpage {
+    margin: -16px !important;
+    width: calc(100% + 32px) !important;
+    height: calc(100vh - 65px) !important;
   }
   
   .side-nav nav {
@@ -318,15 +323,29 @@ html, body, #root {
 }
 
 @media (max-width: 900px) {
-  .grid-responsive.cols-2 { grid-template-columns: 1fr; }
-  .grid-responsive.cols-3 { grid-template-columns: 1fr; }
-  .grid-responsive.cols-4 { grid-template-columns: 1fr; }
+  .grid-responsive.cols-2 { grid-template-columns: 1fr !important; }
+  .grid-responsive.cols-3 { grid-template-columns: 1fr !important; }
+  .grid-responsive.cols-4 { grid-template-columns: 1fr !important; }
 }
 
 @media (min-width: 901px) {
   .grid-responsive.cols-2 { grid-template-columns: repeat(2, 1fr); }
   .grid-responsive.cols-3 { grid-template-columns: repeat(3, 1fr); }
   .grid-responsive.cols-4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.create-listing-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .create-listing-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px;
+  }
 }
 
 .mobile-top-bar {

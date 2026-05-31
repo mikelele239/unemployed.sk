@@ -1,6 +1,6 @@
 # Unemployed.sk — Complete Project Overview
 
-> **Version**: 3.0.0 | **Last Updated**: 2026-05-09
+> **Version**: 3.3.0 | **Last Updated**: 2026-05-27
 > This document is the single source of truth for the platform's architecture, feature set, and API surface.
 
 ---
@@ -91,6 +91,7 @@ Unemployed.sk/
 | `MainLayout` | `MainLayout.jsx` | Bottom nav (mobile) + page outlet |
 | `ModernDatePicker` | `ModernDatePicker.jsx` | Custom date/time picker for interviews |
 | `NotificationBell` | `NotificationBell.jsx` | Real-time notifications with Supabase subscription |
+| `VerificationChat` | `VerificationChat.jsx` | AI verification interview (voice + text, session resume, anti-cheat) |
 
 ### Services
 
@@ -169,9 +170,39 @@ All AI-generated text produces bilingual JSON (`{sk: "...", en: "..."}`):
 
 ### Rate Limits
 
-- Global: 50 AI parses/day
-- Per-user: 5 AI parses/day
+- Global: 200 AI calls/day
+- Per-user: 50 AI calls/day
+- Daily budget: $1.00 USD
 - Fallback: Rule-based NLP when limits reached
+
+---
+
+## AI Verification Interview
+
+Students verify profile claims through a structured AI interview.
+
+### Flow
+
+1. **Consent** → Start new or resume existing session (voice or text)
+2. **4 Sections** → Language, Skills, Experience, Soft Skills (3 questions each)
+3. **Voice Support** → Toggle recording, Whisper transcription, waveform animation
+4. **Evaluation** → Per-section scoring with speech quality analysis for voice
+5. **Results** → Overall score + per-attribute badges visible to employers
+
+### Anti-Cheat
+
+- Response timing analysis (flags < 8s avg)
+- Paste detection (blocks clipboard paste)
+- AI-generated answer detection in evaluation
+- Speech quality analysis (grammar, vocabulary, filler words, coherence)
+
+### Session Resume
+
+Sessions persist in `cv_verifications`. Users can leave and resume without losing progress. The server returns full transcript and position data on resume.
+
+### Model
+
+GPT-4o-mini for all interview, evaluation, and CV parsing operations.
 
 ---
 
@@ -203,6 +234,10 @@ All AI-generated text produces bilingual JSON (`{sk: "...", en: "..."}`):
 | `notifications` | In-app notifications | `user_id`, `type`, `title`, `message`, `read` |
 | `submissions` | Landing page leads | `email`, `phone`, `user_type`, `company_name`, `consented` |
 | `user_roles` | Role enforcement | `user_id`, `role` |
+| `cv_verifications` | AI verification sessions | `id`, `user_id`, `status`, `results`, `overall_score`, `full_transcript`, `session_state` |
+| `conversations` | Messaging threads | `id`, `application_id`, `participants[]` |
+| `messages` | Individual messages | `id`, `conversation_id`, `sender_id`, `body`, `created_at` |
+| `application_messages` | Legacy chat messages | `id`, `application_id`, `sender_id`, `message_type`, `body` |
 
 ### Migration Scripts (`database/scripts/`)
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
 /**
@@ -81,7 +81,7 @@ export default function CandidateAvatar({ userId, avatarUrl: rawAvatarUrl, name,
       fontWeight: 800, fontSize: Math.round(size * 0.35), color: '#fff',
       flexShrink: 0, position: 'relative', overflow: 'hidden',
       background: 'linear-gradient(135deg, #1a1a1a, #333)',
-      border: '1px solid rgba(255,255,255,0.05)',
+      border: '1px solid var(--overlay-light)',
       ...style,
     }}>
       {resolvedUrl ? (

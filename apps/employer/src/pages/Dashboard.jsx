@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n, useAppState } from '../contexts';
 import StatCard from '../components/StatCard';
@@ -190,7 +190,7 @@ const Dashboard = () => {
   if (!analytics || !analytics.pipeline_stats) {
     return (
       <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <div style={{ width: 40, height: 40, border: '3px solid var(--overlay-light)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         <p style={{ marginTop: 20, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>{lang === 'sk' ? 'Načítavam analytiku centrály...' : 'Loading analytics...'}</p>
       </div>
     );
@@ -262,7 +262,7 @@ const Dashboard = () => {
       {/* Recruitment Task Center */}
       {tasks.length > 0 && (
         <div style={{
-          background: 'linear-gradient(135deg, var(--bg-card), rgba(99,102,241,0.02))',
+          background: 'linear-gradient(135deg, var(--bg-card), var(--color-premium-bg))',
           border: '1.5px solid var(--border)',
           borderRadius: 'var(--radius, 16px)',
           padding: '24px',
@@ -305,7 +305,7 @@ const Dashboard = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.015)',
+                  background: 'var(--overlay-light)',
                   border: '1px solid var(--border)',
                   borderRadius: '10px',
                   transition: 'all 0.2s',
@@ -314,7 +314,7 @@ const Dashboard = () => {
                 onClick={() => navigate(task.targetPath, { state: task.targetState })}
                 onMouseEnter={e => {
                   e.currentTarget.style.borderColor = 'var(--accent)';
-                  e.currentTarget.style.background = 'rgba(255,92,0,0.02)';
+                  e.currentTarget.style.background = 'var(--accent-lighter)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.borderColor = 'var(--border)';
@@ -325,12 +325,12 @@ const Dashboard = () => {
                   <div style={{
                     width: '36px',
                     height: '36px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-xs)',
                     background: task.type === 'screen_candidate' 
-                      ? 'rgba(34,197,94,0.1)' 
+                      ? 'var(--color-success-bg)' 
                       : task.type === 'cold_job' 
-                        ? 'rgba(239,68,68,0.1)' 
-                        : 'rgba(99,102,241,0.1)',
+                        ? 'var(--color-error-bg)' 
+                        : 'var(--color-premium-bg)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -416,13 +416,13 @@ const Dashboard = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
             {[
-              { key: 'Pending', sk: 'Čakajúci', color: '#94a3b8' },
-              { key: 'Viewed', sk: 'Zobrazení', color: '#3b82f6' },
-              { key: 'Interview', sk: 'Pohovor', color: '#6366f1' },
-              { key: 'Interview-Confirmed', sk: 'Potvrdený pohovor', color: '#8b5cf6' },
-              { key: 'Counter-Offer', sk: 'Protinávrh', color: '#f59e0b' },
-              { key: 'Hired', sk: 'Prijatí', color: '#22c55e' },
-              { key: 'Rejected', sk: 'Odmietnutí', color: '#ef4444' },
+              { key: 'Pending',              sk: 'Čakajúci',          color: '#7A7A8A' },
+              { key: 'Viewed',               sk: 'Zobrazení',         color: 'var(--color-info)' },
+              { key: 'Interview',            sk: 'Pohovor',           color: 'var(--color-premium)' },
+              { key: 'Interview-Confirmed',  sk: 'Potvrdený pohovor', color: 'var(--accent)' },
+              { key: 'Counter-Offer',        sk: 'Protinávrh',        color: 'var(--color-warning)' },
+              { key: 'Hired',                sk: 'Prijatí',           color: 'var(--color-success)' },
+              { key: 'Rejected',             sk: 'Odmietnutí',        color: 'var(--color-error)' },
             ].map(({ key, sk, color }) => {
               const count = pipeline[key] || 0;
               const total = stats.apps || 1;
@@ -430,14 +430,14 @@ const Dashboard = () => {
 
               return (
                 <div key={key} style={{ 
-                  padding: '10px 14px', background: 'rgba(255,255,255,0.015)', borderRadius: '6px', 
+                  padding: '10px 14px', background: 'var(--overlay-light)', borderRadius: 'var(--radius-xs)', 
                   border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '14px',
                   position: 'relative', overflow: 'hidden'
                 }}>
                   {/* The Fill Bar */}
                   <div style={{ 
                     position: 'absolute', left: 0, top: 0, height: '100%', width: `${percent}%`, 
-                    background: `${color}11`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 0,
+                    background: `color-mix(in srgb, ${color} 10%, transparent)`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 0,
                     borderRight: percent > 0 ? `2px solid ${color}` : 'none'
                   }} />
                   
@@ -448,7 +448,7 @@ const Dashboard = () => {
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: 'var(--text)' }}>{count}</span>
-                      <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', background: 'var(--overlay-light)', padding: '2px 6px', borderRadius: 'var(--radius-xs)' }}>
                         {percent}%
                       </span>
                     </div>

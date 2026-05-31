@@ -9,6 +9,8 @@ Parses CV text through OpenAI GPT-4o-mini to build a structured candidate profil
 - Restructures output into bilingual formats (`{sk: "...", en: "..."}`) for descriptions and summaries.
 - Implements fallback rule-based parser when API limits or network timeouts are reached.
 - Manages cost and API rate tracking (`usageTracker`) with daily budget controls.
+- Shared `usageTracker` also gates AI verification interview calls (`ai-verification.js`).
+- Per-user limit: 50 calls/day. Global daily budget: $1.00 USD.
 
 ### 2. NLP Extraction Pipeline (`ai-extraction.js`)
 Performs client-side token extraction and pre-parsing filtering.

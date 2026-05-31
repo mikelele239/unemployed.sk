@@ -34,25 +34,25 @@ function getScoreBand(score) {
   return 'E';
 }
 const BAND_CONFIG = {
-  A: { sk: 'Silná zhoda', en: 'Strong fit', color: '#22c55e', icon: '🟢', gradient: 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04))' },
-  B: { sk: 'Dobrá zhoda', en: 'Good fit', color: '#3b82f6', icon: '🔵', gradient: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04))' },
-  C: { sk: 'Potenciálna zhoda', en: 'Potential fit', color: '#f59e0b', icon: '🟡', gradient: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))' },
+  A: { sk: 'Silná zhoda', en: 'Strong fit', color: 'var(--color-success)', icon: '🟢', gradient: 'linear-gradient(135deg, var(--color-success-bg), var(--color-success-bg))' },
+  B: { sk: 'Dobrá zhoda', en: 'Good fit', color: 'var(--color-info)', icon: '🔵', gradient: 'linear-gradient(135deg, var(--color-info-bg), var(--color-info-bg))' },
+  C: { sk: 'Potenciálna zhoda', en: 'Potential fit', color: 'var(--color-warning)', icon: '🟡', gradient: 'linear-gradient(135deg, var(--color-warning-bg), var(--color-warning-bg))' },
   D: { sk: 'Čiastočná zhoda', en: 'Partial fit', color: '#f97316', icon: '🟠', gradient: 'linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04))' },
-  E: { sk: 'Nízka zhoda', en: 'Low fit', color: '#ef4444', icon: '🔴', gradient: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))' },
+  E: { sk: 'Nízka zhoda', en: 'Low fit', color: 'var(--color-error)', icon: '🔴', gradient: 'linear-gradient(135deg, var(--color-error-bg), var(--color-error-bg))' },
 };
 
 const ELIGIBILITY_CONFIG = {
-  eligible:      { sk: 'Spĺňaš požiadavky', en: 'You qualify', icon: '✅', color: '#22c55e' },
-  near_miss:     { sk: 'Takmer spĺňaš',     en: 'Almost there', icon: '🔶', color: '#f59e0b' },
-  not_eligible:  { sk: 'Nespĺňaš',          en: 'Not eligible', icon: '❌', color: '#ef4444' },
+  eligible:      { sk: 'Spĺňaš požiadavky', en: 'You qualify', icon: '✅', color: 'var(--color-success)' },
+  near_miss:     { sk: 'Takmer spĺňaš',     en: 'Almost there', icon: '🔶', color: 'var(--color-warning)' },
+  not_eligible:  { sk: 'Nespĺňaš',          en: 'Not eligible', icon: '❌', color: 'var(--color-error)' },
 };
 
 const INSIGHT_ICONS = {
-  strength:  { icon: '💪', color: '#22c55e' },
-  moderate:  { icon: '📊', color: '#f59e0b' },
-  gap:       { icon: '📉', color: '#ef4444' },
-  transfer:  { icon: '🔄', color: '#8b5cf6' },
-  trainable: { icon: '🎓', color: '#3b82f6' },
+  strength:  { icon: '💪', color: 'var(--color-success)' },
+  moderate:  { icon: '📊', color: 'var(--color-warning)' },
+  gap:       { icon: '📉', color: 'var(--color-error)' },
+  transfer:  { icon: '🔄', color: 'var(--color-premium)' },
+  trainable: { icon: '🎓', color: 'var(--color-info)' },
   info:      { icon: '💡', color: 'var(--text-muted)' },
 };
 
@@ -107,10 +107,9 @@ export default function ForYou() {
     if (!jobId || viewedJobsRef.current.has(jobId)) return;
     viewedJobsRef.current.add(jobId);
     try {
-      await fetch('/api/job-view', {
+      await fetch(`/api/jobs/${jobId}/view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId }),
       });
     } catch {}
   };
@@ -519,7 +518,7 @@ export default function ForYou() {
                                 </div>
                               )}
                               {currentJob.match.gaps?.[0] && (
-                                <div style={{ fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontSize: 11, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   <span style={{ flexShrink: 0 }}>✕</span> {biLang(currentJob.match.gaps[0], lang)}
                                 </div>
                               )}
@@ -537,13 +536,13 @@ export default function ForYou() {
                 {/* Action Buttons */}
                 <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0 }}>
                   <button onClick={() => handleSwipe('left', currentJob)} style={{ flex: 1, padding: '14px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                    onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4747'; e.currentTarget.style.color = '#ff4747'; }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--color-error)'; e.currentTarget.style.color = 'var(--color-error)'; }}
                     onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     {lang === 'sk' ? 'Preskočiť' : 'Skip'}
                   </button>
-                  <button onClick={() => handleSwipe('right', currentJob)} style={{ flex: 2, padding: '14px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 16px rgba(255,92,0,0.3)' }}
+                  <button onClick={() => handleSwipe('right', currentJob)} style={{ flex: 2, padding: '14px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #FF8C32, #FF5C00)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 4px 16px var(--shadow-accent)' }}
                     onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}
                     onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                   >
@@ -560,7 +559,7 @@ export default function ForYou() {
           {showMatchDrawer && currentJob?.match && (
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMatchDrawer(false)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, backdropFilter: 'blur(4px)' }} />
+                style={{ position: 'fixed', inset: 0, background: 'var(--overlay-dark)', zIndex: 500, backdropFilter: 'blur(4px)' }} />
               <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                 style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 380, maxWidth: '90vw', background: 'var(--bg-card)', zIndex: 501, display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(0,0,0,0.25)', borderLeft: '1px solid var(--border)' }}>
                 {/* Header */}
@@ -661,10 +660,10 @@ export default function ForYou() {
                             <div key={d.key}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                                 <span style={{ fontWeight: 600 }}>{d.label}</span>
-                                <span style={{ color: pct >= 70 ? 'var(--green)' : pct >= 40 ? '#ffaa00' : '#ef4444', fontWeight: 700 }}>{val}/{d.max} ({pct}%)</span>
+                                <span style={{ color: pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--color-warning)' : 'var(--color-error)', fontWeight: 700 }}>{val}/{d.max} ({pct}%)</span>
                               </div>
                               <div style={{ height: 6, background: 'var(--bg-card-hover)', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: pct >= 70 ? 'var(--green)' : pct >= 40 ? '#ffaa00' : '#ef4444', transition: 'width 0.4s' }} />
+                                <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--color-warning)' : 'var(--color-error)', transition: 'width 0.4s' }} />
                               </div>
                             </div>
                           );
@@ -687,10 +686,10 @@ export default function ForYou() {
                   {/* Gaps — bilingual */}
                   {currentJob.match.gaps?.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ef4444', marginBottom: 8 }}>{lang === 'sk' ? 'Čo ti chýba' : "What you're missing"}</h4>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-error)', marginBottom: 8 }}>{lang === 'sk' ? 'Čo ti chýba' : "What you're missing"}</h4>
                       {biLangArr(currentJob.match.gaps, lang).map((g, i) => (
                         <div key={i} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', gap: 8, marginBottom: 6, lineHeight: 1.5 }}>
-                          <span style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }}>✕</span>
+                          <span style={{ color: 'var(--color-error)', flexShrink: 0, marginTop: 2 }}>✕</span>
                           <span style={{ wordBreak: 'break-word' }}>{g}</span>
                         </div>
                       ))}
@@ -714,7 +713,7 @@ export default function ForYou() {
                 background: 'var(--green)', color: '#fff',
                 padding: '14px 28px', borderRadius: 14,
                 fontSize: 14, fontWeight: 700, textAlign: 'center',
-                zIndex: 60, boxShadow: '0 8px 32px rgba(34,197,94,0.35)',
+                zIndex: 60, boxShadow: '0 8px 32px var(--color-success-bg)',
                 whiteSpace: 'nowrap'
               }}
             >
@@ -752,6 +751,7 @@ export default function ForYou() {
           <AnimatePresence>
             {cards.map((job, index) => {
               const cardIndex = cards.length - 1 - index;
+              if (cardIndex >= 4) return null;
               return (
                 <SwipeCard 
                   key={job.id} 
@@ -790,7 +790,7 @@ export default function ForYou() {
               background: 'var(--green)', color: '#fff',
               padding: '10px 14px', borderRadius: 12,
               fontSize: 12, fontWeight: 600, textAlign: 'center',
-              zIndex: 60, boxShadow: '0 4px 20px rgba(34,197,94,0.3)'
+              zIndex: 60, boxShadow: '0 4px 20px var(--color-success-bg)'
             }}
           >
             {t('foryou.toast')}

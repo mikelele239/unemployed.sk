@@ -4,7 +4,7 @@
 > Students discover jobs through Tinder-style swiping and AI matching.
 > Employers manage listings, evaluate candidates, and track recruitment analytics.
 >
-> **Version**: 3.2.0 | **Last Updated**: 2026-05-27
+> **Version**: 3.3.0 | **Last Updated**: 2026-05-27
 
 ---
 
@@ -54,7 +54,7 @@ Unemployed.sk/
 | Database    | Supabase (PostgreSQL + Row Level Security)                    |
 | Storage     | Supabase Storage (`cvs` bucket — private, signed URLs)        |
 | Auth        | Supabase Auth (JWT, admin API for registration)               |
-| AI/ML       | OpenAI GPT-4o-mini (CV parsing, profile generation)           |
+| AI/ML       | OpenAI GPT-4o-mini (CV parsing, AI verification interviews, Whisper transcription) |
 | Hosting     | Netlify (static) + VPS (Express server)                       |
 | i18n        | Custom context-based (Slovak / English)                       |
 
@@ -84,6 +84,7 @@ Unemployed.sk/
 | `MainLayout`         | Bottom nav (mobile) + sidebar (desktop) with page outlet    |
 | `ModernDatePicker`   | Custom date/time picker for interview scheduling            |
 | `NotificationBell`   | Real-time notification system with Supabase subscription    |
+| `VerificationChat`   | AI verification interview (voice + text, session resume, anti-cheat) |
 
 ### Key Interactions
 
@@ -91,6 +92,23 @@ Unemployed.sk/
 - **CV Upload** → Single-CV model: uploads to Supabase Storage → AI parse → profile enrichment
 - **Avatar Upload** → Stores at `{uid}/avatar.{ext}` → generates signed URL → saves via server proxy
 - **Interview Scheduling** → Accept, decline, or counter-offer with custom date picker
+
+### AI Verification Interview
+
+Students can verify their profile skills through a structured AI interview. The verification flow:
+
+1. **Consent Screen** → Shows verified attributes, start with Voice or Text
+2. **Session Resume** → If a session exists, shows "Continue" instead of "Start" and restores full chat history
+3. **4 Attribute Sections** → Language, Technical Skills, Work Experience, Soft Skills (3 questions each)
+4. **Voice Recording** → Toggle-to-record (click to start, click to stop), Whisper transcription, waveform animation
+5. **Evaluation** → Each section scored 0–100 with speech quality analysis for voice answers
+6. **Completion** → Overall score displayed with per-attribute badges
+
+#### Anti-Cheat Measures
+- **Response timing**: Flags suspiciously fast answers (< 8s avg = potential AI/copy-paste)
+- **Paste detection**: `onPaste` handler blocks pasting into the text input
+- **AI answer detection**: Evaluation checks for overly structured, transition-heavy, or generic answers
+- **Speech quality**: Voice answers analyzed for grammar, vocabulary, filler words, and coherence
 
 ---
 
@@ -258,6 +276,15 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 | `POST` | `/api/notifications/read-all`        | JWT  | Mark all notifications as read                    |
 | `POST` | `/api/notifications/status-changed`  | JWT  | Trigger notification for status change            |
 
+### AI Verification Interview
+
+| Method | Endpoint                                              | Auth | Description                                       |
+|--------|-------------------------------------------------------|------|---------------------------------------------------|
+| `POST` | `/api/verify/start`                                   | JWT  | Start or resume AI verification session           |
+| `POST` | `/api/verify/turn`                                    | JWT  | Submit answer (text or audio) and get next question |
+| `GET`  | `/api/verify/status`                                  | JWT  | Get verification status (in_progress/completed)   |
+| `GET`  | `/api/employer/candidate/:id/verification`            | JWT  | Employer access to candidate verification results |
+
 ---
 
 ## Database Schema (Supabase)
@@ -290,6 +317,7 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 | `employer_members` | Employer team membership | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `user_id`, `role` |
 | `employer_notes` | Internal notes on candidates | [employers](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/employers/README.md#relationships) | `employer_id`, `candidate_id`, `note` |
 | `application_messages` | Chat messages | [application_messages](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/application_messages/README.md) | `id`, `application_id`, `sender_id`, `message_type`, `body` |
+| `cv_verifications` | AI verification sessions | [cv_verifications](file:///c:/Users/Zephyrus/Desktop/Unemployed.sk/database/models/cv_verifications/README.md) | `id`, `user_id`, `status`, `results`, `overall_score`, `full_transcript`, `session_state` |
 
 ---
 
@@ -298,7 +326,10 @@ All AI-generated text fields produce bilingual JSON (`{sk: "...", en: "..."}`)
 ```env
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OPENAI_API_KEY=sk-xxx                      # For AI CV parsing (optional, falls back to rule-based)
+OPENAI_API_KEY=sk-xxx                      # For AI CV parsing & verification interviews
+OPENAI_DAILY_BUDGET_USD=1.00               # Max daily spend across all AI calls
+OPENAI_PER_USER_LIMIT=50                   # Max AI calls per user per day
+OPENAI_GLOBAL_DAILY_LIMIT=200              # Max total AI calls per day
 PORT=3000
 ```
 

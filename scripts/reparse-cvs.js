@@ -10,6 +10,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 async function parsePdfBuffer(buf) {
   const parser = new PDFParse({ data: new Uint8Array(buf) });
   const result = await parser.getText();

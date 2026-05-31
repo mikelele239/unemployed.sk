@@ -241,6 +241,28 @@ export const subscribeToConversations = (onUpdate) => {
 };
 
 /**
+ * Delete a conversation.
+ */
+export const deleteConversation = async (conversationId) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch(`/api/conversations/${conversationId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`
+    }
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Failed to delete conversation');
+  }
+
+  return await res.json();
+};
+
+/**
  * Fetch total unread conversations count.
  */
 export const getUnreadCount = async () => {

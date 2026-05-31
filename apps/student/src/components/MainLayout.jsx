@@ -143,8 +143,8 @@ export default function MainLayout() {
       }}>
         {isDesktop && (
           <div style={{ 
-            padding: '32px 16px',
-            marginBottom: '20px',
+            padding: '20px 16px',
+            marginBottom: '12px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -197,6 +197,11 @@ export default function MainLayout() {
                 key={item.path}
                 to={item.path}
                 className="nav-tab"
+                onClick={() => {
+                  if (isActive) {
+                    window.dispatchEvent(new CustomEvent('active-nav-click', { detail: { path: item.path } }));
+                  }
+                }}
                 style={{
                   flex: isDesktop ? 'none' : 1,
                   height: isDesktop ? '48px' : '100%',
@@ -279,7 +284,7 @@ export default function MainLayout() {
 
       <div style={{ 
         flex: 1, 
-        overflowY: 'auto',
+        overflowY: isDesktop ? 'auto' : (location.pathname === '/foryou' ? 'hidden' : 'auto'),
         overflowX: 'hidden',
         paddingBottom: isDesktop ? '0' : 'calc(60px + env(safe-area-inset-bottom, 0px))',
         position: 'relative'

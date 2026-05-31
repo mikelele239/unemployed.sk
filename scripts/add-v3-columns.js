@@ -3,6 +3,13 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 // SQL to add V3 columns to match_scores
 const SQL = `
 ALTER TABLE match_scores ADD COLUMN IF NOT EXISTS match_band text;

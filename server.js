@@ -43,7 +43,10 @@ const PORT = process.env.PORT || 3000;
 
 // ── Supabase (Server-Side — uses SERVICE ROLE KEY to bypass RLS) ────────────
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+if (!supabaseServiceKey && !IS_SERVERLESS) {
+  console.error('❌ CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing. Server MUST NOT fall back to anon key.');
+}
 if (!supabaseUrl || !supabaseServiceKey) {
   if (!IS_SERVERLESS) { console.error('❌ Missing Supabase credentials in .env file'); process.exit(1); }
   else console.warn('⚠️ Supabase credentials missing — some endpoints may fail');
@@ -55,7 +58,9 @@ let lastDetectTime = 0;
 
 async function checkUseDedicatedMessagesTable() {
   const now = Date.now();
-  if (now - lastDetectTime < 10000) { // cache detection for 10 seconds
+  // Once we detect the table exists, cache FOREVER — tables don't disappear at runtime
+  if (useDedicatedMessagesTable) return true;
+  if (now - lastDetectTime < 10000) { // cache negative detection for 10 seconds
     return useDedicatedMessagesTable;
   }
   try {
@@ -78,7 +83,7 @@ async function getConversationActivity(appId, userId, appCreatedAt) {
   if (hasDedicated) {
     const { data: dbMsgs } = await supabase
       .from('application_messages')
-      .select('*')
+      .select('id, body, message_type, sender_id, read_at, created_at')
       .eq('application_id', appId)
       .order('created_at', { ascending: false });
 
@@ -103,7 +108,7 @@ async function getConversationActivity(appId, userId, appCreatedAt) {
   } else {
     const { data: notifs } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id, user_id, title, message, type, read, related_entity_id, created_at')
       .eq('related_entity_id', appId)
       .order('created_at', { ascending: false });
 
@@ -136,68 +141,59 @@ function hashIp(ip) {
 }
 
 function decodeJwtFallback(token) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    if (!payload || !payload.sub) return null;
-
-    // Check expiration if exp claim is present
-    const nowSec = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < nowSec) {
-      console.warn('[decodeJwtFallback] Offline JWT decode fallback: Token has expired');
-      return null;
-    }
-
-    return {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role || 'authenticated',
-      aud: payload.aud,
-      app_metadata: payload.app_metadata || {},
-      user_metadata: payload.user_metadata || {},
-      is_fallback: true
-    };
-  } catch (err) {
-    console.error('[decodeJwtFallback] Offline JWT decode failed:', err.message);
-    return null;
-  }
+  // SECURITY: JWT fallback has been REMOVED.
+  // Decoding a JWT without signature verification allows token forgery.
+  // Auth must fail CLOSED — if Supabase is unreachable, deny access.
+  console.warn('[SECURITY] JWT fallback attempted but disabled — auth will fail closed.');
+  return null;
 }
+
+// ── Token cache (60s TTL, max 1000 entries) ──────────────────────────────────
+const tokenCache = new Map();
+const TOKEN_CACHE_TTL_MS = 60_000;
+const TOKEN_CACHE_MAX = 1000;
+let tokenCacheCalls = 0;
 
 async function getUserFromToken(req) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return null;
   const token = auth.replace('Bearer ', '');
 
+  // Check cache first
+  const now = Date.now();
+  const cached = tokenCache.get(token);
+  if (cached && now < cached.expiresAt) {
+    return cached.user;
+  }
+
+  // Periodic cleanup every 100 calls — evict expired entries
+  tokenCacheCalls++;
+  if (tokenCacheCalls % 100 === 0) {
+    for (const [key, entry] of tokenCache.entries()) {
+      if (now >= entry.expiresAt) tokenCache.delete(key);
+    }
+  }
+
   try {
-    // Race the Supabase call against a 3-second timeout
+    // Race the Supabase call against a 5-second timeout (increased for reliability)
     const result = await Promise.race([
       supabase.auth.getUser(token),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
     ]);
     const { data: { user }, error } = result;
     if (error || !user) return null;
+
+    // Cache the result — evict oldest if at capacity
+    if (tokenCache.size >= TOKEN_CACHE_MAX) {
+      const firstKey = tokenCache.keys().next().value;
+      tokenCache.delete(firstKey);
+    }
+    tokenCache.set(token, { user, expiresAt: now + TOKEN_CACHE_TTL_MS });
     return user;
   } catch (err) {
-    console.error('[getUserFromToken] Auth verification failed:', err.message);
-    
-    // Check if error is network/connection/timeout related
-    const isNetworkError = 
-      err.message === 'Auth timeout' ||
-      (err.code && (err.code === 'ENOTFOUND' || err.code === 'UND_ERR_CONNECT_TIMEOUT' || err.code === 'ECONNRESET')) ||
-      err.message.includes('fetch failed') ||
-      err.message.includes('network') ||
-      err.message.includes('connect') ||
-      err.message.includes('timeout') ||
-      err.message.includes('ECONNRESET');
-
-    if (isNetworkError) {
-      console.warn('[getUserFromToken] Using offline JWT decode fallback due to connection/timeout error:', err.message);
-      const decoded = decodeJwtFallback(token);
-      if (decoded) {
-        return decoded;
-      }
-    }
+    // SECURITY: Fail closed — do NOT decode the JWT without signature verification.
+    // If Supabase is unreachable, the request is denied.
+    console.error('[getUserFromToken] Auth verification failed (fail closed):', err.message);
     return null;
   }
 }
@@ -235,30 +231,34 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // JSON body parser — skip for multipart file upload routes
 app.use((req, res, next) => {
   if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload' || req.path === '/api/student/avatar-upload') return next();
-  express.json({ limit: '16kb' })(req, res, next);
+  // Verification routes need larger limit for base64-encoded audio
+  const limit = req.path.startsWith('/api/verify/') ? '10mb' : '16kb';
+  express.json({ limit })(req, res, next);
 });
 app.use((req, res, next) => {
   if (req.path === '/api/cvs/upload' || req.path === '/api/employer/logo-upload' || req.path === '/api/student/avatar-upload') return next();
-  express.urlencoded({ extended: false, limit: '16kb' })(req, res, next);
+  const limit = req.path.startsWith('/api/verify/') ? '10mb' : '16kb';
+  express.urlencoded({ extended: false, limit })(req, res, next);
 });
 app.set('trust proxy', 1);
 
 
 // Block sensitive file access
 app.use((req, res, next) => {
-  const blocked = /\/(server\.js|database\.db|unemployed\.db|package\.json|package-lock\.json|node_modules|\.env|submissions\.db.*|\.claude)(\/|$)/i;
+  const blocked = /\/(server\.js|database\.db|unemployed\.db|package\.json|package-lock\.json|node_modules|\.env|submissions\.db.*|\.claude|\.git)(\/|$)/i;
   if (blocked.test(req.path)) return res.status(404).end();
   next();
 });
 
 // Security headers
+app.disable('x-powered-by'); // Hide Express fingerprint
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https://*.supabase.co; " +
     "frame-src 'self' https://*.supabase.co blob: data:; " +
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; " +
+    "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: blob: https: https://*.supabase.co;"
@@ -267,13 +267,27 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  // CORS — restrict to same origin in production
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=()');
+  // Prevent caching of API responses containing user data
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  // CORS — strict origin matching to prevent bypass attacks
+  const ALLOWED_ORIGINS = [
+    'https://unemployed.sk',
+    'https://www.unemployed.sk',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+  ];
   const origin = req.headers.origin;
-  if (origin && (origin.includes('unemployed.sk') || origin.includes('localhost'))) {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   if (req.method === 'OPTIONS') return res.status(204).end();
   next();
@@ -304,16 +318,33 @@ app.post('/api/employer/ensure-profile', async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
     
-    const { name, description, website, location } = req.body;
+    // H-13: Verify user has employer role — prevent students from creating employer profiles
+    const { data: roleRow } = await supabase.from('user_roles')
+      .select('role').eq('user_id', user.id).maybeSingle();
+    const role = roleRow?.role || user.app_metadata?.role || user.user_metadata?.role;
+    if (role === 'candidate') {
+      return res.status(403).json({ error: 'Only employer accounts can create employer profiles' });
+    }
     
-    // Upsert employer row — service key bypasses RLS
-    const { data, error } = await supabase.from('employers').upsert({
+    const { name, description, website, location, hiring_types, team_size, industry } = req.body;
+    
+    // Build upsert payload — only include fields that were provided
+    const payload = {
       id: user.id,
       name: name || user.email?.split('@')[0] || 'Firma',
-      description: description || null,
-      website: website || null,
-      location: location || null,
-    }, { onConflict: 'id' }).select().single();
+      onboarding_complete: true, // Any profile save implies onboarding is done
+    };
+    if (description !== undefined) payload.description = description || null;
+    if (industry !== undefined) payload.industry = industry || null;
+    if (website !== undefined) payload.website = website || null;
+    if (location !== undefined) payload.location = location || null;
+    if (hiring_types !== undefined) payload.hiring_types = hiring_types || null;
+    if (team_size !== undefined) payload.team_size = team_size || null;
+    
+    // Upsert employer row — service key bypasses RLS
+    const { data, error } = await supabase.from('employers').upsert(
+      payload, { onConflict: 'id' }
+    ).select().single();
     
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
@@ -328,8 +359,9 @@ const logoUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     const mime = (file.mimetype || '').toLowerCase();
-    const ok = mime.startsWith('image/');
-    cb(null, ok);
+    // I-1: Restrict to safe image types only (no SVG to prevent stored XSS)
+    const SAFE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    cb(null, SAFE_IMAGE_TYPES.has(mime));
   },
 });
 
@@ -465,6 +497,73 @@ app.post('/api/student/avatar-upload', logoUpload.single('avatar'), async (req, 
   }
 });
 
+app.post('/api/student/cover-upload', logoUpload.single('cover'), async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const file = req.file;
+    if (!file || !file.buffer) {
+      return res.status(400).json({ error: 'No image file found in request' });
+    }
+
+    const uid = user.id;
+    const ext = (file.originalname || 'cover.png').split('.').pop() || 'png';
+
+    // Remove old cover files from storage
+    try {
+      const { data: existingFiles } = await supabase.storage.from('cvs').list(uid, { limit: 50 });
+      const oldCovers = (existingFiles || []).filter(f => f.name.toLowerCase().startsWith('cover.'));
+      if (oldCovers.length > 0) {
+        await supabase.storage.from('cvs').remove(oldCovers.map(f => `${uid}/${f.name}`));
+      }
+    } catch (cleanErr) {
+      console.warn('[Cover Upload] Cleanup non-fatal:', cleanErr.message);
+    }
+
+    // Upload new cover
+    const storagePath = `${uid}/cover.${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('cvs')
+      .upload(storagePath, file.buffer, { upsert: true, contentType: file.mimetype });
+
+    if (uploadErr) {
+      console.error('[Cover Upload] Storage error:', uploadErr);
+      return res.status(500).json({ error: uploadErr.message });
+    }
+
+    // Create a long-lived signed URL (1 year)
+    const { data: signedData, error: signErr } = await supabase.storage
+      .from('cvs')
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+
+    if (signErr) {
+      console.error('[Cover Upload] Signed URL error:', signErr);
+      return res.status(500).json({ error: signErr.message });
+    }
+
+    const coverUrl = signedData?.signedUrl || '';
+
+    // Update the profiles table
+    const { error: dbErr } = await supabase
+      .from('profiles')
+      .update({ cover_url: coverUrl })
+      .eq('user_id', uid);
+
+    if (dbErr) {
+      console.error('[Cover Upload] DB update error:', dbErr);
+      return res.status(500).json({ error: dbErr.message });
+    }
+
+    console.log('[Cover Upload] ✅ Cover updated for student:', uid);
+    res.json({ cover_url: coverUrl });
+  } catch (err) {
+    console.error('[Cover Upload] Critical error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 app.get('/api/employer/profile', async (req, res) => {
   try {
@@ -475,7 +574,7 @@ app.get('/api/employer/profile', async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
     
-    const { data, error } = await supabase.from('employers').select('*').eq('id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('employers').select('id, name, industry, location, bio, logo_url, cover_url, onboarding_complete, created_at').eq('id', user.id).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
   } catch (err) {
@@ -491,9 +590,22 @@ app.post('/api/student/profile', async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
     const { 
-      first_name, last_name, education, location, skills, job_preferences, cv_id, original_filename, avatar_url,
+      first_name, last_name, education, location, bio, skills, job_preferences, cv_id, original_filename, avatar_url, cover_url,
       work_model_preference, languages_spoken, availability_hours, salary_expectation 
     } = req.body;
+
+    // Check if the user already has a CV in profiles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('cv_id, phone')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const hasExistingCv = existingProfile?.cv_id;
+    const phone = existingProfile?.phone || null;
+
+    let finalCvId = cv_id;
+    let finalOriginalFilename = original_filename;
 
     const upsertData = {
       user_id: user.id,
@@ -502,12 +614,14 @@ app.post('/api/student/profile', async (req, res) => {
       last_name: last_name || '',
       education: education || '',
       location: location || '',
+      bio: bio || '',
       skills: skills || [],
       job_preferences: job_preferences || [],
     };
-    if (cv_id !== undefined) upsertData.cv_id = cv_id;
-    if (original_filename !== undefined) upsertData.original_filename = original_filename;
+    if (finalCvId !== undefined) upsertData.cv_id = finalCvId;
+    if (finalOriginalFilename !== undefined) upsertData.original_filename = finalOriginalFilename;
     if (avatar_url !== undefined) upsertData.avatar_url = avatar_url;
+    if (cover_url !== undefined) upsertData.cover_url = cover_url;
     
     // Save to standard profiles
     const { data, error } = await supabase.from('profiles').upsert(upsertData, { onConflict: 'user_id' }).select().single();
@@ -568,6 +682,7 @@ app.post('/api/student/profile', async (req, res) => {
       salary_expectation: salary_expectation ? parseInt(salary_expectation) : null,
       parse_status: 'ready',
       extraction_source: 'manual',
+      ai_profile_approved: true,
       updated_at: new Date().toISOString(),
     };
 
@@ -601,7 +716,7 @@ app.get('/api/student/profile', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-    const { data, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await supabase.from('profiles').select('user_id, first_name, last_name, bio, location, education, skills, job_preferences, phone, linkedin_url, avatar_url, cover_photo_url, university, field_of_study, availability, preferred_job_type, hourly_rate_min, created_at').eq('user_id', user.id).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     res.json({ profile: data });
   } catch (err) {
@@ -685,17 +800,26 @@ app.get('/api/employer/candidates', async (req, res) => {
     // Enrich with profile data for each candidate
     const candidateIds = [...new Set((apps || []).map(a => a.candidate_id).filter(Boolean))];
     let profilesMap = {};
+    let verificationMap = {};
     if (candidateIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, bio, avatar_url')
-        .in('user_id', candidateIds);
+      const [{ data: profiles }, { data: verifications }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, education, location, skills, cv_id, original_filename, bio, avatar_url')
+          .in('user_id', candidateIds),
+        supabase
+          .from('cv_verifications')
+          .select('user_id, status, overall_score, results, completed_at')
+          .in('user_id', candidateIds),
+      ]);
       (profiles || []).forEach(p => { profilesMap[p.user_id] = p; });
+      (verifications || []).forEach(v => { verificationMap[v.user_id] = v; });
     }
 
     // Merge profile data into each application
     const enrichedCandidates = (apps || []).map(app => {
       const profile = profilesMap[app.candidate_id] || {};
+      const verification = verificationMap[app.candidate_id] || null;
       return {
         ...app,
         // Override student_name with real profile name if available
@@ -707,6 +831,13 @@ app.get('/api/employer/candidates', async (req, res) => {
           ...(app.student_profile || {}),
           ...profile,
         },
+        // Attach verification status for badges
+        verification_status: verification ? {
+          status: verification.status,
+          overall_score: verification.overall_score,
+          results: verification.results,
+          completed_at: verification.completed_at,
+        } : null,
       };
     });
 
@@ -911,8 +1042,15 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
 
     const fileBuffer = file.buffer;
     const fileName = file.originalname || 'cv.pdf';
-    const fileMime = file.mimetype || 'application/octet-stream';
     const lowerName = fileName.toLowerCase();
+    let fileMime = file.mimetype || 'application/octet-stream';
+    if (lowerName.endsWith('.pdf')) {
+      fileMime = 'application/pdf';
+    } else if (lowerName.endsWith('.docx')) {
+      fileMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (lowerName.endsWith('.doc')) {
+      fileMime = 'application/msword';
+    }
 
     console.log('[CV Upload] Received file:', fileName, '| Size:', fileBuffer.length, '| MIME:', fileMime, '| User:', user.id);
 
@@ -947,6 +1085,12 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
         cv_id: storagePath,
         original_filename: fileName,
       }, { onConflict: 'user_id' });
+
+    // Clean up any stale in_progress AI verification sessions to force a fresh restart
+    await supabase.from('cv_verifications')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('status', 'in_progress');
 
     // ═══════════════════════════════════════════════════════════════════════════
     // RESPOND IMMEDIATELY — don't make the client wait for AI parsing
@@ -1084,7 +1228,7 @@ app.post('/api/cvs/upload', upload.single('file'), async (req, res) => {
               ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
               ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
               experience_level: dbExpLevel,
-              ai_profile_approved: false,
+              ai_profile_approved: true,
               ai_generated_at: new Date().toISOString(),
               profile_completion_score: parsed._profile_completion_score || 0,
               updated_at: new Date().toISOString(),
@@ -1191,12 +1335,175 @@ app.get('/api/cvs', async (req, res) => {
   }
 });
 
+app.post('/api/cvs/generate', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Fetch basic profile info
+    const { data: profile, error: profErr } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (profErr) {
+      console.error('[CV Generate] Profile fetch error:', profErr.message);
+      return res.status(500).json({ error: profErr.message });
+    }
+
+    // Fetch AI profile info
+    const { data: aiProfile, error: aiErr } = await supabase
+      .from('ai_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (aiErr) {
+      console.error('[CV Generate] AI Profile fetch error:', aiErr.message);
+      return res.status(500).json({ error: aiErr.message });
+    }
+
+    const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || aiProfile?.full_name || '';
+    const phone = profile?.phone || aiProfile?.phone || '';
+    const location = profile?.location || aiProfile?.location || '';
+    
+    // Process education
+    const education = [];
+    const school = aiProfile?.education_school || profile?.university || profile?.education || '';
+    if (school) {
+      const degreeParts = [];
+      if (aiProfile?.education_level) degreeParts.push(aiProfile.education_level);
+      if (aiProfile?.education_field || profile?.field_of_study) degreeParts.push(aiProfile?.education_field || profile?.field_of_study);
+      
+      education.push({
+        school: school,
+        degree: degreeParts.join(' - ') || 'Štúdium / Education',
+        location: location || '',
+        start: '',
+        end: aiProfile?.graduation_year ? String(aiProfile.graduation_year) : 'Present'
+      });
+    }
+
+    // Process work experience
+    const workExperience = [];
+    if (aiProfile?.work_experience && Array.isArray(aiProfile.work_experience)) {
+      for (const job of aiProfile.work_experience) {
+        const bullets = [];
+        if (job.description) {
+          const lines = job.description.split(/\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+          bullets.push(...lines);
+        }
+        workExperience.push({
+          title: job.title || '',
+          company: job.company || '',
+          location: job.location || '',
+          start: job.start_date || '',
+          end: job.is_current ? 'Present' : (job.end_date || ''),
+          bullets: bullets
+        });
+      }
+    }
+
+    // Process skills
+    const primarySkills = Array.from(new Set([
+      ...(profile?.skills || []),
+      ...(aiProfile?.hard_skills || [])
+    ]));
+
+    const softSkills = aiProfile?.soft_skills || [];
+    
+    const linguisticSkills = [];
+    if (aiProfile?.languages && Array.isArray(aiProfile.languages)) {
+      for (const langObj of aiProfile.languages) {
+        if (langObj.lang) {
+          linguisticSkills.push(`${langObj.lang} (${langObj.level || 'B1'})`);
+        }
+      }
+    }
+
+    const cvData = {
+      name: fullName || user.email,
+      phone: phone || null,
+      email: user.email,
+      location: location || null,
+      nationality: null,
+      education: education,
+      work_experience: workExperience,
+      extracurricular: [],
+      skills: {
+        primary: primarySkills,
+        technical: softSkills,
+        linguistic: linguisticSkills
+      }
+    };
+
+    const { generateCvPdf } = require('./lib/cv-generator');
+    const pdfBuffer = await generateCvPdf(cvData);
+    
+    const generatedFileName = `cv_generated_${Date.now()}.pdf`;
+    const filePath = `${user.id}/${generatedFileName}`;
+
+    // Clean up previous CV if it exists
+    if (profile?.cv_id) {
+      await supabase.storage.from('cvs').remove([profile.cv_id]).catch(err => {
+        console.warn('[CV Generate] Old file delete error:', err.message);
+      });
+    }
+
+    // Upload generated PDF to Supabase Storage
+    const { error: uploadErr } = await supabase.storage
+      .from('cvs')
+      .upload(filePath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+    if (uploadErr) {
+      console.error('[CV Generate] Storage error:', uploadErr);
+      return res.status(500).json({ error: uploadErr.message });
+    }
+
+    // Update profiles table
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({
+        cv_id: filePath,
+        original_filename: 'Životopis.pdf',
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', user.id);
+
+    if (updateErr) {
+      console.error('[CV Generate] DB error:', updateErr);
+      return res.status(500).json({ error: updateErr.message });
+    }
+
+    res.json({
+      success: true,
+      cv: {
+        id: filePath,
+        original_filename: 'Životopis.pdf',
+        created_at: new Date().toISOString()
+      }
+    });
+
+  } catch (err) {
+    console.error('[CV Generate] Unhandled error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.get('/api/cvs/download/:cvId(*)', async (req, res) => {
   try {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { data, error } = await supabase.storage.from('cvs').createSignedUrl(req.params.cvId, 3600);
+    // Security: Verify the CV belongs to this user (path is userId/filename)
+    const cvPath = req.params.cvId;
+    if (!cvPath.startsWith(user.id + '/')) {
+      return res.status(403).json({ error: 'Access denied — you can only download your own CV' });
+    }
+
+    const { data, error } = await supabase.storage.from('cvs').createSignedUrl(cvPath, 3600);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ url: data.signedUrl });
   } catch (err) {
@@ -1209,7 +1516,13 @@ app.delete('/api/cvs/:cvId(*)', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    await supabase.storage.from('cvs').remove([req.params.cvId]);
+    // Security: Verify the CV belongs to this user (path is userId/filename)
+    const cvPath = req.params.cvId;
+    if (!cvPath.startsWith(user.id + '/')) {
+      return res.status(403).json({ error: 'Access denied — you can only delete your own CV' });
+    }
+
+    await supabase.storage.from('cvs').remove([cvPath]);
     await supabase.from('profiles').update({ cv_id: null, original_filename: null }).eq('user_id', user.id);
     res.json({ success: true });
   } catch (err) {
@@ -1225,7 +1538,7 @@ app.get('/api/company/:name', async (req, res) => {
     // Fetch all jobs by this company
     const { data: jobs, error: jobsErr } = await supabase
       .from('jobs')
-      .select('*')
+      .select('id, employer_id, title, company, logo, color, location, rate, rate_unit, hours, type, tags, schedule, description, requirements, lat, lng, duration, start_date, work_model, status, views, created_at')
       .ilike('company', companyName)
       .order('created_at', { ascending: false });
 
@@ -1294,18 +1607,7 @@ app.get('/api/company/:name', async (req, res) => {
 });
 
 // ── Job View Tracking (server-side) ─────────────────────────────────────────
-app.post('/api/job-view', async (req, res) => {
-  try {
-    const { job_id } = req.body;
-    if (!job_id) return res.status(400).json({ error: 'job_id required' });
-    // Try to increment views column directly
-    const { data: job } = await supabase.from('jobs').select('views').eq('id', job_id).single();
-    await supabase.from('jobs').update({ views: (job?.views || 0) + 1 }).eq('id', job_id);
-    res.json({ ok: true });
-  } catch {
-    res.json({ ok: true }); // Non-fatal, don't break the UI
-  }
-});
+// REMOVED: Non-atomic POST /api/job-view — use POST /api/jobs/:id/view (RPC-based) in routes/jobs.js instead
 
 app.post('/api/applications', async (req, res) => {
   try {
@@ -1322,7 +1624,7 @@ app.post('/api/applications', async (req, res) => {
     const { data: job } = await supabase.from('jobs').select('employer_id, title, company').eq('id', job_id).maybeSingle();
 
     // 2. Get student profile from DB (authoritative source)
-    const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('first_name, last_name, education, location, skills, cv_id, original_filename, bio').eq('user_id', user.id).maybeSingle();
     const studentName = profile 
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
       : (user.user_metadata?.full_name || user.email);
@@ -1345,8 +1647,9 @@ app.post('/api/applications', async (req, res) => {
       student_email: user.email,
       student_profile: studentProfile,
       status: 'Pending',
-      ai_score: req.body.ai_score || 50,
-      ai_reasoning: req.body.ai_reasoning || 'Submitted via Unemployed.sk',
+      // Never trust client-supplied AI scores — always calculate server-side
+      ai_score: 50,  // Default; will be recalculated by the matching engine
+      ai_reasoning: 'Pending AI evaluation',
     };
 
     // Add employer_id if available (enables employer-side RLS)
@@ -1455,7 +1758,14 @@ app.patch('/api/applications/:id', async (req, res) => {
 
     const { status, selected_date } = req.body;
     const updatePayload = {};
-    if (status) updatePayload.status = status;
+    if (status) {
+      // H-14: Whitelist valid statuses for students to prevent self-promotion
+      const VALID_STUDENT_STATUSES = new Set(['Interview-Confirmed', 'Counter-Offer', 'Declined', 'Withdrawn']);
+      if (!VALID_STUDENT_STATUSES.has(status)) {
+        return res.status(400).json({ error: 'Neplatný stav prihlášky.' });
+      }
+      updatePayload.status = status;
+    }
     if (selected_date !== undefined) updatePayload.selected_date = selected_date;
 
     const { error } = await supabase
@@ -1628,6 +1938,33 @@ app.post('/api/notifications', async (req, res) => {
       return res.status(400).json({ error: 'target_user_id and title are required' });
     }
 
+    // H-5: Fix relationship check — verify sender and target share the SAME application
+    let hasRelationship = false;
+
+    // Check: sender is employer, target is candidate
+    const { data: empApps } = await supabase
+      .from('applications')
+      .select('id, job:job_id(employer_id)')
+      .eq('candidate_id', target_user_id)
+      .limit(50);
+
+    hasRelationship = (empApps || []).some(app => app.job?.employer_id === user.id);
+
+    if (!hasRelationship) {
+      // Check reverse: sender is candidate, target is employer
+      const { data: candApps } = await supabase
+        .from('applications')
+        .select('id, job:job_id(employer_id)')
+        .eq('candidate_id', user.id)
+        .limit(50);
+
+      hasRelationship = (candApps || []).some(app => app.job?.employer_id === target_user_id);
+    }
+
+    if (!hasRelationship) {
+      return res.status(403).json({ error: 'You can only notify users you have an application relationship with' });
+    }
+
     const { error } = await supabase
       .from('notifications')
       .insert({
@@ -1722,6 +2059,18 @@ app.post('/api/notifications/status-changed', async (req, res) => {
     const { application_id, new_status, candidate_id, job_title } = req.body;
     if (!candidate_id || !new_status) {
       return res.status(400).json({ error: 'candidate_id and new_status are required' });
+    }
+
+    // Security: Verify the caller is the employer who owns a job this candidate applied to
+    const { data: ownedApps } = await supabase
+      .from('applications')
+      .select('id, job:job_id(employer_id)')
+      .eq('candidate_id', candidate_id)
+      .limit(10);
+
+    const isOwner = (ownedApps || []).some(app => app.job?.employer_id === user.id);
+    if (!isOwner) {
+      return res.status(403).json({ error: 'You can only change status for your own candidates' });
     }
 
     const statusLabels = {
@@ -2110,7 +2459,7 @@ app.get('/api/conversations/:id/messages', async (req, res) => {
     const appId = req.params.id;
 
     // Fetch application to verify access
-    const { data: app, error: appErr } = await supabase.from('applications').select('*').eq('id', appId).maybeSingle();
+    const { data: app, error: appErr } = await supabase.from('applications').select('id, candidate_id, employer_id, job_id, status, created_at').eq('id', appId).maybeSingle();
     if (appErr || !app) return res.status(404).json({ error: 'Application not found' });
 
     // Verify user is either student or employer member
@@ -2148,14 +2497,21 @@ app.get('/api/conversations/:id/messages', async (req, res) => {
 
     const hasDedicated = await checkUseDedicatedMessagesTable();
 
+    // Cursor-based pagination: ?before=<ISO timestamp>
+    const beforeCursor = req.query.before || null;
+    const PAGE_LIMIT = 50;
+
     if (hasDedicated) {
       // 1. Fetch from application_messages
-      const { data: dbMsgs, error: dbMsgsErr } = await supabase
+      let query = supabase
         .from('application_messages')
-        .select('*')
+        .select('id, sender_id, message_type, body, created_at')
         .eq('application_id', appId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(PAGE_LIMIT);
+      if (beforeCursor) query = query.lt('created_at', beforeCursor);
 
+      const { data: dbMsgs, error: dbMsgsErr } = await query;
       if (dbMsgsErr) throw dbMsgsErr;
 
       for (const m of (dbMsgs || [])) {
@@ -2170,12 +2526,15 @@ app.get('/api/conversations/:id/messages', async (req, res) => {
       }
     } else {
       // 2. Fetch from notifications (fallback virtual mode)
-      const { data: notifs, error: notifsErr } = await supabase
+      let query = supabase
         .from('notifications')
-        .select('*')
+        .select('id, user_id, title, message, type, created_at')
         .eq('related_entity_id', appId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(PAGE_LIMIT);
+      if (beforeCursor) query = query.lt('created_at', beforeCursor);
 
+      const { data: notifs, error: notifsErr } = await query;
       if (notifsErr) throw notifsErr;
 
       for (const n of (notifs || [])) {
@@ -2210,7 +2569,7 @@ app.post('/api/conversations/:id/messages', async (req, res) => {
     if (!body || !body.trim()) return res.status(400).json({ error: 'Message body required' });
 
     // Fetch application
-    const { data: app, error: appErr } = await supabase.from('applications').select('*').eq('id', appId).maybeSingle();
+    const { data: app, error: appErr } = await supabase.from('applications').select('id, candidate_id, employer_id, job_id, status, created_at').eq('id', appId).maybeSingle();
     if (appErr || !app) return res.status(404).json({ error: 'Application not found' });
 
     // Verify user has access to this conversation/application
@@ -2370,6 +2729,67 @@ app.post('/api/conversations/:id/read', async (req, res) => {
   }
 });
 
+app.delete('/api/conversations/:id', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const appId = req.params.id;
+
+    // Get the application
+    const { data: app, error: appErr } = await supabase
+      .from('applications')
+      .select('id, candidate_id, employer_id, job_id, status, created_at')
+      .eq('id', appId)
+      .maybeSingle();
+
+    if (appErr || !app) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Determine if candidate
+    const isCandidate = app.candidate_id === user.id;
+
+    // Determine if employer
+    let isEmployer = app.employer_id === user.id;
+    if (!isEmployer) {
+      // Resolve employerId
+      let employerId = user.id;
+      const { data: empProfile } = await supabase.from('employers').select('id').eq('id', user.id).maybeSingle();
+      if (!empProfile) {
+        const { data: userProfile } = await supabase.from('profiles').select('email').eq('user_id', user.id).maybeSingle();
+        if (userProfile?.email) {
+          const { data: empByEmail } = await supabase.from('employers').select('id').eq('email', userProfile.email).maybeSingle();
+          if (empByEmail) employerId = empByEmail.id;
+        }
+      }
+      isEmployer = app.employer_id === employerId;
+    }
+
+    if (!isCandidate && !isEmployer) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Delete related application messages first (prevent foreign key issues)
+    const hasDedicated = await checkUseDedicatedMessagesTable();
+    if (hasDedicated) {
+      await supabase.from('application_messages').delete().eq('application_id', appId);
+    }
+
+    // Delete related notifications
+    await supabase.from('notifications').delete().eq('related_entity_id', appId);
+
+    // Delete the application itself
+    const { error: deleteErr } = await supabase.from('applications').delete().eq('id', appId);
+    if (deleteErr) throw deleteErr;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Conversations] DELETE error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Export for serverless OR start server ────────────────────────────────────
 if (IS_SERVERLESS) {
   // In serverless mode, export the Express app (no listen, no SPA fallbacks)
@@ -2378,6 +2798,7 @@ if (IS_SERVERLESS) {
   // ── SPA Fallbacks ──────────────────────────────────────────────────────────
   const distBase = __dirname;
   app.get('/login',               (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'login.html')));
+  app.get('/signup',              (req, res) => res.sendFile(path.join(distBase, 'apps', 'landing',      'signup.html')));
   app.get('/app(/*)?',            (req, res) => res.sendFile(path.join(distBase, 'apps', 'student',      'dist', 'index.html')));
   app.get('/employer(/*)?',       (req, res) => res.sendFile(path.join(distBase, 'apps', 'employer',     'dist', 'index.html')));
   app.get('/student-demo(/*)?',   (req, res) => res.sendFile(path.join(distBase, 'apps', 'student-demo', 'dist', 'index.html')));
@@ -2462,7 +2883,7 @@ if (IS_SERVERLESS) {
                 ai_missing_fields: parsed.ai_missing_fields || [], ai_profile_quality_notes: parsed.ai_profile_quality_notes || [],
                 ai_normalized_skills: parsed.ai_normalized_skills || parsed.hard_skills,
                 experience_level: expLevelMap[parsed.experience_level] || 'unknown',
-                ai_profile_approved: false, ai_generated_at: new Date().toISOString(),
+                ai_profile_approved: true, ai_generated_at: new Date().toISOString(),
                 profile_completion_score: 0, updated_at: new Date().toISOString(),
               };
               aiData.profile_completion_score = calculateProfileCompletion(aiData).score;

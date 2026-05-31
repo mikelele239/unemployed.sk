@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
  * @param {string} lang - 'sk' or 'en'
  * @returns {{ sessionId, attribute, attributeLabel, questionIndex, totalQuestions, question, ... }}
  */
-export const startVerification = async (lang = 'sk') => {
+export const startVerification = async (lang = 'sk', collectMode = false) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Not authenticated');
 
@@ -15,7 +15,7 @@ export const startVerification = async (lang = 'sk') => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ lang }),
+    body: JSON.stringify({ lang, collectMode, data_processing_consent: true }),
   });
 
   if (!res.ok) {
@@ -78,4 +78,26 @@ export const getCandidateVerification = async (candidateId) => {
   if (!res.ok) return null;
   const data = await res.json();
   return data.verification || null;
+};
+
+/**
+ * Continue from CV collection to verification interview mode.
+ */
+export const continueVerification = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch('/api/verify/continue', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    }
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to transition to verification');
+  }
+  return res.json();
 };

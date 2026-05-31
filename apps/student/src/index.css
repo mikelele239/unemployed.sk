@@ -27,3 +27,77 @@ input:focus, textarea:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px rgba(255, 92, 0, 0.15) !important;
 }
+
+/* Responsive Profile Grid */
+@media (min-width: 820px) {
+  .profile-grid {
+    display: grid !important;
+    grid-template-columns: repeat(12, 1fr) !important;
+    gap: 24px !important;
+    align-items: start !important;
+  }
+  .profile-left-col {
+    grid-column: span 5 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .profile-right-col {
+    grid-column: span 7 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+}
+
+/* Premium Card Design System */
+.profile-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 24px;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+}
+
+.profile-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 92, 0, 0.2);
+  box-shadow: var(--shadow-card);
+}
+
+/* Generic Responsive Grids */
+.grid-responsive {
+  display: grid;
+}
+
+@media (max-width: 768px) {
+  .grid-responsive.cols-2 { grid-template-columns: 1fr !important; }
+  .grid-responsive.cols-3 { grid-template-columns: 1fr !important; }
+  .grid-responsive.cols-4 { grid-template-columns: 1fr !important; }
+  
+  .modal-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    max-height: 95vh !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .grid-responsive.cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-responsive.cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+  .grid-responsive.cols-4 { grid-template-columns: repeat(4, 1fr) !important; }
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  background: var(--bg-card);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  padding: 28px;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+

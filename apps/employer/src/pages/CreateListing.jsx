@@ -39,13 +39,13 @@ const CreateListing = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    title: 'Marketingový stážista',
+    title: '',
     type: 'internship',
-    workModel: 'Hybrid',
-    location: 'Bratislava',
+    workModel: 'On-site',
+    location: '',
     duration: '3 months',
     startDate: new Date().toISOString().split('T')[0],
-    rate: '8.00',
+    rate: '',
     rateUnit: '/hod',
     hours: '20 hod/týždenne',
     description: '',
@@ -147,7 +147,7 @@ const CreateListing = () => {
         company: companyProfile?.name || 'Vaša Firma',
         employer_id: uid,
         location: formData.location,
-        rate: formData.rate + '€',
+        rate: formData.rate ? formData.rate.toString().replace(/€/g, '').trim() + '€' : '',
         rate_unit: formData.rateUnit,
         hours: formData.hours,
         type: formData.type,
@@ -198,11 +198,11 @@ const CreateListing = () => {
         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('clSub')}</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '32px', alignItems: 'start' }}>
+      <div className="create-listing-grid">
         {/* Form Side */}
         <div>
           <div style={{ background: 'var(--bg-card)', padding: '32px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', marginBottom: '24px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+            <div className="grid-responsive cols-2" style={{ marginBottom: '24px', gap: '20px' }}>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={LABEL}>{t('aiPos')}</label>
                 <input className="text-input" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
@@ -287,7 +287,7 @@ const CreateListing = () => {
           {/* ══════════════════════════════════════════════════════════════════ */}
           <div style={{ background: 'var(--bg-card)', padding: '32px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-premium-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🤖</div>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0 }}>
                   {lang === 'sk' ? 'AI Matching kritériá' : 'AI Matching Criteria'}
@@ -318,7 +318,7 @@ const CreateListing = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div className="grid-responsive cols-2" style={{ marginBottom: '20px', gap: '20px' }}>
               {/* Min Education */}
               <div>
                 <label style={LABEL}>{lang === 'sk' ? 'Min. vzdelanie' : 'Min. Education'}</label>
@@ -409,7 +409,7 @@ const CreateListing = () => {
                     <option value="C1">C1</option>
                     <option value="C2">C2</option>
                   </select>
-                  <button onClick={() => removeLanguage(idx)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 14 }}>×</button>
+                  <button onClick={() => removeLanguage(idx)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--color-error)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
               ))}
               <button onClick={addLanguage} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--text-muted)', cursor: 'pointer' }}>
@@ -424,7 +424,7 @@ const CreateListing = () => {
 
             {showAdvanced && (
               <div style={{ padding: '16px', background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="grid-responsive cols-3" style={{ marginBottom: '16px', gap: '16px' }}>
                   <div>
                     <label style={LABEL}>{lang === 'sk' ? 'Veľkosť tímu' : 'Team Size'}</label>
                     <select className="text-input" value={criteria.team_size} onChange={e => setCriteria({...criteria, team_size: e.target.value})}>
@@ -476,7 +476,7 @@ const CreateListing = () => {
           </div>
 
           {error && (
-            <div style={{ color: '#ef4444', background: '#fee2e2', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '13px', border: '1px solid #fecaca' }}>
+            <div style={{ color: 'var(--color-error)', background: '#fee2e2', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '13px', border: '1px solid #fecaca' }}>
               ⚠️ {error}
             </div>
           )}

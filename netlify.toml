@@ -14,5 +14,23 @@
   status = 200
   force = true
 
+# ── Security Headers (applied by Netlify CDN to ALL static responses) ──
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=(), payment=()"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co; frame-src 'self' https://*.supabase.co blob: data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: https://*.supabase.co;"
+
+# Prevent .env and sensitive files from being served
+[[headers]]
+  for = "/.env"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
 # Set environment variables in Netlify Dashboard → Site → Environment variables
 # (never commit secret values to this file)

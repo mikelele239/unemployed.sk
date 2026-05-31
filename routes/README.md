@@ -32,4 +32,20 @@ Integrates candidate CV parsed datasets against job requirements.
 ## Middleware & Security Patterns
 - **`getUserFromToken`**: Decodes JWT and validates authorization tokens against Supabase auth.
 - **`rateLimit`**: IP-based limits for sensitive signups (e.g. `/api/submit`).
-- **Input Sanitization**: Body payload limits are enforced at the root (`server.js`).
+- **Input Sanitization**: Body payload limits are enforced at the root (`server.js`). Verification routes allow up to 10MB for base64 audio payloads.
+
+### 4. AI Verification Interview (`ai-verification.js`)
+Conducts AI-powered candidate verification interviews with voice and text support.
+- **`POST /api/verify/start`**: Initiates or resumes a verification session. Detects existing in-progress sessions and returns resume data (transcript, position).
+- **`POST /api/verify/turn`**: Submits a student answer (text or base64-encoded audio). Transcribes audio via OpenAI Whisper, generates follow-up questions, and evaluates completed attribute sections.
+- **`GET /api/verify/status`**: Returns the current verification status (`in_progress`, `completed`, or `null`).
+- **`GET /api/employer/candidate/:candidateId/verification`**: Employer access to candidate verification results (requires application relationship).
+
+#### Key Features
+- **Voice + Text**: Supports both typed answers and voice recordings (auto-transcribed via Whisper).
+- **Session Resume**: In-progress sessions persist in `cv_verifications` table; users can leave and resume without losing progress.
+- **4 Attribute Sections**: Language, Technical Skills, Work Experience, Soft Skills — each with 3 questions.
+- **Speech Quality Analysis**: Voice answers are tagged `[VOICE]` in evaluation; grammar, vocabulary, filler words, and coherence are assessed.
+- **Anti-Cheat**: Response timing analysis, paste detection, and AI-generated answer detection.
+- **Budget Controls**: Uses shared `usageTracker` with per-user (50/day) and global daily limits.
+- **Model**: GPT-4o-mini for all interview and evaluation calls.

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -38,7 +38,7 @@ export default function JobDetail({ job, isOpen, onClose, onApply, hasApplied })
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--overlay-dark)', zIndex: 100 }}
         onClick={onClose}
       >
         <motion.div

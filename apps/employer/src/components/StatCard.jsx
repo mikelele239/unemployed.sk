@@ -25,19 +25,19 @@ const StatCard = ({ label, value, unit = '', changeText, changeType = 'neutral' 
   }, [value]);
 
   const isSuccess = changeType === 'up';
-  const changeColor = isSuccess ? '#22c55e' : changeType === 'down' ? '#EF4444' : 'var(--text-muted)';
-  const mainColor = isSuccess ? '#22c55e' : 'var(--text)';
+  const changeColor = isSuccess ? 'var(--color-success)' : changeType === 'down' ? 'var(--color-error)' : 'var(--text-muted)';
+  const mainColor = isSuccess ? 'var(--color-success)' : 'var(--text)';
 
   return (
     <div style={{
       background: 'var(--bg-card)', 
-      border: isSuccess ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid var(--border)', 
+      border: isSuccess ? '1px solid var(--color-success-border)' : '1px solid var(--border)', 
       borderRadius: 'var(--radius)',
       padding: '20px', 
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
       display: 'flex', 
       flexDirection: 'column',
-      boxShadow: isSuccess ? '0 8px 30px rgba(34, 197, 94, 0.12)' : 'none',
+      boxShadow: isSuccess ? '0 8px 30px var(--color-success-bg)' : 'none',
       transform: isSuccess ? 'translateY(-2px)' : 'none'
     }}>
       <div className="stat-label" style={{ opacity: isSuccess ? 0.8 : 1 }}>

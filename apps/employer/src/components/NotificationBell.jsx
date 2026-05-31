@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../supabase';
@@ -257,7 +257,7 @@ export default function NotificationBell({ lang }) {
 
               // Badge color based on score
               const badgeColor = matchPct != null
-                ? matchPct >= 70 ? '#22c55e' : matchPct >= 40 ? '#f59e0b' : '#ef4444'
+                ? matchPct >= 70 ? 'var(--color-success)' : matchPct >= 40 ? 'var(--color-warning)' : 'var(--color-error)'
                 : null;
 
               return (
@@ -267,11 +267,11 @@ export default function NotificationBell({ lang }) {
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid var(--border)',
                   display: 'flex', gap: 12, cursor: 'pointer',
-                  background: n.read ? 'transparent' : 'rgba(255,92,0,0.04)',
+                  background: n.read ? 'transparent' : 'var(--accent-lighter)',
                   transition: 'background 0.2s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,92,0,0.06)'}
-                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,92,0,0.04)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-lighter)'}
+                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'var(--accent-lighter)'}
               >
                 <div style={{ fontSize: 20, flexShrink: 0 }}>{getIcon(n.type)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -324,7 +324,7 @@ export default function NotificationBell({ lang }) {
           cursor: 'pointer', padding: 8, borderRadius: 10,
           transition: 'all 0.2s',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,92,0,0.08)'}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-lighter)'}
         onMouseLeave={e => e.currentTarget.style.background = 'none'}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -335,7 +335,7 @@ export default function NotificationBell({ lang }) {
           <span style={{
             position: 'absolute', top: 2, right: 2,
             width: 18, height: 18, borderRadius: '50%',
-            background: '#ef4444', color: '#fff',
+            background: 'var(--color-error)', color: '#fff',
             fontSize: 10, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid var(--bg)',

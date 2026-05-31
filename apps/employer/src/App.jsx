@@ -114,10 +114,86 @@ function App() {
 
   // Restore saved theme on mount
   useEffect(() => {
-    const saved = localStorage.getItem('employer_theme');
-    if (saved === 'dark') document.documentElement.classList.remove('light');
-    else document.documentElement.classList.add('light');
+    const getTheme = () => {
+      const match = document.cookie.match(new RegExp('(^| )theme=([^;]+)'));
+      if (match) return match[2];
+      return localStorage.getItem('employer_theme') || 'dark';
+    };
+    const currentTheme = getTheme();
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+    }
   }, []);
+
+  // ── Shared onboarding check — called from every auth path ─────────────
+  const checkOnboarding = async (sess) => {
+    if (!sess) return;
+    try {
+      // Fast path: if we already completed onboarding in this browser, skip DB check
+      const localKey = `employer_onboarded_${sess.user.id}`;
+      if (localStorage.getItem(localKey) === 'true') {
+        setNeedsOnboarding(false);
+        return;
+      }
+
+      // Ensure employer row exists first
+      try {
+        await supabase.from('employers').upsert({
+          id: sess.user.id,
+          name: sess.user.email?.split('@')[0] || 'Firma',
+        }, { onConflict: 'id', ignoreDuplicates: true });
+      } catch (e) {
+        console.warn('Profile ensure non-fatal error:', e);
+      }
+
+      // Check if employer profile is complete
+      const { data: emp } = await supabase.from('employers')
+        .select('name, industry, description, location, onboarding_complete')
+        .eq('id', sess.user.id)
+        .maybeSingle();
+
+      // Only trigger onboarding if no profile exists at all, or if the profile
+      // has never been customized (all key fields are empty/null AND onboarding_complete is not set)
+      if (!emp) {
+        setNeedsOnboarding(true);
+        return;
+      }
+
+      // If onboarding_complete flag is set, always skip onboarding
+      if (emp.onboarding_complete) {
+        localStorage.setItem(localKey, 'true');
+        setNeedsOnboarding(false);
+        return;
+      }
+
+      // Fallback: if the employer has any meaningful data filled in,
+      // consider onboarding done (handles employers who completed onboarding
+      // before the onboarding_complete flag existed)
+      const hasIndustry = !!(emp.industry || emp.description);
+      const hasLocation = !!emp.location;
+      const emailPrefix = sess.user.email?.split('@')[0] || 'Firma';
+      const hasCustomName = emp.name && emp.name !== emailPrefix;
+
+      if ((hasIndustry || hasLocation) && hasCustomName) {
+        // They've filled in data before — mark as complete and skip
+        localStorage.setItem(localKey, 'true');
+        // Also save the flag to DB for future sessions on other devices
+        try {
+          await supabase.from('employers')
+            .update({ onboarding_complete: true })
+            .eq('id', sess.user.id);
+        } catch {} // Non-fatal
+        setNeedsOnboarding(false);
+      } else {
+        setNeedsOnboarding(true);
+      }
+    } catch (e) {
+      console.warn('Onboarding check non-fatal:', e);
+      setNeedsOnboarding(false);
+    }
+  };
 
   useEffect(() => {
     const checkRole = async (sess) => {
@@ -137,18 +213,7 @@ function App() {
         if (sess && isValid) {
           setSession(sess);
           setIsEmployer(true);
-
-          // Ensure employer profile exists via direct query
-          try {
-            await supabase.from('employers').upsert({
-              id: sess.user.id,
-              name: sess.user.email?.split('@')[0] || 'Firma',
-            }, { onConflict: 'id', ignoreDuplicates: true });
-          } catch (e) {
-            console.warn('Profile ensure non-fatal error:', e);
-          }
-          // Skip onboarding — profile is always ensured on login
-          setNeedsOnboarding(false);
+          await checkOnboarding(sess);
         }
       } catch (err) {
         console.error(err);
@@ -164,6 +229,8 @@ function App() {
       if (sess && isValid) {
         setSession(sess);
         setIsEmployer(true);
+        // Run onboarding check on auth state changes too
+        await checkOnboarding(sess);
       } else {
         setSession(null);
         setIsEmployer(false);
@@ -185,7 +252,7 @@ function App() {
       }}>
         <div style={{
           width: 44, height: 44,
-          border: '3px solid rgba(255,255,255,0.05)',
+          border: '3px solid var(--overlay-light)',
           borderTopColor: 'var(--accent)',
           borderRadius: '50%',
           animation: 'spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite'
@@ -201,9 +268,11 @@ function App() {
       <BrowserRouter basename="/employer">
         <Routes>
           <Route path="inquiry" element={<Inquiry />} />
-          <Route path="*" element={<EmployerAuth onLoginSuccess={(sess) => {
+          <Route path="*" element={<EmployerAuth onLoginSuccess={async (sess) => {
             setSession(sess);
             setIsEmployer(true);
+            // Always check onboarding when login completes
+            await checkOnboarding(sess);
           }} />} />
         </Routes>
       </BrowserRouter>
@@ -231,3 +300,4 @@ function App() {
 }
 
 export default App;
+

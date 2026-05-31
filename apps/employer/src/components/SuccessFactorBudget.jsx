@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 // Available success factors with labels
 const FACTOR_OPTIONS = [
@@ -69,9 +69,9 @@ const SuccessFactorBudget = ({ factors, onChange, lang = 'sk' }) => {
         </div>
         <div style={{
           fontSize: '12px', fontWeight: 800,
-          color: remaining === 0 ? '#22c55e' : '#f59e0b',
+          color: remaining === 0 ? 'var(--color-success)' : 'var(--color-warning)',
           padding: '4px 10px', borderRadius: '6px',
-          background: remaining === 0 ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)',
+          background: remaining === 0 ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
         }}>
           {total}/100 {remaining === 0 ? '✓' : `(${remaining} ${lang === 'sk' ? 'zostáva' : 'left'})`}
         </div>
@@ -95,7 +95,7 @@ const SuccessFactorBudget = ({ factors, onChange, lang = 'sk' }) => {
               <div style={{ flex: 1, position: 'relative', height: '6px', background: 'var(--border)', borderRadius: '3px' }}>
                 <div style={{
                   width: `${Math.min(pct, 100)}%`, height: '100%', borderRadius: '3px',
-                  background: pct > 40 ? 'var(--accent)' : pct > 20 ? '#3b82f6' : '#94a3b8',
+                  background: pct > 40 ? 'var(--accent)' : pct > 20 ? 'var(--color-info)' : '#94a3b8',
                   transition: 'width 0.2s',
                 }} />
               </div>
@@ -116,7 +116,7 @@ const SuccessFactorBudget = ({ factors, onChange, lang = 'sk' }) => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.2s',
                 }}
-                  onMouseOver={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+                  onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--color-error)'; e.currentTarget.style.color = 'var(--color-error)'; }}
                   onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
                 >×</button>
               )}

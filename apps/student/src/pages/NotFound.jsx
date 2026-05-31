@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function NotFound() {
@@ -31,7 +31,7 @@ export default function NotFound() {
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <motion.button
-            whileHover={{ scale: 1.04, boxShadow: '0 12px 30px rgba(255,92,0,0.2)' }}
+            whileHover={{ scale: 1.04, boxShadow: '0 12px 30px var(--shadow-accent)' }}
             whileTap={{ scale: 0.97 }}
             onClick={() => navigate(-1)}
             style={{ padding: '14px 28px', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}

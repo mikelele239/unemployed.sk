@@ -3,6 +3,13 @@ const { createClient } = require('@supabase/supabase-js');
 const s = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const { scoreLanguage } = require('../lib/matching-engine');
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 (async () => {
   const { data: profiles } = await s.from('ai_profiles').select('user_id, full_name, languages');
   const { data: criteria } = await s.from('job_match_criteria').select('job_id, required_languages');

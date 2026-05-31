@@ -2,6 +2,13 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const s = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+// ── Production Safety Guard ──────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production' || process.env.NETLIFY) {
+  console.error('\n❌ FATAL: This script must NOT run in production!');
+  console.error('Set NODE_ENV=development to proceed.\n');
+  process.exit(1);
+}
+
 (async () => {
   // Check what CV is currently stored for the user
   const { data: profile } = await s.from('profiles')

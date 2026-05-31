@@ -11,7 +11,9 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Bot,
+  Trash2
 } from 'lucide-react';
 import { useTranslation } from '../I18nContext';
 import { 
@@ -20,7 +22,8 @@ import {
   sendMessage, 
   markAsRead, 
   subscribeToMessages, 
-  subscribeToConversations 
+  subscribeToConversations,
+  deleteConversation
 } from '../services/messagingService';
 import { supabase } from '../supabase';
 import { useLocation } from 'react-router-dom';
@@ -221,6 +224,24 @@ export default function Messages() {
     }
   };
 
+  const handleDeleteConversation = async (convId) => {
+    if (!convId) return;
+    const confirmMsg = lang === 'sk'
+      ? 'Naozaj chcete vymazať túto konverzáciu? Vymažú sa aj všetky správy a vaša prihláška.'
+      : 'Are you sure you want to delete this conversation? This will also delete all messages and your application.';
+    
+    if (window.confirm(confirmMsg)) {
+      try {
+        await deleteConversation(convId);
+        setActiveConvId(null);
+        await fetchInbox();
+      } catch (err) {
+        console.error('Failed to delete conversation:', err);
+        alert(lang === 'sk' ? 'Nepodarilo sa vymazať konverzáciu.' : 'Failed to delete conversation.');
+      }
+    }
+  };
+
   const genRandomId = () => Math.random().toString(36).substring(2, 9);
 
   const activeConv = conversations.find(c => c.id === activeConvId);
@@ -272,7 +293,7 @@ export default function Messages() {
 
       {/* Conversations List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-        {/* ── Pinned: AI Verification Thread ── */}
+        {/* ── Pinned: AI CV Verification Thread ── */}
         {(() => {
           const isActive = activeConvId === AI_VERIFY_ID;
           const isDone = verificationStatus === 'completed';
@@ -285,22 +306,22 @@ export default function Messages() {
                 padding: '14px 16px',
                 borderRadius: 16,
                 background: isActive
-                  ? 'linear-gradient(135deg, rgba(255,92,0,0.12), rgba(255,140,50,0.06))'
+                  ? 'linear-gradient(135deg, var(--accent-light), rgba(255,140,50,0.06))'
                   : isDone
-                    ? 'rgba(34,197,94,0.05)'
-                    : 'linear-gradient(135deg, rgba(255,92,0,0.06), rgba(255,140,50,0.03))',
+                    ? 'var(--color-success-bg)'
+                    : 'linear-gradient(135deg, var(--accent-lighter), rgba(255,140,50,0.03))',
                 border: isActive
                   ? '1px solid var(--accent)'
                   : isDone
-                    ? '1px solid rgba(34,197,94,0.3)'
-                    : '1px solid rgba(255,92,0,0.25)',
+                    ? '1px solid var(--color-success-bg)'
+                    : '1px solid var(--shadow-accent)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
                 marginBottom: 8,
                 transition: 'all 0.2s ease',
-                boxShadow: isActive ? '0 4px 20px rgba(255,92,0,0.1)' : 'none',
+                boxShadow: isActive ? '0 4px 20px var(--accent-light)' : 'none',
                 position: 'relative',
                 overflow: 'hidden',
               }}
@@ -320,18 +341,19 @@ export default function Messages() {
 
               {/* Icon */}
               <div style={{
-                width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+                width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
                 background: isDone
-                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                  : 'linear-gradient(135deg, var(--accent), #FF8C32)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  ? 'linear-gradient(135deg, var(--color-success), var(--color-success))'
+                  : 'linear-gradient(135deg, #1A1A24 0%, #0D0D12 100%)',
+                border: isDone ? 'none' : '2px solid var(--accent)',
                 boxShadow: isDone
-                  ? '0 4px 12px rgba(34,197,94,0.3)'
-                  : '0 4px 12px rgba(255,92,0,0.25)',
+                  ? '0 4px 12px var(--color-success-bg)'
+                  : '0 0 12px rgba(255, 92, 0, 0.35)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {isDone
                   ? <ShieldCheck size={22} color="#fff" />
-                  : <Sparkles size={22} color="#fff" />}
+                  : <Bot size={22} style={{ color: 'var(--accent)' }} />}
               </div>
 
               {/* Text */}
@@ -342,16 +364,16 @@ export default function Messages() {
                   </h4>
                   {isDone && (
                     <span style={{
-                      fontSize: 9, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase',
-                      letterSpacing: '0.5px', background: 'rgba(34,197,94,0.12)',
-                      border: '1px solid rgba(34,197,94,0.25)', borderRadius: 100, padding: '1px 6px',
+                      fontSize: 9, fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase',
+                      letterSpacing: '0.5px', background: 'var(--color-success-bg)',
+                      border: '1px solid var(--color-success-bg)', borderRadius: 100, padding: '1px 6px',
                     }}>✓ {lang === 'sk' ? 'Overené' : 'Verified'}</span>
                   )}
                   {isInProgress && (
                     <span style={{
                       fontSize: 9, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase',
-                      letterSpacing: '0.5px', background: 'rgba(255,92,0,0.1)',
-                      border: '1px solid rgba(255,92,0,0.2)', borderRadius: 100, padding: '1px 6px',
+                      letterSpacing: '0.5px', background: 'var(--accent-light)',
+                      border: '1px solid var(--shadow-accent)', borderRadius: 100, padding: '1px 6px',
                     }}>{lang === 'sk' ? 'Rozpracované' : 'In progress'}</span>
                   )}
                 </div>
@@ -359,7 +381,7 @@ export default function Messages() {
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {isDone
                     ? (lang === 'sk' ? '✅ Tvoj profil je overený' : '✅ Your profile is verified')
-                    : (lang === 'sk' ? '🎤 Overte si profil a získajte odznaky' : '🎤 Verify your profile to get badges')}
+                    : (lang === 'sk' ? '🎤 Over si profil a získaj viac pracovných ponúk' : '🎤 Verify your profile to get more job opportunities')}
                 </p>
               </div>
 
@@ -368,7 +390,7 @@ export default function Messages() {
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
                   background: 'var(--accent)', flexShrink: 0,
-                  boxShadow: '0 0 8px rgba(255,92,0,0.6)',
+                  boxShadow: '0 0 8px var(--shadow-accent)',
                   animation: 'pulse 2s infinite',
                 }} />
               )}
@@ -417,7 +439,7 @@ export default function Messages() {
                     gap: 12,
                     position: 'relative',
                     transition: 'all 0.2s ease',
-                    boxShadow: isActive ? '0 4px 20px rgba(255, 92, 0, 0.05)' : 'none'
+                    boxShadow: isActive ? '0 4px 20px var(--accent-lighter)' : 'none'
                   }}
                 >
                   {/* Brand Logo Avatar */}
@@ -483,7 +505,7 @@ export default function Messages() {
                       background: 'var(--accent)', color: '#fff',
                       fontSize: 10, fontWeight: 900,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(255, 92, 0, 0.4)'
+                      boxShadow: '0 0 10px var(--shadow-accent)'
                     }}>
                       {conv.unreadCount}
                     </span>
@@ -497,7 +519,7 @@ export default function Messages() {
     </div>
   );
 
-  // AI Verification Chat Thread
+  // AI CV Verification Chat Thread
   const renderVerificationThread = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-card)', flex: 1 }}>
       {/* Header */}
@@ -514,22 +536,24 @@ export default function Messages() {
           </button>
         )}
         <div style={{
-          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
           background: verificationStatus === 'completed'
-            ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-            : 'linear-gradient(135deg, var(--accent), #FF8C32)',
+            ? 'linear-gradient(135deg, var(--color-success), var(--color-success))'
+            : 'linear-gradient(135deg, #1A1A24 0%, #0D0D12 100%)',
+          border: verificationStatus === 'completed' ? 'none' : '2px solid var(--accent)',
+          boxShadow: verificationStatus === 'completed' ? 'none' : '0 0 12px rgba(255, 92, 0, 0.35)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {verificationStatus === 'completed'
             ? <ShieldCheck size={20} color="#fff" />
-            : <Sparkles size={20} color="#fff" />}
+            : <Bot size={20} style={{ color: 'var(--accent)' }} />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>unemployed.sk AI</h3>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
             {verificationStatus === 'completed'
-              ? (lang === 'sk' ? '✅ Overenie dokončené' : '✅ Verification complete')
-              : (lang === 'sk' ? '🎤 Overenie profilu' : '🎤 Profile Verification')}
+              ? (lang === 'sk' ? '✅ CV Overenie dokončené' : '✅ CV Verification complete')
+              : (lang === 'sk' ? '🎤 CV Overenie' : '🎤 CV Verification')}
           </div>
         </div>
       </div>
@@ -538,6 +562,7 @@ export default function Messages() {
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <VerificationChat
           onComplete={(status) => setVerificationStatus(status)}
+          startCvInterview={location.state?.startCvInterview}
         />
       </div>
     </div>
@@ -606,12 +631,35 @@ export default function Messages() {
             </div>
           )}
         </div>
+
+        {/* Delete Chat Button */}
+        <button
+          onClick={() => handleDeleteConversation(activeConvId)}
+          title={lang === 'sk' ? 'Vymazať konverzáciu' : 'Delete conversation'}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: 8,
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+            marginLeft: 'auto'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error)'; e.currentTarget.style.background = 'var(--color-error-bg)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
+        >
+          <Trash2 size={20} />
+        </button>
       </div>
 
       {/* Interactive Interview Banner */}
       {activeConv?.application && ['Interview', 'Interview-Confirmed', 'Counter-Offer', 'Declined'].includes(activeConv.application.status) && (
         <div style={{
-          background: 'rgba(255, 92, 0, 0.04)',
+          background: 'var(--accent-lighter)',
           borderBottom: '1px solid var(--border)',
           padding: '16px 20px',
           display: 'flex',
@@ -649,7 +697,7 @@ export default function Messages() {
                     }
                   }}
                   style={{
-                    background: 'none', border: 'none', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline'
+                    background: 'none', border: 'none', color: 'var(--color-error)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline'
                   }}
                 >
                   {lang === 'sk' ? 'Odmietnuť' : 'Decline'}
@@ -701,7 +749,7 @@ export default function Messages() {
                   onClick={() => setShowStudentCounterPicker(true)}
                   style={{
                     padding: '10px 14px', borderRadius: 10, border: '1px dashed var(--accent)',
-                    background: 'rgba(255, 92, 0, 0.04)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: 'var(--accent-lighter)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
                     fontFamily: 'var(--font-body)'
                   }}
                 >
@@ -717,7 +765,7 @@ export default function Messages() {
                 ✅
               </div>
               <div>
-                <div style={{ fontSize: 10, fontWeight: 800, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   {lang === 'sk' ? 'Potvrdený termín pohovoru' : 'Confirmed Interview Date'}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>
@@ -729,7 +777,7 @@ export default function Messages() {
 
           {activeConv.application.status === 'Counter-Offer' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255, 92, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 📅
               </div>
               <div>
@@ -748,11 +796,11 @@ export default function Messages() {
 
           {activeConv.application.status === 'Declined' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-error-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 🚫
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#ef4444' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-error)' }}>
                   {lang === 'sk' ? 'Odmietol/la si pozvanie na pohovor.' : 'You declined the interview invitation.'}
                 </div>
               </div>
@@ -809,7 +857,7 @@ export default function Messages() {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                   }}>
                     {msg.body.includes('potvrdený') ? (
-                      <CheckCircle2 size={12} style={{ color: '#22c55e' }} />
+                      <CheckCircle2 size={12} style={{ color: 'var(--color-success)' }} />
                     ) : msg.body.includes('pohovor') ? (
                       <Calendar size={12} style={{ color: 'var(--accent)' }} />
                     ) : (
@@ -849,7 +897,7 @@ export default function Messages() {
                     fontWeight: 500,
                     lineHeight: '1.4',
                     boxShadow: isMe 
-                      ? '0 4px 12px rgba(255, 92, 0, 0.15)' 
+                      ? '0 4px 12px var(--accent-light)' 
                       : '0 2px 8px rgba(0,0,0,0.02)',
                     wordBreak: 'break-word',
                     whiteSpace: 'pre-wrap'
@@ -925,7 +973,7 @@ export default function Messages() {
             justifyContent: 'center',
             cursor: inputValue.trim() ? 'pointer' : 'default',
             opacity: inputValue.trim() ? 1 : 0.6,
-            boxShadow: '0 4px 12px rgba(255, 92, 0, 0.2)'
+            boxShadow: '0 4px 12px var(--shadow-accent)'
           }}
         >
           <Send size={18} />
@@ -939,7 +987,18 @@ export default function Messages() {
       <AnimatePresence mode="wait">
         {/* On mobile, show either Inbox list or active thread */}
         {isMobile ? (
-          activeConvId ? (
+          activeConvId === AI_VERIFY_ID ? (
+            <motion.div 
+              key="verify"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ width: '100%', height: '100%' }}
+            >
+              {renderVerificationThread()}
+            </motion.div>
+          ) : activeConvId ? (
             <motion.div 
               key="chat"
               initial={{ x: '100%' }}
@@ -999,7 +1058,7 @@ export default function Messages() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+              position: 'fixed', inset: 0, background: 'var(--overlay-modal)',
               backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
               justifyContent: 'center', zIndex: 10001, padding: 20
             }}

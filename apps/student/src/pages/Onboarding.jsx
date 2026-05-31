@@ -37,7 +37,7 @@ export default function Onboarding({ onComplete }) {
 
   const MANUAL_STEPS = [
     { id: 'name',    type: 'text',   title: lang === 'en' ? 'What is your name?' : 'Ako sa voláš?',  sub: lang === 'en' ? 'Your full name for employers.' : 'Tvoje celé meno pre zamestnávateľov.', placeholder: 'Janko Hraško' },
-    { id: 'edu',     type: 'single', title: lang === 'en' ? 'Education level' : 'Dosiahnuté vzdelanie',   sub: lang === 'en' ? 'Select your current level.' : 'Vyber tvoj aktuálny stav.',  options: lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent'] },
+    { id: 'edu',     type: 'single', title: lang === 'en' ? 'Education level' : 'Dosiahnuté vzdelanie',   sub: lang === 'en' ? 'Select your current level.' : 'Vyber tvoj aktuálny stav.',  options: lang === 'en' ? ['High school', 'Currently studying Uni', 'University Graduate'] : ['Stredná škola', 'Študujem na VŠ', 'Vysoká škola'] },
     { id: 'loc',     type: 'single', title: lang === 'en' ? 'Where do you want to work?' : 'Kde chceš pracovať?',   sub: lang === 'en' ? 'Select your preferred location.' : 'Vyber preferovanú lokalitu.',  options: ['Bratislava', 'Košice', 'Žilina', 'B. Bystrica', 'Nitra', 'Iné'] },
     { id: 'jobType', type: 'multi',  title: lang === 'en' ? 'What type of work?' : 'Aký úväzok hľadáš?',  sub: lang === 'en' ? 'You can pick multiple.' : 'Môžeš vybrať viac možností.', options: lang === 'en' ? ['Part-time', 'Internship', 'Full-time'] : ['Brigáda', 'Stáž', 'Plný úväzok'] },
     { id: 'workModel', type: 'single', title: lang === 'en' ? 'Work model preference' : 'Preferovaný model práce', sub: lang === 'en' ? 'Where would you like to work?' : 'Kde by si chcel pracovať?', options: lang === 'en' ? ['On-site', 'Hybrid', 'Remote'] : ['Na mieste', 'Hybrid', 'Remote'] },
@@ -301,7 +301,7 @@ export default function Onboarding({ onComplete }) {
         {phase === 'upload' && (
           <motion.div key="upload"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 24px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505', minHeight: 'min-content' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 24px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), var(--bg)', minHeight: 'min-content' }}
           >
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ 
@@ -321,10 +321,10 @@ export default function Onboarding({ onComplete }) {
                 </span>
                 employed.sk
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, letterSpacing: '-1.5px', lineHeight: 0.9, color: '#fff' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 400, letterSpacing: '-1.5px', lineHeight: 0.9, color: 'var(--text)' }}>
                 Vytvor si profil.
               </h2>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, marginTop: 12, maxWidth: 420, margin: '12px auto 0', lineHeight: 1.5 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 15, marginTop: 12, maxWidth: 420, margin: '12px auto 0', lineHeight: 1.5 }}>
                 Nahraj svoje CV a nechaj našu AI <br/>extrahovať tvoju expertízu.
               </p>
             </div>
@@ -333,21 +333,21 @@ export default function Onboarding({ onComplete }) {
               onDragOver={handleDragOver} onDrop={handleDrop}
               style={{ 
                 width: '100%', maxWidth: 480, minHeight: 200, 
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 36, 
+                border: '1px solid var(--border)', borderRadius: 36, 
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
-                background: 'rgba(255,255,255,0.01)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
+                background: 'var(--bg-card)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
                 cursor: 'pointer', transition: 'all 0.5s cubic-bezier(0.2, 1, 0.2, 1)',
                 padding: '24px', textAlign: 'center', position: 'relative', overflow: 'hidden',
-                boxShadow: '0 40px 100px rgba(0,0,0,0.5)'
+                boxShadow: 'var(--shadow-card)'
               }}
               onMouseEnter={(e) => { 
-                e.currentTarget.style.borderColor = 'rgba(255,92,0,0.3)'; 
-                e.currentTarget.style.background = 'rgba(255,92,0,0.02)';
+                e.currentTarget.style.borderColor = 'var(--accent)'; 
+                e.currentTarget.style.background = 'var(--bg-card-hover)';
                 e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
               }}
               onMouseLeave={(e) => { 
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; 
-                e.currentTarget.style.background = 'rgba(255,255,255,0.01)';
+                e.currentTarget.style.borderColor = 'var(--border)'; 
+                e.currentTarget.style.background = 'var(--bg-card)';
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
               }}
             >
@@ -368,19 +368,26 @@ export default function Onboarding({ onComplete }) {
               }}>
                 <UploadCloud size={32} />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.5px', zIndex: 1, color: '#fff' }}>Presuň životopis sem</h3>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, zIndex: 1, fontWeight: 500 }}>PDF alebo DOCX (max 10MB)</p>
+              <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.5px', zIndex: 1, color: 'var(--text)' }}>Presuň životopis sem</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, zIndex: 1, fontWeight: 500 }}>PDF alebo DOCX (max 10MB)</p>
             </label>
 
             <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>Nemáš po ruke súbor?</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>Nemáš po ruke súbor?</p>
               <motion.button 
-                whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.05)' }}
+                whileHover={{ scale: 1.05, background: 'var(--border)' }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setPhase('manual')}
+                onClick={() => {
+                  if (isMobile) {
+                    setPhase('manual');
+                  } else {
+                    setData(prev => ({ ...prev, cv_id: null }));
+                    setPhase('review');
+                  }
+                }}
                 style={{ 
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', 
-                  color: '#fff', fontSize: 13, fontWeight: 700, padding: '12px 28px', 
+                  background: 'transparent', border: '1px solid var(--border)', 
+                  color: 'var(--text)', fontSize: 13, fontWeight: 700, padding: '14px 28px', 
                   borderRadius: 100, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.3s' 
                 }}
               >
@@ -421,11 +428,29 @@ export default function Onboarding({ onComplete }) {
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 20px', overflowY: 'auto' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 18, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CheckCircle2 size={24} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <button onClick={() => setPhase('upload')}
+                style={{ 
+                  width: 36, height: 36, 
+                  background: 'var(--overlay-light)', 
+                  border: '1px solid var(--border)', 
+                  borderRadius: 10, 
+                  cursor: 'pointer', 
+                  color: 'var(--text)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  transition: 'background 0.2s' 
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--border)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--overlay-light)'}
+              >←</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 18, background: 'rgba(52,211,153,0.1)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={24} />
+                </div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
               </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, letterSpacing: '-0.5px' }}>{t('ob.reviewTitle')}</h2>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: parseWarnings.length > 0 ? 16 : 32 }}>{t('ob.reviewSub')}</p>
 
@@ -456,7 +481,7 @@ export default function Onboarding({ onComplete }) {
                 <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-card)', padding: 16, borderRadius: 16, border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>{t('ob.reviewEdu')}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {(lang === 'en' ? ['High school', 'University', 'Graduate'] : ['Stredná škola', 'Vysoká škola', 'Absolvent']).map(opt => (
+                    {(lang === 'en' ? ['High school', 'Currently studying Uni', 'University Graduate'] : ['Stredná škola', 'Študujem na VŠ', 'Vysoká škola']).map(opt => (
                       <span key={opt} onClick={() => setData(prev => ({ ...prev, edu: opt }))}
                         style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
                           background: data.edu === opt ? 'var(--accent)' : 'var(--bg)', color: data.edu === opt ? '#fff' : 'var(--text-muted)',
@@ -605,22 +630,22 @@ export default function Onboarding({ onComplete }) {
         {phase === 'manual' && (
           <motion.div key="manual"
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), #050505' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #ff5c0008, transparent), var(--bg)' }}
           >
             <div style={{ 
               width: '100%', maxWidth: 540, minHeight: 0, 
-              border: '1px solid rgba(255,255,255,0.08)', borderRadius: 36, 
+              border: '1px solid var(--border)', borderRadius: 36, 
               display: 'flex', flexDirection: 'column', 
-              background: 'rgba(255,255,255,0.01)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
-              boxShadow: '0 40px 100px rgba(0,0,0,0.5)'
+              background: 'var(--bg-card)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', 
+              boxShadow: 'var(--shadow-card)'
             }}>
-              <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border)' }}>
                 <button onClick={() => manualStep === 0 ? setPhase('upload') : setManualStep(s => s - 1)}
-                  style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 10, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  style={{ width: 36, height: 36, background: 'var(--overlay-light)', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--border)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--overlay-light)'}
                 >←</button>
-                <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
                   <div style={{ width: `${((manualStep + 1) / MANUAL_STEPS.length) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s ease' }} />
                 </div>
               </div>
@@ -631,16 +656,16 @@ export default function Onboarding({ onComplete }) {
                     const s = MANUAL_STEPS[manualStep];
                     return (
                       <motion.div key={manualStep} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 400, marginBottom: 6, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1.1 }}>{s.title}</h2>
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginBottom: 20 }}>{s.sub}</p>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 400, marginBottom: 6, letterSpacing: '-0.5px', color: 'var(--text)', lineHeight: 1.1 }}>{s.title}</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>{s.sub}</p>
 
                         {s.type === 'text' && (
                           <input type="text" placeholder={s.placeholder} value={data[s.id]}
                             onChange={e => setData({ ...data, [s.id]: e.target.value })}
                             onKeyDown={e => e.key === 'Enter' && data[s.id].trim() && (manualStep < MANUAL_STEPS.length - 1 ? setManualStep(x => x + 1) : setPhase('review'))}
-                            style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 16, fontWeight: 600, outline: 'none', transition: 'border 0.2s', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 16, fontWeight: 600, outline: 'none', transition: 'border 0.2s', boxSizing: 'border-box' }}
                             onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-                            onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                            onBlur={e => e.target.style.borderColor = 'var(--border)'}
                             autoFocus
                           />
                         )}
@@ -651,7 +676,7 @@ export default function Onboarding({ onComplete }) {
                             const isSelected = s.type === 'multi' ? data[s.id].includes(opt) : data[s.id] === opt;
                             return (
                               <button key={opt} onClick={() => typeof handleManualAction === 'function' && handleManualAction(s.id, opt, s.type === 'multi')}
-                                style={{ padding: '10px 18px', borderRadius: 100, border: '1px solid', borderColor: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)', background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)', color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                                style={{ padding: '12px 18px', borderRadius: 100, border: '1px solid', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'var(--bg)', color: isSelected ? '#fff' : 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
                               >{opt}</button>
                             );
                           })}
@@ -708,6 +733,26 @@ export default function Onboarding({ onComplete }) {
               padding: 40, textAlign: 'center', background: 'var(--bg)',
             }}
           >
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ 
+                fontFamily: 'var(--font-display)', 
+                fontSize: '1.4rem', 
+                color: 'var(--text)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                cursor: 'default',
+                whiteSpace: 'nowrap',
+                marginBottom: 16,
+                opacity: 0.8
+              }}>
+                <span style={{ position: 'relative' }}>
+                  un
+                  <span style={{ position: 'absolute', left: '-1px', right: '-1px', top: '50%', height: '2px', background: 'var(--accent)', borderRadius: '2px' }} />
+                </span>
+                employed.sk
+              </div>
+            </div>
+
             {/* Green success pulse */}
             <motion.div
               initial={{ scale: 0 }}
@@ -815,7 +860,7 @@ export default function Onboarding({ onComplete }) {
               style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 16, maxWidth: 300 }}
             >
               {lang === 'sk'
-                ? '⚠️ Jedno pokus. Pohovor nie je možné opakovať.'
+                ? '⚠️ Jeden pokus. Pohovor nie je možné opakovať.'
                 : '⚠️ One attempt only. The interview cannot be repeated.'}
             </motion.p>
           </motion.div>

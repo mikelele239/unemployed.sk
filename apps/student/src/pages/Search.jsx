@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, SlidersHorizontal, X, Building2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,10 +21,21 @@ export default function Search() {
   const { jobs, loading } = useJobs();
   const { addApplication, hasApplied } = useApplications();
   const [filterQuery, setFilterQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Všetky');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const navigate = useNavigate();
+
+  // Debounce search input by 300ms
+  const debounceRef = useRef(null);
+  const handleSearchChange = useCallback((e) => {
+    const val = e.target.value;
+    setFilterQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(val), 300);
+  }, []);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
 
   // Filter states
   const [minRate, setMinRate] = useState(null);
@@ -37,7 +48,6 @@ export default function Search() {
       try {
         const res = await fetch('/api/employers');
         const json = await res.json();
-        console.log('[Search] Employers API result:', json);
         if (json.employers) {
           setEmployers(json.employers);
         }
@@ -60,15 +70,15 @@ export default function Search() {
 
   // Filter companies by query
   const filteredCompanies = useMemo(() => {
-    if (!filterQuery || filterQuery.length < 2) return [];
-    return employers.filter(c => c.name.toLowerCase().includes(filterQuery.toLowerCase()));
-  }, [employers, filterQuery]);
+    if (!debouncedQuery || debouncedQuery.length < 2) return [];
+    return employers.filter(c => c.name.toLowerCase().includes(debouncedQuery.toLowerCase()));
+  }, [employers, debouncedQuery]);
 
   const filteredJobs = jobs.filter(job => {
     if (activeTab === (t('search.parttime') || 'Brigády') && job.type !== 'part-time') return false;
     if (activeTab === (t('search.internships') || 'Stáže') && job.type !== 'internship') return false;
     if (activeTab === (t('search.gigs') || 'Jednorázovky') && job.type !== 'gig') return false;
-    if (filterQuery && !job.title.toLowerCase().includes(filterQuery.toLowerCase()) && !job.company.toLowerCase().includes(filterQuery.toLowerCase()) && !job.location.toLowerCase().includes(filterQuery.toLowerCase())) return false;
+    if (debouncedQuery && !job.title.toLowerCase().includes(debouncedQuery.toLowerCase()) && !job.company.toLowerCase().includes(debouncedQuery.toLowerCase()) && !job.location.toLowerCase().includes(debouncedQuery.toLowerCase())) return false;
     if (minRate && parseRate(job.rate) < minRate) return false;
     
     // Focus area filter — match against tags or title
@@ -102,7 +112,7 @@ export default function Search() {
               type="text" 
               placeholder={lang === 'sk' ? 'Pozícia, firma alebo lokalita...' : 'Job title, company or location...'}
               value={filterQuery}
-              onChange={e => setFilterQuery(e.target.value)}
+              onChange={handleSearchChange}
               style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', outline: 'none' }}
             />
           </div>
@@ -111,7 +121,7 @@ export default function Search() {
             style={{ 
               width: 44, height: 44, borderRadius: 12, 
               border: activeFilterCount > 0 ? '1.5px solid var(--accent)' : '1.5px solid var(--border)', 
-              background: activeFilterCount > 0 ? 'rgba(255,92,0,0.1)' : 'var(--bg-card)', 
+              background: activeFilterCount > 0 ? 'var(--accent-light)' : 'var(--bg-card)', 
               color: activeFilterCount > 0 ? 'var(--accent)' : 'var(--text)', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' 
             }}
@@ -131,12 +141,12 @@ export default function Search() {
         {activeFilterCount > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             {minRate && (
-              <span onClick={() => setMinRate(null)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span onClick={() => setMinRate(null)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--shadow-accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 {minRate}€+ <X size={12} />
               </span>
             )}
             {selectedFocus.map(f => (
-              <span key={f} onClick={() => toggleFocus(f)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(255,92,0,0.1)', color: 'var(--accent)', border: '1px solid rgba(255,92,0,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span key={f} onClick={() => toggleFocus(f)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--shadow-accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 {f} <X size={12} />
               </span>
             ))}
@@ -295,7 +305,7 @@ export default function Search() {
         {showFilters && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-dark)', zIndex: 100 }}
             onClick={() => setShowFilters(false)}
           >
             <motion.div

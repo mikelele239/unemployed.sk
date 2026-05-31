@@ -909,26 +909,18 @@
       formData.set('consented', document.getElementById('consentTerms').checked ? '1' : '0');
       formData.set('marketingConsent', document.getElementById('consentMarketing').checked ? '1' : '0');
 
-      // Direct Supabase REST insert — anon key is public by design, no backend needed
-      var SUPA_URL = 'https://jofrxyimqhbgxwwbqyvs.supabase.co';
-      var SUPA_KEY = 'sb_publishable_x88V1MKZnvNi5YW1T6ozmA_j9XmzHXf';
-
+      // Route through server-side submit function (no hardcoded keys in frontend)
       try {
-        var res = await fetch(SUPA_URL + '/rest/v1/submissions', {
+        var res = await fetch('/api/submit', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPA_KEY,
-            'Authorization': 'Bearer ' + SUPA_KEY,
-            'Prefer': 'return=minimal',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: (formData.get('email') || '').toLowerCase().trim(),
-            phone_prefix: formData.get('phonePrefix') || null,
+            phonePrefix: formData.get('phonePrefix') || null,
             phone: formData.get('phone') || null,
-            user_type: formData.get('userType'),
-            consented: true,
-            marketing_consent: formData.get('marketingConsent') === '1',
+            userType: formData.get('userType'),
+            consented: formData.get('consented'),
+            marketingConsent: formData.get('marketingConsent'),
           }),
         });
 
